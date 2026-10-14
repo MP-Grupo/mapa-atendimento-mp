@@ -490,6 +490,8 @@ setTimeout(function(){ var b=document.getElementById("boot"); if(b && !window.__
     <button class="nav" data-go="clientes" id="nav-clientes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/></svg>Clientes</button>
     <button class="nav" data-go="fluxos" id="nav-fluxos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="9" height="5" rx="1.5"/><rect x="11" y="16" width="9" height="5" rx="1.5"/><path d="M8.5 8v4.5h7V16"/></svg>Fluxos</button>
     <button class="nav" data-go="ideias" id="nav-ideias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Ideias</button>
+    <button class="nav" data-go="postits" id="nav-postits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v11l-5 5H4z"/><path d="M15 20v-5h5"/></svg>Post-its</button>
+    <button class="nav" data-go="lembretes" id="nav-lembretes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg>Lembretes</button>
     <button class="nav" data-go="gestao" id="nav-gestao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Gestão</button>
   </nav>
   <div class="main">
@@ -704,12 +706,13 @@ function normalize(d){
   }
   d.biblioteca.mensagens = (d.biblioteca.mensagens||[]).map(m=>({id:m.id||uid(), titulo:m.titulo||"", quando:m.quando||"", texto:m.texto||""}));
   d.biblioteca.listas = (d.biblioteca.listas||[]).map(l=>({id:l.id||uid(), area:l.area||"", itens:(l.itens||[]).map(i=>({id:i.id||uid(), texto:i.texto||""}))}));
-  ["log","ocorrencias","atendimentos","reunioes","ideias","pedidos","conversaIA","postits"].forEach(k=>{ if(!Array.isArray(d[k])) d[k]=[]; });
+  ["log","ocorrencias","atendimentos","reunioes","ideias","pedidos","conversaIA","postits","lembretes"].forEach(k=>{ if(!Array.isArray(d[k])) d[k]=[]; });
   d.atendimentos.forEach(a=>{ a.retorno=typeof a.retorno==="string"?a.retorno:""; a.retornoObs=String(a.retornoObs||""); a.docs=(a.docs&&typeof a.docs==="object")?a.docs:{}; a.checks=a.checks||{}; a.hist=Array.isArray(a.hist)?a.hist:[]; a.notas=a.notas||""; a.status=a.status||"ativo"; });
   d.ideias.forEach(i=>{ i.votos=Array.isArray(i.votos)?i.votos:[]; i.conversa=Array.isArray(i.conversa)?i.conversa:[]; i.cat=IDEIA_CAT[i.cat]?i.cat:"outro"; i.status=IDEIA_ST.some(s=>s[0]===i.status)||i.status==="descartada"?i.status:"nova"; i.texto=i.texto||""; });
   d.pedidos=d.pedidos.filter(p=>p&&typeof p==="object").map(p=>({id:p.id||uid(), t:p.t||0, quem:p.quem||"?", tipo:["pedido","dado","duvida"].includes(p.tipo)?p.tipo:"pedido", texto:String(p.texto||""), ia:!!p.ia, status:p.status==="atendido"?"atendido":"aberto", resp:(Array.isArray(p.resp)?p.resp:[]).map(r=>({id:r.id||uid(), t:r.t||0, quem:r.quem||"?", txt:String(r.txt||"")})).sort((a,b)=>a.t-b.t), atendidoPor:p.atendidoPor||"", atendidoEm:p.atendidoEm||""}));
   d.conversaIA=(Array.isArray(d.conversaIA)?d.conversaIA:[]).filter(m=>m&&typeof m==="object").map(m=>({id:m.id||uid(), t:m.t||0, quem:m.quem||"?", role:m.role==="assistant"?"assistant":"user", txt:String(m.txt||"")}));
-  d.postits=(Array.isArray(d.postits)?d.postits:[]).filter(p=>p&&typeof p==="object").map(p=>({id:p.id||uid(), t:p.t||0, quem:p.quem||"?", pagina:String(p.pagina||"hoje"), cliente:String(p.cliente||""), passo:String(p.passo||""), para:["Todos","Ellen","Gabriel","Alan","Evaldo"].includes(p.para)?p.para:"Todos", texto:String(p.texto||""), cor:["amarelo","rosa","azul","verde"].includes(p.cor)?p.cor:"amarelo", feito:!!p.feito, feitoPor:p.feitoPor||"", lidoPor:Array.isArray(p.lidoPor)?p.lidoPor.filter(x=>typeof x==="string"):[]}));
+  d.postits=(Array.isArray(d.postits)?d.postits:[]).filter(p=>p&&typeof p==="object").map(p=>({id:p.id||uid(), t:p.t||0, quem:p.quem||"?", pagina:String(p.pagina||"hoje"), cliente:String(p.cliente||""), passo:String(p.passo||""), para:["Todos","Ellen","Gabriel","Alan","Evaldo"].includes(p.para)?p.para:"Todos", texto:String(p.texto||""), cor:["amarelo","rosa","azul","verde"].includes(p.cor)?p.cor:"amarelo", feito:!!p.feito, feitoPor:p.feitoPor||"", feitoEm:Number(p.feitoEm)||0, lidoPor:Array.isArray(p.lidoPor)?p.lidoPor.filter(x=>typeof x==="string"):[]}));
+  d.lembretes=d.lembretes.filter(p=>p&&typeof p==="object").map(p=>({id:p.id||uid(), t:p.t||0, quem:p.quem||"?", para:["Todos","Ellen","Gabriel","Alan","Evaldo"].includes(p.para)?p.para:"Todos", titulo:String(p.titulo||""), obs:String(p.obs||""), quando:/^\d{4}-\d{2}-\d{2}$/.test(p.quando||"")?p.quando:"", hora:/^\d{2}:\d{2}$/.test(p.hora||"")?p.hora:"", repetir:["nao","diario","uteis","semanal","mensal"].includes(p.repetir)?p.repetir:"nao", tipo:p.tipo==="eproc"?"eproc":"", feitoEm:(p.feitoEm&&typeof p.feitoEm==="object"&&!Array.isArray(p.feitoEm))?p.feitoEm:{}, ativo:p.ativo!==false}));
   if(!d.trilha) d.trilha = clone(SEED_TRILHA);
   ["missoes","cenarios","comp"].forEach(k=>{ if(!Array.isArray(d.trilha[k])) d.trilha[k]=[]; });
   d.log.sort((a,b)=>(b.t||0)-(a.t||0));
@@ -825,7 +828,7 @@ const ic = (k,s)=>I[k].replace('<svg','<svg width="'+(s||16)+'" height="'+(s||16
 
 /* ================= RENDER GERAL ================= */
 function render(){
-  ["hoje","clientes","fluxos","ideias","gestao"].forEach(v=>{ const n=$("#nav-"+v); if(n) n.classList.toggle("on", ui.view===v); });
+  ["hoje","clientes","fluxos","ideias","postits","lembretes","gestao"].forEach(v=>{ const n=$("#nav-"+v); if(n) n.classList.toggle("on", ui.view===v); });
   $$(".nav .dot").forEach(d=>d.remove());
   const np = pendOpen().length; if(np) $("#nav-fluxos").insertAdjacentHTML("beforeend", `<span class="dot">${np}</span>`);
   const late = S.atendimentos.filter(a=>a.status==="ativo" && slaState(a)==="late").length; if(late) $("#nav-clientes").insertAdjacentHTML("beforeend", `<span class="dot">${late}</span>`);
@@ -833,7 +836,7 @@ function render(){
   const me = ui.me||"?"; $("#meName").textContent = ui.me||"Quem é você?"; $("#meAv").textContent = me[0].toUpperCase();
   $("#meAv").className = "av"+(me==="Gabriel"?" g":me==="Alan"?" a":me==="Ellen"?"":" x");
   const c=$("#content");
-  c.innerHTML = ui.view==="hoje" ? viewHoje() : ui.view==="clientes" ? viewClientes() : ui.view==="fluxos" ? viewFluxos() : ui.view==="ideias" ? viewIdeias() : viewGestao();
+  c.innerHTML = ui.view==="hoje" ? viewHoje() : ui.view==="clientes" ? viewClientes() : ui.view==="fluxos" ? viewFluxos() : ui.view==="ideias" ? viewIdeias() : ui.view==="postits" ? viewPostits() : ui.view==="lembretes" ? viewLembretes() : viewGestao();
   if(ui.view==="fluxos" && ui.fmode==="lista") bindStepDrag();
   if(ui.view==="fluxos" && ui.fmode==="desenho") bindBoard();
   if(ui.view==="hoje" && typeof pdAbertos==="function"){ const n=pdAbertos().length, ph=c.querySelector(".phead"); if(n && ph) ph.insertAdjacentHTML("afterend", `<div class="pd-banner"><span>${n===1?"1 pedido em aberto":n+" pedidos em aberto"} na caixa de pedidos.</span><button class="btn sm primary" data-act="pdToggle">Abrir pedidos</button></div>`); }
@@ -1868,76 +1871,107 @@ Object.assign(PACT, {
 /* ================= POST-ITS (recados nas páginas, clientes e passos) ================= */
 const PN_CORES = {amarelo:"#fff1a8", rosa:"#ffd3e0", azul:"#cde8ff", verde:"#d6f5cf"};
 const PN_PARA = ["Todos","Ellen","Gabriel","Alan","Evaldo"];
-const PN_PAG = {hoje:"Hoje", clientes:"Clientes", fluxos:"Fluxos", ideias:"Ideias", gestao:"Gestão"};
-ui.pn = {cor:"amarelo", para:"Todos", feitos:false};
+const PN_PAG = {hoje:"Hoje", clientes:"Clientes", fluxos:"Fluxos", ideias:"Ideias", gestao:"Gestão", postits:"Post-its", lembretes:"Lembretes"};
+ui.pn = {cor:"amarelo", para:"Todos", aba:"abertos", filtro:"meus"};
 function pnAll(){ if(!Array.isArray(S.postits)) S.postits=[]; return S.postits; }
 function pnParaMim(n){ return !!ui.me && n.quem!==ui.me && (n.para==="Todos" || n.para===ui.me); }
 function pnNovo(n){ return pnParaMim(n) && !n.feito && !(n.lidoPor||[]).includes(ui.me); }
 function pnNaoLidos(){ return pnAll().filter(pnNovo); }
+function pnVisivel(n){ return pnParaMim(n) || n.quem===ui.me || isApprover(); }
+function pnConcluidosSemana(){ const sem=Date.now()-7*864e5; return pnAll().filter(n=>n.feito && (n.feitoEm||0)>=sem); }
 const pnOrd = (a,b)=>(a.t||0)-(b.t||0);
-function pnDaPagina(){ return pnAll().filter(n=>!n.cliente && !n.passo && n.pagina===ui.view).sort(pnOrd); }
-function pnDoCliente(id){ return pnAll().filter(n=>n.cliente===id).sort(pnOrd); }
-function pnDoPasso(id){ return pnAll().filter(n=>n.passo===id).sort(pnOrd); }
+function pnDaPagina(){ return pnAll().filter(n=>!n.feito && !n.cliente && !n.passo && n.pagina===ui.view).sort(pnOrd); }
+function pnDoCliente(id){ return pnAll().filter(n=>!n.feito && n.cliente===id).sort(pnOrd); }
+function pnDoPasso(id){ return pnAll().filter(n=>!n.feito && n.passo===id).sort(pnOrd); }
 function pnOnde(n){
   if(n.cliente){ const a=S.atendimentos.find(x=>x.id===n.cliente); return "Cliente "+(a?a.nome:"(removido)"); }
   if(n.passo){ return findStep(n.passo) ? stepRef(n.passo).replace(/^o p/,"P") : "Passo removido"; }
   return "Página "+(PN_PAG[n.pagina]||n.pagina);
 }
-function pnCard(n, comOnde){
-  const cor = PN_CORES[n.cor]||PN_CORES.amarelo; const pode = n.quem===ui.me || isApprover(); const novo = pnNovo(n);
-  return `<div class="pn-card${n.feito?" feito":""}${novo?" novo":""}" style="background:${cor}">
+function pnPara(n){ return n.para==="Todos"?"todos":n.para; }
+/* cartão pequeno: mostra o começo do recado; clicar abre o recado inteiro */
+function pnMini(n, comOnde){
+  const cor = PN_CORES[n.cor]||PN_CORES.amarelo; const novo = pnNovo(n);
+  return `<div class="pn-card pn-mini${novo?" novo":""}" style="background:${cor}" data-act="pnVer" data-id="${n.id}" title="Clique para ler o recado inteiro">
     ${novo?`<span class="pn-tag">novo para você</span>`:""}
     <div class="pn-txt">${esc(n.texto)}</div>
-    <div class="pn-meta">De ${esc(n.quem)} para ${esc(n.para==="Todos"?"todos":n.para)} · ${esc(fmtT(n.t))}${comOnde?"<br>"+esc(pnOnde(n)):""}${n.feito?"<br>Feito"+(n.feitoPor?" por "+esc(n.feitoPor):""):""}</div>
-    <div class="pn-acts">
-      ${novo?`<button class="lnk" data-act="pnLi" data-id="${n.id}">Entendi</button>`:""}
-      ${comOnde?`<button class="lnk" data-act="pnIr" data-id="${n.id}">Ir para</button>`:""}
-      <button class="lnk" data-act="pnFeito" data-id="${n.id}">${n.feito?"Reabrir":"Marcar feito"}</button>
-      ${pode?`<button class="lnk danger" data-act="pnDel" data-id="${n.id}">Excluir</button>`:""}
-    </div></div>`;
+    <div class="pn-meta">De ${esc(n.quem)} p/ ${esc(pnPara(n))} · ${esc(fmtT(n.t))}${comOnde?"<br>"+esc(pnOnde(n)):""}</div>
+    <div class="pn-acts">${novo?`<button class="lnk" data-act="pnLi" data-id="${n.id}">Entendi</button>`:""}<button class="lnk" data-act="pnFeito" data-id="${n.id}">Marcar feito</button></div></div>`;
 }
-function pnModalNovo(alvo){
+function pnVer(id){
+  const n=pnGet(id); if(!n) return;
+  const pode = n.quem===ui.me || isApprover(); const novo=pnNovo(n);
+  const btns=[{label:"Fechar"}];
+  if(pode) btns.push({label:"Excluir", cls:"danger", fn:()=>{ setTimeout(()=>pnExcluir(n),0); }});
+  if(n.cliente||n.passo||(n.pagina&&n.pagina!==ui.view)) btns.push({label:"Ir para", fn:()=>{ setTimeout(()=>pnIrPara(n),0); }});
+  if(novo) btns.push({label:"Entendi", fn:()=>{ pnMarcarLido(n); }});
+  btns.push(n.feito ? {label:"Reabrir", cls:"primary", fn:()=>{ pnSetFeito(n,false); }} : {label:"Marcar feito", cls:"primary", fn:()=>{ pnSetFeito(n,true); }});
+  modal("Post-it", `<div class="pn-full" style="background:${PN_CORES[n.cor]||PN_CORES.amarelo}"><div class="pn-txt">${esc(n.texto)}</div></div>
+    <p class="muted" style="font-size:13px;margin:10px 0 0">De <b>${esc(n.quem)}</b> para <b>${esc(pnPara(n))}</b> · ${esc(fmtT(n.t))}<br>${esc(pnOnde(n))}${n.feito?`<br>Concluído${n.feitoPor?" por <b>"+esc(n.feitoPor)+"</b>":""}${n.feitoEm?" em "+esc(fmtT(n.feitoEm)):""}`:""}${(n.lidoPor||[]).length?`<br>Lido por: ${esc(n.lidoPor.join(", "))}`:""}</p>`, btns);
+}
+function pnModalNovo(alvo, paraFixo){
+  const pag = (ui.view==="postits"||ui.view==="lembretes") ? "hoje" : ui.view;
   const onde = alvo && alvo.tipo==="cliente" ? "Neste cliente: "+(((S.atendimentos.find(x=>x.id===alvo.id))||{}).nome||"")
     : alvo && alvo.tipo==="passo" ? "Neste passo: "+stepRef(alvo.id).replace(/^o p/,"p")
-    : "Nesta página: "+(PN_PAG[ui.view]||ui.view);
+    : "Na página: "+(PN_PAG[pag]||pag);
+  const paraSel = paraFixo || ui.pn.para;
   const cores = Object.keys(PN_CORES).map(c=>`<label class="pn-cor" title="${c}"><input type="radio" name="pnCor" value="${c}" ${ui.pn.cor===c?"checked":""}><span style="background:${PN_CORES[c]}"></span></label>`).join("");
   modal("Novo post-it", `<p class="muted" style="margin:0 0 8px">${esc(onde)}</p>
     <div class="df"><label>Recado</label><textarea id="pnText" style="min-height:110px" placeholder="Ex.: Ellen, antes de confirmar a reunião, pergunte se o cliente já tem os documentos."></textarea></div>
-    <div class="grid2" style="grid-template-columns:1fr 1fr;gap:10px"><div class="df"><label>Para quem</label><select id="pnPara">${PN_PARA.map(p=>`<option ${ui.pn.para===p?"selected":""}>${p}</option>`).join("")}</select></div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr;gap:10px"><div class="df"><label>Para quem</label><select id="pnPara">${PN_PARA.map(p=>`<option ${paraSel===p?"selected":""}>${p}</option>`).join("")}</select></div>
     <div class="df"><label>Cor</label><div class="pn-cores">${cores}</div></div></div>`,
     [{label:"Cancelar"},{label:"Colocar post-it", cls:"primary", fn:()=>{
       const txt=($("#pnText").value||"").trim(); if(!txt){ $("#pnText").focus(); toast("Escreva o recado antes de colocar."); return false; }
       if(!ui.me){ whoModal(false); toast("Antes, escolha quem é você."); return false; }
       const c=document.querySelector('input[name="pnCor"]:checked'); ui.pn.cor=c?c.value:"amarelo"; ui.pn.para=$("#pnPara").value;
       snap();
-      pnAll().push({id:uid(), t:Date.now(), quem:ui.me, pagina:ui.view, cliente:alvo&&alvo.tipo==="cliente"?alvo.id:"", passo:alvo&&alvo.tipo==="passo"?alvo.id:"", para:ui.pn.para, texto:txt, cor:ui.pn.cor, feito:false, feitoPor:"", lidoPor:[]});
+      pnAll().push({id:uid(), t:Date.now(), quem:ui.me, pagina:pag, cliente:alvo&&alvo.tipo==="cliente"?alvo.id:"", passo:alvo&&alvo.tipo==="passo"?alvo.id:"", para:ui.pn.para, texto:txt, cor:ui.pn.cor, feito:false, feitoPor:"", feitoEm:0, lidoPor:[]});
       logA("colocou um post-it para "+(ui.pn.para==="Todos"?"todos":ui.pn.para)+" ("+onde.toLowerCase()+")");
       save(); render(); if(ui.drawer) pnRd(); toast("Post-it colocado. Fica salvo para a equipe.");
     }}]);
   setTimeout(()=>{ const t=$("#pnText"); if(t) t.focus(); },40);
 }
-function pnModalLista(){
-  const meus = pnAll().filter(n=>pnParaMim(n) || n.quem===ui.me || isApprover());
-  const lista = meus.filter(n=>ui.pn.feitos || !n.feito).sort((a,b)=>(pnNovo(b)-pnNovo(a)) || ((b.t||0)-(a.t||0)));
-  modal("Post-its", `<div class="row" style="margin-bottom:10px"><span class="muted">${pnNaoLidos().length} novo(s) para você · ${lista.length} na lista</span><span class="grow"></span>
-    <label class="check"><input type="checkbox" data-chg="pnFeitos" ${ui.pn.feitos?"checked":""}> Mostrar feitos</label></div>
-    ${lista.length?`<div class="pn-grid">${lista.map(n=>pnCard(n,true)).join("")}</div>`:`<div class="empty">Nenhum post-it por aqui.</div>`}`, [{label:"Fechar"}], true);
+/* ---------- página própria: Post-its (barra lateral) ---------- */
+function viewPostits(){
+  const vis = pnAll().filter(pnVisivel);
+  const filtro = n => ui.pn.filtro==="todos" || pnParaMim(n) || n.quem===ui.me;
+  const abertos = vis.filter(n=>!n.feito && filtro(n)).sort((a,b)=>(pnNovo(b)-pnNovo(a)) || ((b.t||0)-(a.t||0)));
+  const feitos = vis.filter(n=>n.feito && filtro(n)).sort((a,b)=>(b.feitoEm||0)-(a.feitoEm||0));
+  const nl = pnNaoLidos().length, sem = pnConcluidosSemana().length;
+  const aba = ui.pn.aba==="feitos" ? "feitos" : "abertos";
+  const corpo = aba==="abertos"
+    ? (abertos.length ? `<div class="pn-grid">${abertos.map(n=>pnMini(n,true)).join("")}</div>` : `<div class="empty">Nenhum post-it em aberto. Tudo em dia.</div>`)
+    : (feitos.length ? `<div class="pn-done">${feitos.map(n=>`<div class="pn-drow" style="border-left-color:${PN_CORES[n.cor]||PN_CORES.amarelo}">
+        <div class="pn-dtxt" data-act="pnVer" data-id="${n.id}">${esc(n.texto)}</div>
+        <div class="pn-dmeta">De ${esc(n.quem)} p/ ${esc(pnPara(n))} · ${esc(pnOnde(n))}<br><b>Cumprido por ${esc(n.feitoPor||"?")}</b>${n.feitoEm?" em "+esc(fmtT(n.feitoEm)):""}</div>
+        <div class="pn-dacts"><button class="btn sm" data-act="pnFeito" data-id="${n.id}">Reabrir</button></div></div>`).join("")}</div>` : `<div class="empty">Nenhum post-it concluído ainda.</div>`);
+  return `<div class="phead"><div><h1>Post-its</h1><p>Recados e orientações da equipe. Clique num post-it para ler inteiro. Ao marcar como feito, ele sai das páginas e fica guardado em Concluídos.</p></div>
+    <button class="btn primary" data-act="pnNovo">${ic("plus")} Novo post-it</button></div>
+    <div class="row" style="margin-bottom:14px;gap:10px;flex-wrap:wrap">
+      <div class="seg" role="tablist"><button class="${aba==="abertos"?"on":""}" data-act="pnAba" data-aba="abertos">Em aberto (${abertos.length})</button><button class="${aba==="feitos"?"on":""}" data-act="pnAba" data-aba="feitos">Concluídos (${feitos.length})</button></div>
+      <div class="seg"><button class="${ui.pn.filtro!=="todos"?"on":""}" data-act="pnFiltro" data-f="meus">Meus e para mim</button><button class="${ui.pn.filtro==="todos"?"on":""}" data-act="pnFiltro" data-f="todos">Todos</button></div>
+      <span class="grow"></span><span class="muted" style="font-size:13px">${nl} novo(s) para você · ${sem} concluído(s) nos últimos 7 dias</span>
+    </div>${corpo}`;
 }
 function pnRd(){ const el=$("#drawer"); if(!el || !ui.drawer) return; const st=el.scrollTop; renderDrawer(); el.scrollTop=st; }
 function pnRender(){
+  const nl=pnNaoLidos().length;
+  const nav=$("#nav-postits"); if(nav && nl) nav.insertAdjacentHTML("beforeend", `<span class="dot">${nl}</span>`);
+  const fab=$("#pnFab");
+  if(ui.view==="postits"||ui.view==="lembretes"){ if(fab){ const k=fab.querySelector(".pn-n"); if(k){ k.textContent=nl; k.classList.toggle("r",!!nl); k.style.display=nl?"":"none"; } } return; }
   const c=$("#content"); if(!c) return;
   const ex=$("#pnWrap"); if(ex) ex.remove();
-  const lista=pnDaPagina(); const nl=pnNaoLidos().length;
-  c.insertAdjacentHTML("afterbegin", `<div class="pn-wrap" id="pnWrap">${nl?`<div class="pn-banner"><span><b>${nl===1?"1 post-it novo":nl+" post-its novos"}</b> para você.</span><button class="btn sm" data-act="pnLista">Ver</button></div>`:""}${lista.length?`<div class="pn-grid">${lista.map(n=>pnCard(n,false)).join("")}</div>`:""}</div>`);
-  const fab=$("#pnFab"); if(fab){ const k=fab.querySelector(".pn-n"); if(k){ k.textContent = nl || lista.length; k.classList.toggle("r", !!nl); k.style.display = (nl||lista.length) ? "" : "none"; } }
-  if(ui.view==="clientes") $$(".acard[data-id]").forEach(el=>{ const n=pnDoCliente(el.dataset.id).filter(x=>!x.feito).length; if(n && !el.querySelector(".pn-mk")) el.insertAdjacentHTML("beforeend", `<span class="pn-mk">${n} post-it${n>1?"s":""}</span>`); });
+  const lista=pnDaPagina();
+  c.insertAdjacentHTML("afterbegin", `<div class="pn-wrap" id="pnWrap">${nl?`<div class="pn-banner"><span><b>${nl===1?"1 post-it novo":nl+" post-its novos"}</b> para você.</span><button class="btn sm" data-go="postits">Ver</button></div>`:""}${lista.length?`<div class="pn-grid">${lista.map(n=>pnMini(n,false)).join("")}</div>`:""}</div>`);
+  if(fab){ const k=fab.querySelector(".pn-n"); if(k){ k.textContent = nl || lista.length; k.classList.toggle("r", !!nl); k.style.display = (nl||lista.length) ? "" : "none"; } }
+  if(ui.view==="clientes") $$(".acard[data-id]").forEach(el=>{ const n=pnDoCliente(el.dataset.id).length; if(n && !el.querySelector(".pn-mk")) el.insertAdjacentHTML("beforeend", `<span class="pn-mk">${n} post-it${n>1?"s":""}</span>`); });
 }
 function pnDrawerExtra(){
   const d=ui.drawer; if(!d || (d.type!=="at" && d.type!=="step")) return;
   const db=$("#drawer .db"); if(!db || $("#pnDrawer")) return;
   const lista = d.type==="at" ? pnDoCliente(d.id) : pnDoPasso(d.id);
   const quem = d.type==="at" ? "cliente" : "passo";
-  db.insertAdjacentHTML("afterbegin", `<div id="pnDrawer" class="pn-dr">${lista.length?`<div class="pn-grid">${lista.map(n=>pnCard(n,false)).join("")}</div>`:""}
+  db.insertAdjacentHTML("afterbegin", `<div id="pnDrawer" class="pn-dr">${lista.length?`<div class="pn-grid">${lista.map(n=>pnMini(n,false)).join("")}</div>`:""}
     <div><button class="btn sm pn-btn" data-act="pnNovoAlvo" data-tipo="${quem}" data-id="${d.id}">+ Post-it neste ${quem}</button></div></div>`);
 }
 function pnFabInit(){
@@ -1946,20 +1980,35 @@ function pnFabInit(){
 }
 if(document.body) pnFabInit(); else document.addEventListener("DOMContentLoaded", pnFabInit);
 const pnGet = id=>pnAll().find(x=>x.id===id);
+function pnAtualiza(){ render(); if(ui.drawer) pnRd(); }
+function pnMarcarLido(n){ if(!ui.me) return; if(!n.lidoPor.includes(ui.me)){ n.lidoPor.push(ui.me); save(); } pnAtualiza(); }
+function pnSetFeito(n, v){
+  snap(); n.feito=v; n.feitoPor=v?(ui.me||""):""; n.feitoEm=v?Date.now():0;
+  if(v && ui.me && !n.lidoPor.includes(ui.me)) n.lidoPor.push(ui.me);
+  logA((v?"concluiu":"reabriu")+" um post-it de "+n.quem); save(); pnAtualiza();
+  toast(v?"Post-it concluído. Ele fica guardado em Post-its › Concluídos.":"Post-it reaberto. Ele volta para a página.", ()=>{ undo(); pnAtualiza(); });
+}
+function pnExcluir(n){
+  confirmBox("Excluir este post-it?", "“"+esc(n.texto.slice(0,120))+"”. Dá para desfazer logo depois.", "Excluir", ()=>{ snap(); S.postits=pnAll().filter(x=>x.id!==n.id); logA("excluiu um post-it"); save(); pnAtualiza(); toast("Post-it excluído.", ()=>{ undo(); pnAtualiza(); }); });
+}
+function pnIrPara(n){
+  if(n.cliente && S.atendimentos.find(x=>x.id===n.cliente)){ const a=S.atendimentos.find(x=>x.id===n.cliente); S.ativo=a.flow; go("clientes"); openDrawer("at", a.id); }
+  else if(n.passo && findStep(n.passo)){ S.ativo=findStep(n.passo).f.id; go("fluxos"); openStep(n.passo); }
+  else go(n.pagina||"hoje");
+}
 Object.assign(PACT, {
   pnNovo:()=>pnModalNovo(null),
   pnNovoAlvo:el=>pnModalNovo({tipo:el.dataset.tipo, id:el.dataset.id}),
-  pnLista:()=>pnModalLista(),
-  pnLi:el=>{ const n=pnGet(el.dataset.id); if(!n||!ui.me) return; if(!n.lidoPor.includes(ui.me)){ n.lidoPor.push(ui.me); save(); } render(); if(ui.drawer) pnRd(); if($("#modalRoot").innerHTML) pnModalLista(); },
-  pnIr:el=>{ const n=pnGet(el.dataset.id); if(!n) return; closeModal();
-    if(n.cliente && S.atendimentos.find(x=>x.id===n.cliente)){ const a=S.atendimentos.find(x=>x.id===n.cliente); S.ativo=a.flow; go("clientes"); openDrawer("at", a.id); }
-    else if(n.passo && findStep(n.passo)){ S.ativo=findStep(n.passo).f.id; go("fluxos"); openStep(n.passo); }
-    else go(n.pagina||"hoje"); },
-  pnFeito:el=>{ const n=pnGet(el.dataset.id); if(!n) return; snap(); n.feito=!n.feito; n.feitoPor=n.feito?(ui.me||""):""; if(n.feito && ui.me && !n.lidoPor.includes(ui.me)) n.lidoPor.push(ui.me); save(); render(); if(ui.drawer) pnRd(); if($("#modalRoot").innerHTML) pnModalLista(); },
-  pnDel:el=>{ const n=pnGet(el.dataset.id); if(!n) return; const reabrir=!!$("#modalRoot").innerHTML;
-    confirmBox("Excluir este post-it?", "“"+esc(n.texto.slice(0,120))+"”. Dá para desfazer logo depois.", "Excluir", ()=>{ snap(); S.postits=pnAll().filter(x=>x.id!==n.id); logA("excluiu um post-it"); save(); render(); if(ui.drawer) pnRd(); toast("Post-it excluído.", ()=>{ undo(); render(); }); if(reabrir) setTimeout(pnModalLista,0); }); }
+  pnNovoPara:el=>pnModalNovo(null, el.dataset.para),
+  pnLista:()=>go("postits"),
+  pnVer:el=>pnVer(el.dataset.id),
+  pnAba:el=>{ ui.pn.aba=el.dataset.aba; render(); },
+  pnFiltro:el=>{ ui.pn.filtro=el.dataset.f; render(); },
+  pnLi:el=>{ const n=pnGet(el.dataset.id); if(n) pnMarcarLido(n); },
+  pnIr:el=>{ const n=pnGet(el.dataset.id); if(n){ closeModal(); pnIrPara(n); } },
+  pnFeito:el=>{ const n=pnGet(el.dataset.id); if(n) pnSetFeito(n, !n.feito); },
+  pnDel:el=>{ const n=pnGet(el.dataset.id); if(n) pnExcluir(n); }
 });
-document.addEventListener("change", e=>{ const t=e.target; if(t && t.dataset && t.dataset.chg==="pnFeitos"){ ui.pn.feitos=t.checked; pnModalLista(); } });
 (function(){ const st=document.createElement("style"); st.textContent = ".pn-fab{position:fixed;left:20px;bottom:20px;z-index:40;border:0;border-radius:99px;padding:11px 16px;background:#ffe27a;color:#3b3200;font-weight:700;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.18);cursor:pointer}"
  + ".pn-fab .pn-n{margin-left:6px;background:#3b3200;color:#fff;border-radius:99px;padding:1px 7px;font-size:12px}"
  + ".pn-fab .pn-n.r{background:var(--danger,#c0392b)}"
@@ -1969,19 +2018,26 @@ document.addEventListener("change", e=>{ const t=e.target; if(t && t.dataset && 
  + ".pn-cor input{position:absolute;opacity:0;pointer-events:none}"
  + ".pn-cor span{display:inline-block;width:26px;height:26px;border-radius:50%;border:2px solid #0002;cursor:pointer}"
  + ".pn-cor input:checked+span{border:3px solid #3b3200}"
- + ".pn-grid{display:flex;flex-wrap:wrap;gap:12px}"
- + ".pn-card{position:relative;width:210px;min-height:110px;padding:12px;border-radius:4px;box-shadow:0 4px 10px rgba(0,0,0,.14);transform:rotate(-1deg);font-size:14px;color:#222;display:flex;flex-direction:column}"
+ + ".pn-grid{display:flex;flex-wrap:wrap;gap:10px}"
+ + ".pn-card{position:relative;width:170px;padding:10px;border-radius:4px;box-shadow:0 3px 8px rgba(0,0,0,.13);transform:rotate(-1deg);font-size:13px;color:#222;display:flex;flex-direction:column;cursor:pointer;transition:transform .12s}"
  + ".pn-card:nth-child(even){transform:rotate(1deg)}"
- + ".pn-card.feito{opacity:.6}"
+ + ".pn-card:hover{transform:rotate(0) scale(1.03)}"
  + ".pn-card.novo{outline:2px solid var(--danger,#c0392b)}"
- + ".pn-tag{align-self:flex-start;background:var(--danger,#c0392b);color:#fff;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;margin-bottom:6px}"
- + ".pn-txt{white-space:pre-wrap;flex:1}"
- + ".pn-meta{font-size:11.5px;color:#555;margin-top:8px}"
- + ".pn-acts{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}"
+ + ".pn-tag{align-self:flex-start;background:var(--danger,#c0392b);color:#fff;font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px;margin-bottom:5px}"
+ + ".pn-mini .pn-txt{white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}"
+ + ".pn-meta{font-size:11px;color:#555;margin-top:6px}"
+ + ".pn-acts{display:flex;gap:10px;margin-top:3px;flex-wrap:wrap}"
+ + ".pn-full{padding:16px;border-radius:6px;box-shadow:0 3px 8px rgba(0,0,0,.12);font-size:15px;color:#222}"
+ + ".pn-full .pn-txt{white-space:pre-wrap}"
+ + ".pn-done{display:flex;flex-direction:column;gap:8px}"
+ + ".pn-drow{display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:6px solid;border-radius:10px;padding:10px 12px}"
+ + ".pn-dtxt{white-space:pre-wrap;cursor:pointer;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}"
+ + ".pn-dmeta{grid-column:1;font-size:12px;color:var(--muted)}"
+ + ".pn-dacts{grid-column:2;grid-row:1/span 2}"
  + ".pn-dr{display:flex;flex-direction:column;gap:10px;padding-bottom:10px;border-bottom:1px dashed #e8d77a}"
  + ".pn-btn{background:#fff6c7;border-color:#e8d77a}"
  + ".pn-mk{display:inline-block;align-self:flex-start;width:max-content;margin-top:4px;background:#ffe27a;color:#3b3200;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px}"
- + "@media (max-width:760px){ .pn-fab{bottom:76px;left:12px} .pn-card{width:100%} }"
+ + "@media (max-width:760px){ .pn-fab{bottom:76px;left:12px} .pn-card{width:calc(50% - 5px)} .pn-drow{grid-template-columns:1fr} .pn-dacts{grid-column:1;grid-row:auto} }"
  + "@media print{ .pn-fab{display:none!important} }";
  document.head.appendChild(st); })();
 const pnRenderBase = render;
@@ -2075,6 +2131,8 @@ function gestorHTML(){
     <div class="kpis gks">
       ${tile("Pedidos em aberto", pd.length+(velho?`<small> · mais antigo há ${fmtDur(Date.now()-velho)}</small>`:""), 'data-act="pdToggle"', pd.length?"w":"")}
       ${tile("Post-its novos p/ você", pn, 'data-act="pnLista"', pn?"r":"")}
+      ${tile("Post-its concluídos (7 dias)", pnConcluidosSemana().length, 'data-go="postits"', "")}
+      ${tile("Lembretes atrasados / de hoje", lmAtrasados().length+" / "+lmHoje().length, 'data-go="lembretes"', lmAtrasados().length?"r":"")}
       ${tile("Retornos de hoje/atrasados", ret.length, 'data-go="clientes"', ret.some(a=>retState(a)==="venc")?"r":"")}
       ${tile("Clientes atrasados", late, 'data-go="clientes"', late?"r":"")}
       ${tile("Clientes com documentos faltando", docsPend, 'data-go="clientes"', "")}
@@ -2155,6 +2213,187 @@ const axRenderBase = render;
 render = function(){ axRenderBase(); maisRender(); };
 const axDrawerBase = renderDrawer;
 renderDrawer = function(){ axDrawerBase(); atDrawerExtra(); };
+/* ================= LEMBRETES / ALERTAS  +  eProc  +  PAINEL DO MASTER ================= */
+const LM_REP = {nao:"Uma vez", diario:"Todo dia", uteis:"Dias úteis (seg a sex)", semanal:"Toda semana", mensal:"Todo mês"};
+const LM_EQUIPE = ["Ellen","Alan","Evaldo"];
+const LM_EPROC_MSG = "Olá, Dr. Alan! Pode me passar o código de verificação do eProc de hoje, por favor? Obrigada!";
+ui.lm = {filtro:"meus"};
+function lmAll(){ if(!Array.isArray(S.lembretes)) S.lembretes=[]; return S.lembretes; }
+function lmMaster(){ return ui.papel==="master"; }
+function lmIsoDate(iso){ const p=iso.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+function lmDue(l, iso){
+  if(!l.ativo || !l.quando || iso<l.quando) return false;
+  const d=lmIsoDate(iso), w=d.getDay(), q=lmIsoDate(l.quando);
+  if(l.repetir==="nao") return iso===l.quando;
+  if(l.repetir==="diario") return true;
+  if(l.repetir==="uteis") return w>=1 && w<=5;
+  if(l.repetir==="semanal") return w===q.getDay();
+  if(l.repetir==="mensal"){ const ult=new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); return d.getDate()===Math.min(q.getDate(), ult); }
+  return false;
+}
+function lmFeito(l, iso){ return !!(l.feitoEm && l.feitoEm[iso]); }
+function lmProx(l, de){ const d=lmIsoDate(de); for(let i=0;i<400;i++){ const iso=isoDia(d); if(lmDue(l, iso) && !lmFeito(l, iso)) return iso; d.setDate(d.getDate()+1); } return ""; }
+function lmDe(l, p){ return !p || l.para===p || l.para==="Todos"; }
+function lmVisivel(l){ return lmMaster() || isApprover() || l.para==="Todos" || l.para===ui.me || l.quem===ui.me; }
+function lmHoje(p){ const h=isoDia(); return lmAll().filter(l=>lmDe(l,p) && lmDue(l,h) && !lmFeito(l,h)); }
+function lmAtrasados(p){ const h=isoDia(); return lmAll().filter(l=>lmDe(l,p) && l.ativo && l.repetir==="nao" && l.quando && l.quando<h && !lmFeito(l,l.quando)); }
+function lmMeusPend(){ return ui.me ? lmAtrasados(ui.me).length + lmHoje(ui.me).length : 0; }
+function lmDia(l){ const h=isoDia(); return (l.repetir==="nao" && l.quando<h) ? l.quando : h; }
+function lmPode(l){ return lmMaster() || l.quem===ui.me; }
+function lmLinha(l, atras){
+  const dia=lmDia(l); const ep=l.tipo==="eproc";
+  return `<div class="lm-row${atras?" atras":""}">
+    <button class="lm-ck" data-act="lmConcluir" data-id="${l.id}" data-dia="${dia}" title="Marcar como feito"></button>
+    <div class="lm-main"><div class="lm-tit">${esc(l.titulo)}</div>
+      <div class="lm-meta">${atras?`<b>Atrasado desde ${esc(fmtIso(l.quando))}</b> · `:""}${l.hora?esc(l.hora)+" · ":""}Para ${esc(l.para==="Todos"?"todos":l.para)} · ${esc(LM_REP[l.repetir])}${l.quem&&l.quem!==l.para?" · criado por "+esc(l.quem):""}</div>
+      ${l.obs?`<div class="lm-obs">${esc(l.obs)}</div>`:""}
+      ${ep?`<div class="lm-ep"><button class="btn sm primary" data-act="lmEprocCopiar">${ic("copy",14)} Copiar pedido para o WhatsApp do Alan</button><a class="btn sm" href="https:\/\/wa.me/?text=${encodeURIComponent(LM_EPROC_MSG)}" target="_blank" rel="noopener">Abrir WhatsApp</a><button class="btn sm" data-act="lmEprocAvisar">Avisar o Alan aqui no sistema</button><span class="lm-dica">Não anote o código aqui: ele é pessoal e vale por pouco tempo.</span></div>`:""}
+    </div></div>`;
+}
+function lmCardHoje(){
+  if(!ui.me) return "";
+  const at=lmAtrasados(ui.me), hj=lmHoje(ui.me).sort((a,b)=>(a.hora||"99").localeCompare(b.hora||"99"));
+  if(!at.length && !hj.length) return "";
+  return `<section class="card lm-card" id="lmBox"><div class="row"><h2 style="margin:0">Lembretes de hoje</h2><span class="grow"></span><button class="btn sm" data-go="lembretes">Ver todos</button></div>
+    ${at.map(l=>lmLinha(l,true)).join("")}${hj.map(l=>lmLinha(l,false)).join("")}</section>`;
+}
+function viewLembretes(){
+  const h=isoDia(); const todos = ui.lm.filtro==="todos" && (lmMaster()||isApprover());
+  const p = todos ? null : ui.me;
+  const at=lmAtrasados(p).filter(lmVisivel), hj=lmHoje(p).filter(lmVisivel).sort((a,b)=>(a.hora||"99").localeCompare(b.hora||"99"));
+  const feitosHoje=lmAll().filter(l=>lmDe(l,p) && lmVisivel(l) && l.feitoEm && l.feitoEm[h]);
+  const lista=lmAll().filter(l=>lmVisivel(l) && (todos || lmDe(l,ui.me) || l.quem===ui.me));
+  const amanha=isoMais(1);
+  const prox=lista.filter(l=>l.ativo).map(l=>({l, d:lmProx(l, amanha)})).filter(x=>x.d && x.d<=isoMais(14)).sort((a,b)=>a.d.localeCompare(b.d));
+  const temEproc = lmAll().some(l=>l.tipo==="eproc");
+  return `<div class="phead"><div><h1>Lembretes</h1><p>Avisos com data e hora, que podem se repetir. O que é de hoje aparece também na tela Hoje. Ao concluir, fica registrado quem fez e quando.</p></div>
+    <div class="row" style="gap:8px"><button class="btn primary" data-act="lmNovo">${ic("plus")} Novo lembrete</button></div></div>
+    <div class="row" style="margin-bottom:14px;gap:10px;flex-wrap:wrap">
+      ${(lmMaster()||isApprover())?`<div class="seg"><button class="${!todos?"on":""}" data-act="lmFiltro" data-f="meus">Meus</button><button class="${todos?"on":""}" data-act="lmFiltro" data-f="todos">Da equipe toda</button></div>`:""}
+      ${temEproc?"":`<button class="btn sm lm-modelo" data-act="lmEprocModelo">+ Lembrete diário: pedir código do eProc ao Alan</button>`}
+      <button class="btn sm" data-act="lmAvisos">Ativar avisos no computador</button>
+    </div>
+    <section class="card"><h2 style="margin:0">Para hoje</h2>
+      ${at.map(l=>lmLinha(l,true)).join("")}${hj.map(l=>lmLinha(l,false)).join("") || (at.length?"":`<div class="empty">Nada pendente para hoje.</div>`)}
+      ${feitosHoje.length?`<details class="lm-feitos"><summary>Concluídos hoje (${feitosHoje.length})</summary>${feitosHoje.map(l=>{ const f=l.feitoEm[h]; return `<div class="lm-frow"><span>✓ ${esc(l.titulo)}</span><span class="muted">${esc(f.quem||"?")} às ${esc(new Date(f.t||0).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}))}</span><button class="lnk" data-act="lmDesfazer" data-id="${l.id}" data-dia="${h}">Reabrir</button></div>`; }).join("")}</details>`:""}
+    </section>
+    <section class="card" style="margin-top:14px"><h2 style="margin:0">Próximos 14 dias</h2>
+      ${prox.length?prox.map(x=>`<div class="lm-frow"><b>${esc(fmtIso(x.d))}${x.l.hora?" "+esc(x.l.hora):""}</b><span>${esc(x.l.titulo)}</span><span class="muted">p/ ${esc(x.l.para==="Todos"?"todos":x.l.para)}</span></div>`).join(""):`<p class="muted" style="margin:0">Nada marcado.</p>`}
+    </section>
+    <section class="card" style="margin-top:14px"><h2 style="margin:0">Todos os lembretes (${lista.length})</h2>
+      ${lista.length?lista.sort((a,b)=>(b.t||0)-(a.t||0)).map(l=>`<div class="lm-frow${l.ativo?"":" off"}"><span><b>${esc(l.titulo)}</b><br><small class="muted">${esc(LM_REP[l.repetir])}${l.quando?" · desde "+esc(fmtIso(l.quando)):""}${l.hora?" · "+esc(l.hora):""} · p/ ${esc(l.para==="Todos"?"todos":l.para)} · por ${esc(l.quem)}${l.ativo?"":" · PAUSADO"}</small></span>
+        ${lmPode(l)?`<span class="row" style="gap:6px"><button class="lnk" data-act="lmEditar" data-id="${l.id}">Editar</button><button class="lnk" data-act="lmPausar" data-id="${l.id}">${l.ativo?"Pausar":"Retomar"}</button><button class="lnk danger" data-act="lmDel" data-id="${l.id}">Excluir</button></span>`:""}</div>`).join(""):`<p class="muted" style="margin:0">Nenhum lembrete ainda.</p>`}
+    </section>`;
+}
+function lmModal(l, preset){
+  const novo=!l; l = l || Object.assign({titulo:"", obs:"", para:ui.me==="Gabriel"?"Ellen":(ui.me||"Todos"), quando:isoDia(), hora:"", repetir:"nao", tipo:""}, preset||{});
+  modal(novo?"Novo lembrete":"Editar lembrete", `
+    <div class="df"><label>O que lembrar</label><input class="inp" id="lmTit" value="${esc(l.titulo)}" placeholder="Ex.: Conferir intimações no eProc"></div>
+    <div class="df"><label>Observação (opcional)</label><textarea id="lmObs" style="min-height:60px">${esc(l.obs)}</textarea></div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div class="df"><label>Para quem</label><select id="lmPara">${PN_PARA.map(p=>`<option ${l.para===p?"selected":""}>${p}</option>`).join("")}</select></div>
+      <div class="df"><label>Repetir</label><select id="lmRep">${Object.entries(LM_REP).map(([k,v])=>`<option value="${k}" ${l.repetir===k?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="df"><label>Data (ou início)</label><input class="inp" type="date" id="lmData" value="${esc(l.quando)}"></div>
+      <div class="df"><label>Hora (opcional)</label><input class="inp" type="time" id="lmHora" value="${esc(l.hora)}"></div>
+    </div>`,
+    [{label:"Cancelar"},{label:novo?"Criar lembrete":"Salvar", cls:"primary", fn:()=>{
+      const tit=($("#lmTit").value||"").trim(); if(!tit){ $("#lmTit").focus(); toast("Escreva o que deve ser lembrado."); return false; }
+      const dt=$("#lmData").value||isoDia();
+      snap();
+      if(novo){ lmAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", para:$("#lmPara").value, titulo:tit, obs:$("#lmObs").value.trim(), quando:dt, hora:$("#lmHora").value||"", repetir:$("#lmRep").value, tipo:l.tipo||"", feitoEm:{}, ativo:true}); logA("criou o lembrete “"+tit+"” para "+$("#lmPara").value); }
+      else { Object.assign(l, {para:$("#lmPara").value, titulo:tit, obs:$("#lmObs").value.trim(), quando:dt, hora:$("#lmHora").value||"", repetir:$("#lmRep").value}); logA("editou o lembrete “"+tit+"”"); }
+      save(); render(); toast(novo?"Lembrete criado.":"Lembrete salvo.");
+    }}]);
+  setTimeout(()=>{ const t=$("#lmTit"); if(t) t.focus(); },40);
+}
+const lmGet = id=>lmAll().find(x=>x.id===id);
+/* avisos na tela (e no computador, se permitido) na hora marcada */
+const lmAvisados = {};
+function lmChecar(){
+  if(!ui.me || !S || !Array.isArray(S.lembretes)) return;
+  const h=isoDia(), agora=new Date(), hm=pad2(agora.getHours())+":"+pad2(agora.getMinutes());
+  lmHoje(ui.me).forEach(l=>{ if(!l.hora || l.hora>hm) return; const k=l.id+h; if(lmAvisados[k]) return; lmAvisados[k]=1;
+    toast("Lembrete: "+l.titulo);
+    try{ if(window.Notification && Notification.permission==="granted") new Notification("Lembrete – Mapa M&P", {body:l.titulo}); }catch(e){}
+  });
+}
+setInterval(lmChecar, 30000);
+/* ---------- painel do master: controle da equipe (só Gabriel vê) ---------- */
+function masterHTML(){
+  const sem=Date.now()-7*864e5;
+  const linhas = LM_EQUIPE.map(p=>{
+    const ult=S.log.find(x=>x.quem===p); const acoes=S.log.filter(x=>x.quem===p && x.t>=sem).length;
+    const pnAb=pnAll().filter(n=>!n.feito && n.quem!==p && (n.para===p||n.para==="Todos"));
+    const pnNl=pnAb.filter(n=>!(n.lidoPor||[]).includes(p)).length;
+    const pnOk=pnAll().filter(n=>n.feito && n.feitoPor===p && (n.feitoEm||0)>=sem).length;
+    const lh=lmHoje(p).length, la=lmAtrasados(p).length;
+    const pd=(S.pedidos||[]).filter(x=>x.quem===p && x.status!=="atendido").length;
+    return `<div class="ms-row"><div class="ms-nome"><b>${esc(p)}</b><small class="muted">${ult?"última ação "+esc(fmtT(ult.t)):"sem atividade registrada"}</small></div>
+      <div class="ms-nums"><span title="Ações nos últimos 7 dias"><b>${acoes}</b> ações 7d</span><span class="${pnNl?"r":""}" title="Post-its para ela/ele em aberto (não lidos)"><b>${pnAb.length}</b> post-its${pnNl?" ("+pnNl+" não lidos)":""}</span><span title="Post-its que cumpriu em 7 dias"><b>${pnOk}</b> cumpridos</span><span class="${la?"r":""}" title="Lembretes de hoje / atrasados"><b>${lh}</b> lembretes hoje${la?" · "+la+" atrasados":""}</span><span class="${pd?"w":""}"><b>${pd}</b> pedidos abertos</span></div>
+      <div class="ms-acts"><button class="btn sm" data-act="pnNovoPara" data-para="${p}">+ Post-it</button><button class="btn sm" data-act="lmNovoPara" data-para="${p}">+ Lembrete</button><button class="btn sm" data-act="msAtiv" data-p="${p}">Atividade</button></div></div>`;
+  }).join("");
+  return `<section class="card ms" id="masterBox"><div class="row"><h2 style="margin:0">Minha equipe <span class="ms-tag">só você vê</span></h2><span class="grow"></span><button class="btn sm" data-au="acessos">Gerenciar acessos</button></div>
+    <p class="sub" style="margin:0">Controle do master: o que cada um está fazendo, o que está pendente e onde mandar recado. Só o Gabriel (master) tem este painel e os acessos.</p>${linhas}</section>`;
+}
+function msAtividade(p){
+  const L=S.log.filter(x=>x.quem===p).slice(0,60);
+  modal("Atividade de "+p, L.length?`<ul class="loglist">${L.map(x=>`<li><span>${esc(fmtT(x.t))}</span> ${esc(x.txt)}</li>`).join("")}</ul>`:`<p class="muted">Nada registrado.</p>`, [{label:"Fechar", cls:"primary"}], true);
+}
+function lmRender(){
+  const nav=$("#nav-lembretes"); const n=lmMeusPend(); if(nav && n) nav.insertAdjacentHTML("beforeend", `<span class="dot" style="background:${lmAtrasados(ui.me).length?"var(--danger)":"var(--accent)"}">${n}</span>`);
+  if(ui.view!=="hoje") return;
+  const c=$("#content"); if(!c) return;
+  ["#lmBox","#masterBox"].forEach(s=>{ const e=$(s); if(e) e.remove(); });
+  const ancora = c.querySelector(".pd-banner") || c.querySelector(".phead"); if(!ancora) return;
+  const lc=lmCardHoje(); if(lc) ancora.insertAdjacentHTML("afterend", lc);
+  if(lmMaster()){ const g=$("#gestorBox"); const ref=g || $("#lmBox") || ancora; ref.insertAdjacentHTML("afterend", masterHTML()); }
+  lmChecar();
+}
+Object.assign(PACT, {
+  lmNovo:()=>lmModal(null),
+  lmNovoPara:el=>lmModal(null, {para:el.dataset.para}),
+  lmEditar:el=>{ const l=lmGet(el.dataset.id); if(l && lmPode(l)) lmModal(l); },
+  lmFiltro:el=>{ ui.lm.filtro=el.dataset.f; render(); },
+  lmConcluir:el=>{ const l=lmGet(el.dataset.id); if(!l) return; const d=el.dataset.dia; snap(); l.feitoEm[d]={quem:ui.me||"?", t:Date.now()}; logA("concluiu o lembrete “"+l.titulo+"”"); save(); render(); toast("Lembrete concluído.", ()=>{ undo(); render(); }); },
+  lmDesfazer:el=>{ const l=lmGet(el.dataset.id); if(!l) return; snap(); delete l.feitoEm[el.dataset.dia]; save(); render(); },
+  lmPausar:el=>{ const l=lmGet(el.dataset.id); if(!l || !lmPode(l)) return; snap(); l.ativo=!l.ativo; save(); render(); toast(l.ativo?"Lembrete retomado.":"Lembrete pausado."); },
+  lmDel:el=>{ const l=lmGet(el.dataset.id); if(!l || !lmPode(l)) return; confirmBox("Excluir este lembrete?", "“"+esc(l.titulo)+"”. Dá para desfazer logo depois.", "Excluir", ()=>{ snap(); S.lembretes=lmAll().filter(x=>x.id!==l.id); logA("excluiu o lembrete “"+l.titulo+"”"); save(); render(); toast("Lembrete excluído.", ()=>{ undo(); render(); }); }); },
+  lmEprocModelo:()=>lmModal(null, {titulo:"Pedir o código de verificação do eProc ao Dr. Alan", obs:"Use os botões abaixo para mandar o pedido. Quando o Alan responder e você entrar no eProc, marque como feito.", para:"Ellen", repetir:"uteis", hora:"08:30", tipo:"eproc"}),
+  lmEprocCopiar:()=>copyText(LM_EPROC_MSG, "Pedido copiado. Cole no WhatsApp do Alan."),
+  lmEprocAvisar:()=>{ if(!ui.me) return; snap(); S.pedidos.push({id:uid(), t:Date.now(), quem:ui.me, tipo:"pedido", texto:"Dr. Alan, preciso do código de verificação do eProc para acessar hoje. Pode me mandar pelo WhatsApp?", status:"aberto", resp:[], atendidoPor:"", atendidoEm:""}); logA("pediu ao Alan o código do eProc"); save(); render(); toast("Pedido enviado para a caixa de pedidos. O Alan vê quando abrir o sistema."); },
+  lmAvisos:()=>{ if(!window.Notification){ toast("Este navegador não mostra avisos. Os lembretes aparecem na tela do sistema."); return; }
+    Notification.requestPermission().then(r=>toast(r==="granted"?"Pronto: os lembretes com hora vão aparecer como aviso no computador (com o sistema aberto).":"Avisos não liberados. Os lembretes continuam aparecendo na tela.")); },
+  msAtiv:el=>msAtividade(el.dataset.p)
+});
+(function(){ const st=document.createElement("style"); st.textContent = ".lm-card{border-left:5px solid var(--accent)}"
+ + ".lm-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}"
+ + ".lm-row.atras .lm-tit{color:var(--danger)}"
+ + ".lm-ck{flex:none;width:24px;height:24px;border-radius:7px;border:2px solid var(--accent);background:var(--surface);cursor:pointer;margin-top:1px}"
+ + ".lm-ck:hover{background:var(--accent-soft)}"
+ + ".lm-main{flex:1;min-width:0}"
+ + ".lm-tit{font-weight:700}"
+ + ".lm-meta{font-size:12.5px;color:var(--muted);margin-top:2px}"
+ + ".lm-obs{font-size:13.5px;margin-top:4px;white-space:pre-wrap}"
+ + ".lm-ep{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}"
+ + ".lm-ep a.btn{text-decoration:none;color:inherit}"
+ + ".lm-dica{font-size:12px;color:var(--muted);width:100%}"
+ + ".lm-frow{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:14px}"
+ + ".lm-frow.off{opacity:.55}"
+ + ".lm-feitos summary{cursor:pointer;color:var(--muted);font-size:13.5px;margin-top:6px}"
+ + ".lm-modelo{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}"
+ + ".ms{border-left:5px solid #3b3200}"
+ + ".ms-tag{font-size:11px;font-weight:700;background:#3b3200;color:#fff;border-radius:99px;padding:2px 8px;vertical-align:middle;margin-left:6px}"
+ + ".ms-row{display:grid;grid-template-columns:150px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}"
+ + ".ms-nome{display:flex;flex-direction:column}"
+ + ".ms-nums{display:flex;flex-wrap:wrap;gap:6px}"
+ + ".ms-nums span{background:var(--surface-2);border-radius:8px;padding:3px 8px;font-size:12.5px}"
+ + ".ms-nums span.r{background:#fde2e0;color:var(--danger)}"
+ + ".ms-nums span.w{background:#fff1c7}"
+ + ".ms-acts{display:flex;gap:6px;flex-wrap:wrap}"
+ + "@media (max-width:760px){ .ms-row{grid-template-columns:1fr} }";
+ document.head.appendChild(st); })();
+const lmRenderBase = render;
+render = function(){ lmRenderBase(); lmRender(); };
 /* ================= LOGIN, PERFIS E PERMISSÕES (Supabase) ================= */
 const CFG = window.MAPA_CONFIG || {};
 const SB = (window.supabase && CFG.url && CFG.anonKey) ? window.supabase.createClient(CFG.url, CFG.anonKey, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}) : null;
