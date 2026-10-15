@@ -564,6 +564,8 @@ setTimeout(function(){ var b=document.getElementById("boot"); if(b && !window.__
     <button class="nav" data-go="ideias" id="nav-ideias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span>Ideias</span></button>
     <div class="ngrp">Sistema</div>
     <button class="nav" data-go="gestao" id="nav-gestao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Painel e dados</span></button>
+    <div class="ngrp">Ajuda</div>
+    <button class="nav" data-act="instalar" id="nav-instalar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3M10 18h4"/></svg><span>Instalar o app (PC e celular)</span></button>
   </nav>
   <div class="main">
     <header class="top">
@@ -4161,6 +4163,45 @@ function ajRender(){
  + ".pn-full,.pn-full .pn-txt{color:#222}.ps .lnk{color:#0d5c63!important;font-weight:700}"
  + "@media (max-width:640px){ .ps{width:190px} }";
  document.head.appendChild(st); })();
+
+/* ---------- Instalar como app: orientação para computador, Android e iPhone ---------- */
+let instPrompt=null;
+window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); instPrompt=e; });
+window.addEventListener("appinstalled", ()=>{ instPrompt=null; toast("App instalado. Procure o ícone M&P."); });
+function instDisp(){ const u=navigator.userAgent||""; if(/iPhone|iPad|iPod/i.test(u)) return "iphone"; if(/Android/i.test(u)) return "android"; return "pc"; }
+function instJa(){ return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true; }
+const INST_URL="https:\/\/mp-grupo.github.io/mapa-atendimento-mp/", SALA_URL="https:\/\/mp-grupo.github.io/mapa-atendimento-mp/sala.html";
+function instPassos(k){
+  const P={
+    pc:`<ol class="inst-ol"><li>Abra o Painel no <b>Google Chrome</b> (ou no Microsoft Edge).</li><li>Na <b>barra de endereço, no canto direito</b>, clique no ícone de <b>monitor com setinha para baixo</b> › <b>Instalar</b>.<br><span class="muted">Se não aparecer: <b>⋮</b> (3 pontinhos, canto superior direito) › <b>Transmitir, salvar e compartilhar</b> › <b>Instalar página como app</b>.</span></li><li>O Painel abre numa janela própria, com o ícone <b>M&amp;P</b>.</li><li>Na barra de tarefas, clique com o <b>botão direito</b> no ícone › <b>Fixar na barra de tarefas</b>.</li></ol>`,
+    android:`<ol class="inst-ol"><li>Abra o link do Painel no <b>Chrome</b> do celular.</li><li>Toque nos <b>3 pontinhos ⋮</b> (canto superior direito).</li><li>Toque em <b>Instalar app</b> (ou <b>Adicionar à tela inicial</b>) › <b>Instalar</b>.</li><li>O ícone <b>M&amp;P</b> aparece na tela do celular. Na primeira vez, entre com seu e-mail e senha.</li></ol>`,
+    iphone:`<ol class="inst-ol"><li>Abra o link do Painel no <b>Safari</b> (tem que ser o Safari, não o Chrome).</li><li>Toque no botão <b>Compartilhar</b> (quadrado com seta para cima, embaixo da tela).</li><li>Role e toque em <b>Adicionar à Tela de Início</b> › <b>Adicionar</b>.</li><li>Abra pelo ícone <b>M&amp;P</b> e entre com e-mail e senha <b>uma vez</b> (o app não usa o login do Safari).</li></ol>`
+  }; return P[k];
+}
+function instModal(aba){
+  aba=aba||ui.instAba||instDisp(); ui.instAba=aba;
+  const tab=(k,n)=>`<button class="${aba===k?"on":""}" data-inst="${k}">${n}</button>`;
+  const topo = instJa() ? `<p class="inst-ok">Você já está usando o app instalado neste aparelho.</p>` : (instPrompt && aba==="pc"||instPrompt && aba==="android") ? `<p><button class="btn primary" data-act="instAgora">Instalar agora neste aparelho</button></p>` : "";
+  modal("Instalar o Painel como app", `<p class="muted" style="margin:0 0 10px">O Painel funciona como aplicativo no computador e no celular: ícone próprio, tela cheia e sempre na versão mais nova. Não precisa loja nem baixar arquivo.</p>${topo}
+    <div class="seg inst-tabs">${tab("pc","Computador")}${tab("android","Android")}${tab("iphone","iPhone")}</div>
+    <div class="inst-box">${instPassos(aba)}</div>
+    <div class="inst-links"><div><b>Link do Painel</b><span>${INST_URL}</span><button class="btn sm" data-act="instCopiar" data-u="${INST_URL}">Copiar</button></div>
+    <div><b>Agenda da sala</b> <span class="muted">(para quem não usa o Painel)</span><span>${SALA_URL}</span><button class="btn sm" data-act="instCopiar" data-u="${SALA_URL}">Copiar</button></div></div>
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0">A agenda da sala também vira app com os mesmos passos, abrindo o link dela. Tema claro ou escuro: botão ☀ no topo.</p>`, [{label:"Fechar", cls:"primary"}], true);
+}
+document.addEventListener("click", e=>{ const b=e.target.closest && e.target.closest("[data-inst]"); if(b){ instModal(b.dataset.inst); } });
+Object.assign(PACT, {
+  instalar:()=>instModal(),
+  instAgora:()=>{ if(!instPrompt){ toast("Use os passos abaixo."); return; } instPrompt.prompt(); instPrompt.userChoice.finally(()=>{ instPrompt=null; closeModal(); }); },
+  instCopiar:el=>{ const u=el.dataset.u; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast("Link copiado.")).catch(()=>prompt("Copie o link:", u)); }
+});
+(function(){ const st=document.createElement("style"); st.textContent = ""
+ + ".inst-tabs{margin:4px 0 10px}.inst-box{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px}"
+ + ".inst-ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14.5px;line-height:1.45}"
+ + ".inst-ok{background:var(--ok-soft);color:var(--ok);font-weight:600;border-radius:10px;padding:8px 12px}"
+ + ".inst-links{display:flex;flex-direction:column;gap:8px;margin-top:12px}.inst-links>div{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13.5px}.inst-links span:not(.muted){font-family:ui-monospace,monospace;font-size:12.5px;background:var(--surface-2);border-radius:6px;padding:2px 6px;word-break:break-all}";
+ document.head.appendChild(st); })();
+
 const ajRenderBase = render;
 render = function(){ ajRenderBase(); ajRender(); };
 /* ================= LOGIN, PERFIS E PERMISSÕES (Supabase) ================= */
