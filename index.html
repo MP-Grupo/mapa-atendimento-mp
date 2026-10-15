@@ -3796,7 +3796,7 @@ function salaBuscar(){
   SB.rpc("sala_listar_interno",{p_de:de, p_ate:ate}).then(r=>{ ui.sala.busy=false; ui.sala.t=Date.now(); ui.sala.de=de; ui.sala.ate=ate;
     const novo = Array.isArray(r && r.data) ? r.data : []; const mudou = JSON.stringify(novo)!==JSON.stringify(ui.sala.itens); ui.sala.itens=novo; if(mudou && (ui.view==="calendario"||ui.view==="central")) render(); }).catch(()=>{ ui.sala.busy=false; ui.sala.t=Date.now(); });
 }
-function salaCal(iso){ return ui.sala.itens.filter(x=>x.data===iso).map(x=>({k:"sala", id:x.id, h:String(x.inicio).slice(0,5), t:"Sala de reunião · "+x.quem, sub:String(x.inicio).slice(0,5)+"–"+String(x.fim).slice(0,5)+(x.assunto?" · "+x.assunto:""), r:x.quem})); }
+function salaCal(iso){ return ui.sala.itens.filter(x=>x.data===iso).map(x=>({k:"sala", id:x.id, h:String(x.inicio).slice(0,5), t:"Sala · "+x.quem+(x.tipo&&x.tipo!=="reuniao"?" ("+({atendimento:"Atendimento",audiencia:"Audiência",evento:"Evento",outro:"Outro"}[x.tipo]||"")+")":""), sub:String(x.inicio).slice(0,5)+"–"+String(x.fim).slice(0,5)+(x.assunto?" · "+x.assunto:""), r:x.quem})); }
 function salaRender(){ if(ui.view==="calendario"||ui.view==="central") salaBuscar(); }
 Object.assign(PACT, { salaAbrir:()=>{ window.open("sala.html", "_blank", "noopener"); } });
 (function(){ const st=document.createElement("style"); st.textContent=".k-sala{--k:#3b5b8c}"; document.head.appendChild(st); })();
@@ -4120,10 +4120,36 @@ function pdAjuda(){
 /* ---------- Sala de reunião: no arquivo de teste, explicar em vez de abrir ---------- */
 PACT.salaAbrir = function(el){
   if(location.protocol==="file:"){ modal("Sala de reunião", `<p>A agenda da sala é uma página à parte, para quem não usa o sistema (Rafa, Lys).</p><p>Ela <b>ainda não está ativa</b>: passa a funcionar na publicação, quando rodarmos o arquivo da sala no Supabase e subirmos o <b>sala.html</b> no GitHub. No arquivo de teste ela não abre.</p><p class="muted">Depois de ativa, as reservas aparecem também aqui no Calendário.</p>`, [{label:"Entendi", cls:"primary"}]); return; }
-  const w=window.open("", "_blank");
-  const abrir=c=>{ const u="sala.html"+(c?"#c="+encodeURIComponent(c):""); if(w) w.location.href=u; else location.href=u; };
-  if(typeof SB!=="undefined" && SB && SB.rpc){ SB.rpc("sala_codigo_interno").then(r=>abrir(r && !r.error ? r.data : "")).catch(()=>abrir("")); } else abrir("");
+  closeModal(); go("sala");
 };
+
+/* ---------- Sala dentro do próprio Painel (sem abrir aba nova) ---------- */
+function salaHostRender(){
+  const main=$(".main"), c=$("#content"); if(!main||!c) return;
+  let host=$("#salaHost");
+  if(ui.view==="sala" && location.protocol!=="file:"){
+    if(!host){ main.insertAdjacentHTML("beforeend", `<div id="salaHost"><iframe id="salaFrame" src="sala.html?embed=1" title="Agenda da sala de reunião"></iframe></div>`); host=$("#salaHost"); }
+    host.style.display=""; c.style.display="none"; salaToken();
+    const n=$("#nav-sala"); if(n) n.classList.add("on");
+  } else { if(host) host.style.display="none"; c.style.display=""; }
+}
+function salaToken(){ const fr=$("#salaFrame"); if(!fr||!fr.contentWindow||typeof SB==="undefined"||!SB||!SB.auth) return;
+  SB.auth.getSession().then(r=>{ const t=r&&r.data&&r.data.session&&r.data.session.access_token; if(t) fr.contentWindow.postMessage({mpToken:t}, location.origin); }).catch(()=>{}); }
+window.addEventListener("message", e=>{ if(e.origin===location.origin && e.data && e.data.salaPronta) salaToken(); });
+setInterval(()=>{ if(ui.view==="sala") salaToken(); }, 20*60000);
+
+/* ---------- Celular: barra de baixo só com o essencial; o resto em "Mais" ---------- */
+const MOB_NAV=["nav-hoje","nav-recados","nav-postits","nav-sala","nav-prazos"];
+function mobRender(){
+  MOB_NAV.forEach(id=>{ const n=document.getElementById(id); if(n) n.classList.add("mob"); });
+  const ns=document.querySelector("#nav-sala span"); if(ns){ const alvo=window.innerWidth<=640?"Sala":"Sala de reunião"; if(ns.textContent!==alvo) ns.textContent=alvo; }
+  const rail=$(".rail"); if(rail && !$("#nav-mais")) rail.insertAdjacentHTML("beforeend", `<button class="nav mob mob-only" id="nav-mais" data-act="mobMais"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mais</span></button>`);
+}
+PACT.mobMais=function(){
+  const itens=$$(".rail .nav").filter(n=>n.id!=="nav-mais" && n.style.display!=="none");
+  modal("Menu", `<div class="mais-g">${itens.map(n=>{ const a=n.dataset.go?`data-go="${n.dataset.go}"`:n.dataset.act?`data-act="${n.dataset.act}"`:""; return `<button class="mais-b" ${a}>${n.querySelector("svg")?n.querySelector("svg").outerHTML:""}<span>${esc((n.querySelector("span")||n).textContent.trim())}</span></button>`; }).join("")}</div>`, [{label:"Fechar"}], true);
+};
+document.addEventListener("click", e=>{ const b=e.target.closest && e.target.closest(".mais-b"); if(b) setTimeout(()=>{ const m=$("#modalRoot"); if(m && m.querySelector(".mais-g")) closeModal(); },30); });
 
 /* ---------- tema claro / escuro (vale para este aparelho; a página da sala segue o mesmo) ---------- */
 function temaAtual(){ return document.documentElement.getAttribute("data-theme")==="light" ? "light" : "dark"; }
@@ -4139,7 +4165,7 @@ if("serviceWorker" in navigator && location.protocol==="https:"){ window.addEven
 
 /* ---------- render ---------- */
 function ajRender(){
-  psRender(); pdAjuda(); temaBtn();
+  psRender(); pdAjuda(); temaBtn(); salaHostRender(); mobRender(); iaBtn();
   const ac=$("#acBtn"); if(ac) ac.remove();
   const real = ui.vcReal ? ui.vcReal.papel : ui.papel;
   if(ui.view==="central" && real==="master" && !ui.verComo && !$("#pfBtn")){ const ph=$("#content .phead .row"); if(ph) ph.insertAdjacentHTML("afterbegin", `<button class="btn sm" id="pfBtn" data-act="perfis">Perfis da equipe</button>`); }
@@ -4161,6 +4187,10 @@ function ajRender(){
  + ".pn-banner{color:#3b3200}.pn-banner b{color:#3b3200}.pn-banner .btn{color:var(--fg)}"
  + ".pn-card .lnk,.pn-card button.lnk,.pn-card a{color:#0d5c63!important;font-weight:700}.pn-card .pn-meta{color:#4a4a4a}.pn-tag{background:#c0392b!important;color:#fff!important}"
  + ".pn-full,.pn-full .pn-txt{color:#222}.ps .lnk{color:#0d5c63!important;font-weight:700}"
+ + "#salaHost{padding:0 12px}#salaFrame{width:100%;height:calc(100vh - 64px);border:0;display:block;background:var(--bg)}"
+ + ".ia-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.ia-btn{border-color:var(--accent);color:var(--accent)}"
+ + ".mob-only{display:none}.mais-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.mais-b{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;font-size:12.5px;color:var(--fg);text-align:center}.mais-b svg{width:22px;height:22px}"
+ + "@media (max-width:640px){ .rail .nav:not(.mob){display:none!important} .rail .mob-only{display:flex} #salaFrame{height:calc(100vh - 140px)} }"
  + "@media (max-width:640px){ .ps{width:190px} }";
  document.head.appendChild(st); })();
 
@@ -4201,6 +4231,50 @@ Object.assign(PACT, {
  + ".inst-ok{background:var(--ok-soft);color:var(--ok);font-weight:600;border-radius:10px;padding:8px 12px}"
  + ".inst-links{display:flex;flex-direction:column;gap:8px;margin-top:12px}.inst-links>div{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13.5px}.inst-links span:not(.muted){font-family:ui-monospace,monospace;font-size:12.5px;background:var(--surface-2);border-radius:6px;padding:2px 6px;word-break:break-all}";
  document.head.appendChild(st); })();
+
+
+/* ---------- Master vê tudo (inclusive post-its "Só eu" de outros), sem poluir a tela ---------- */
+function souMasterReal(){ return (ui.vcReal ? ui.vcReal.papel : ui.papel)==="master" && !ui.verComo; }
+const psVis2 = pnVisivel;
+pnVisivel = function(n){ if(souMasterReal()) return true; return psVis2(n); };
+
+/* ---------- Assistente com IA (só o master): usa a extensão do Claude no Chrome, sem chave de API ---------- */
+const IA_ATALHOS = [
+  ["Resumo do meu dia", "Faça um resumo objetivo do meu dia: o que é urgente, o que vence hoje e amanhã, e o que posso delegar à Ellen ou ao Alan."],
+  ["Priorizar a semana", "Monte a ordem de prioridade da minha semana a partir dos dados abaixo, com um checklist por dia."],
+  ["Prazos em risco", "Liste os prazos e tarefas em risco (vencidos ou vencendo em até 5 dias) e o que fazer em cada um."],
+  ["Responder pedidos", "Sugira respostas curtas para os pedidos em aberto que estão comigo."],
+  ["Mensagem para cliente", "Escreva uma mensagem de WhatsApp, cordial e objetiva, para o cliente sobre: "]
+];
+function iaContexto(){
+  const L=[], hoje=isoDia(); const me=ui.vcReal?ui.vcReal.me:ui.me;
+  try{ const T=tfAll().filter(t=>t.status!=="concluida" && !t.done).sort((a,b)=>String(a.data||"9999").localeCompare(String(b.data||"9999"))).slice(0,40);
+    L.push("TAREFAS EM ABERTO ("+T.length+"):"); T.forEach(t=>L.push("- "+(t.txt||t.titulo||"")+" | resp: "+(t.resp||"-")+(t.dataComp?" | fazer: "+t.dataComp:"")+(t.data?" | fatal: "+t.data:""))); }catch(e){}
+  try{ const P=pzAll().filter(p=>!p.done).sort((a,b)=>String(a.data||"9999").localeCompare(String(b.data||"9999"))).slice(0,40);
+    L.push("", "PRAZOS E PUBLICAÇÕES EM ABERTO ("+P.length+"):"); P.forEach(p=>L.push("- "+(p.processo||p.caso||"")+" | "+(p.tipo||"")+" | "+(p.texto||p.acao||"")+(p.data?" | data: "+p.data+(p.conferido?"":" (a conferir)"):"")+" | resp: "+(p.resp||"-"))); }catch(e){}
+  try{ const D=(S.pedidos||[]).filter(p=>p.status!=="resolvido" && p.status!=="feito" && (p.para===me||p.para==="Todos"||p.para==="Sócios"||p.quem===me)).slice(0,30);
+    L.push("", "PEDIDOS EM ABERTO ("+D.length+"):"); D.forEach(p=>L.push("- de "+p.quem+" p/ "+(p.para||"Todos")+" ["+(p.tipo||"pedido")+"]: "+String(p.texto||"").replace(/\s+/g," ").slice(0,240))); }catch(e){}
+  try{ const E=evAll().filter(e=>e.data && e.data>=hoje).sort((a,b)=>(a.data+(a.hora||"")).localeCompare(b.data+(b.hora||""))).slice(0,20);
+    L.push("", "COMPROMISSOS:"); E.forEach(e=>L.push("- "+e.data+(e.hora?" "+e.hora:"")+" | "+(e.titulo||""))); }catch(e){}
+  try{ const Sa=(ui.sala&&ui.sala.itens)||[]; if(Sa.length){ L.push("", "SALA DE REUNIÃO:"); Sa.filter(x=>x.data>=hoje).forEach(x=>L.push("- "+x.data+" "+String(x.inicio).slice(0,5)+"–"+String(x.fim).slice(0,5)+" | "+x.quem+(x.assunto?" | "+x.assunto:""))); } }catch(e){}
+  return L.join("\n");
+}
+function iaModal(){
+  if(!souMasterReal()){ toast("Disponível só para o Gabriel por enquanto."); return; }
+  modal("Assistente com IA (Claude)", `<p class="muted" style="margin:0 0 8px">Funciona com a <b>extensão do Claude no Chrome</b>, sem chave de API. Você escreve o que precisa, o Painel junta os dados do dia e copia tudo. Depois é só colar no Claude.</p>
+    <div class="ia-chips">${IA_ATALHOS.map((a,i)=>`<button class="btn sm" type="button" data-iachip="${i}">${esc(a[0])}</button>`).join("")}</div>
+    <textarea class="inp" id="iaTxt" style="min-height:110px" placeholder="O que você precisa? Ex.: organize meu dia e diga o que devo cobrar da equipe."></textarea>
+    <label class="check" style="margin-top:8px"><input type="checkbox" id="iaCtx" checked> Incluir os dados do Painel (tarefas, prazos, pedidos, agenda)</label>
+    <ol class="inst-ol" style="margin-top:12px;font-size:13.5px"><li>Clique em <b>Copiar para o Claude</b>.</li><li>Abra o Claude na lateral do Chrome: clique no <b>ícone do Claude</b> (asterisco laranja) na barra do Chrome.</li><li>Cole com <b>Ctrl + V</b> e envie.</li></ol>
+    <p class="muted" style="font-size:12px;margin:6px 0 0">No app instalado a extensão não aparece. Use o Painel numa aba normal do Chrome, ou cole no claude.ai.</p>`,
+    [{label:"Fechar"},{label:"Abrir claude.ai", fn:()=>{ window.open("https:\/\/claude.ai/new","_blank","noopener"); return false; }},{label:"Copiar para o Claude", cls:"primary", fn:()=>{ const q=($("#iaTxt").value||"").trim()||"Organize meu dia a partir dos dados abaixo."; const ctx=$("#iaCtx").checked?"\n\n--- DADOS DO PAINEL M&P ("+fmtIsoAno(isoDia())+") ---\n"+iaContexto():""; const txt="Sou o Gabriel, advogado e sócio do escritório M&P (Itaiópolis/SC). Responda em português, de forma direta, com checklist quando fizer sentido.\n\n"+q+ctx;
+      (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast("Copiado. Abra o Claude e cole (Ctrl + V).")).catch(()=>prompt("Copie o texto:", txt)); return false; }}], true);
+  setTimeout(()=>{ const t=$("#iaTxt"); if(t) t.focus(); },40);
+}
+document.addEventListener("click", e=>{ const b=e.target.closest && e.target.closest("[data-iachip]"); if(!b) return; const t=$("#iaTxt"); if(t){ t.value=IA_ATALHOS[+b.dataset.iachip][1]; t.focus(); } });
+PACT.iaAbrir=()=>iaModal();
+function iaBtn(){ const top=$(".top"); if(!top) return; let b=$("#iaBtn"); if(!souMasterReal()){ if(b) b.remove(); return; }
+  if(!b){ const h=top.querySelector("#temaBtn")||top.querySelector('[data-act="help"]'); const html=`<button class="btn sm ia-btn" id="iaBtn" data-act="iaAbrir" title="Assistente com IA (só você vê)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px"><path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>IA</button>`; if(h) h.insertAdjacentHTML("beforebegin", html); else top.insertAdjacentHTML("beforeend", html); } }
 
 const ajRenderBase = render;
 render = function(){ ajRenderBase(); ajRender(); };
