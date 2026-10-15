@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sala de reunião · MPMN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--surface-2:#eef2f1;--line:#dbe2e0;--fg:#16232a;--muted:#5d6c72;--accent:#0d5c63;--accent-fg:#fff;--accent-soft:#ddeced;--danger:#b3261e;--ok:#2a7a4b;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Figtree","Segoe UI",system-ui,sans-serif;--row:26px}
+@media (prefers-color-scheme:dark){:root{--bg:#10171a;--surface:#182226;--surface-2:#1e2a2f;--line:#2c3a40;--fg:#e7eef0;--muted:#9aabb1;--accent:#5fb7bd;--accent-fg:#0b1a1c;--accent-soft:#1c393c;--danger:#ff8a80}}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body)}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}
+h1,h2,h3{font-family:var(--f-display);margin:0}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 40px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.logo{width:44px;height:44px;border-radius:11px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:11.5px;flex:none}
+.top h1{font-size:22px}.top p{margin:0;color:var(--muted);font-size:13.5px}.grow{flex:1}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 12px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--muted)}.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}.btn.danger{color:var(--danger)}
+.nav{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}.nav b{font-family:var(--f-display);font-size:16px;min-width:180px;text-align:center}
+.days-tabs{display:none;gap:6px;margin-bottom:10px;overflow-x:auto}
+.days-tabs button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 4px;font-size:12.5px;display:flex;flex-direction:column;align-items:center;min-width:56px}
+.days-tabs button b{font-size:16px}.days-tabs button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.cal{display:grid;grid-template-columns:52px repeat(5,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.hd{position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--line);padding:8px 6px;text-align:center;font-size:13px;color:var(--muted)}
+.hd b{display:block;font-size:16px;color:var(--fg)}.hd.hj b{color:var(--accent)}
+.hrs{border-right:1px solid var(--line)}.hr:first-child{transform:none}.hr{height:calc(var(--row)*2);font-size:11.5px;color:var(--muted);text-align:right;padding:0 6px;transform:translateY(-7px)}
+.col{position:relative;border-right:1px solid var(--line)}.col:last-child{border-right:0}
+.slot{height:var(--row);border-bottom:1px dashed color-mix(in srgb,var(--line) 70%,transparent);cursor:pointer}.slot.h{border-bottom:1px solid var(--line)}
+.slot:hover{background:var(--accent-soft)}
+.ev{position:absolute;left:3px;right:3px;border-radius:8px;background:var(--accent);color:var(--accent-fg);padding:3px 7px;font-size:12.5px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.ev b{display:block;font-size:13px}.ev small{opacity:.9}
+.ev.c1{background:#0d5c63}.ev.c2{background:#6b4fa0}.ev.c3{background:#b06a00}.ev.c4{background:#2f7d4f}.ev.c5{background:#a8324f}.ev.c6{background:#3b5b8c}
+.now{position:absolute;left:0;right:0;height:2px;background:var(--danger);z-index:1}
+.bg{position:fixed;inset:0;background:rgba(10,20,24,.45);display:grid;place-items:center;padding:16px;z-index:50}
+.mod{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.mod h3{font-size:19px}.f{display:flex;flex-direction:column;gap:4px}.f label{font-size:13px;font-weight:600}
+.inp{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:9px 10px;width:100%}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.err{color:var(--danger);font-weight:600;font-size:14px;min-height:1px}.muted{color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#16232a;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60}
+.gate{max-width:380px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
+@media (max-width:700px){ .cal{grid-template-columns:44px minmax(0,1fr)} .col:not(.sel),.hd:not(.sel):not(.corner){display:none} .days-tabs{display:flex} .nav b{min-width:0;flex:1} }
+</style>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+"use strict";
+var CFG=window.MAPA_CONFIG||{}; var SB=window.supabase.createClient(CFG.url, CFG.anonKey, {auth:{persistSession:false}});
+var PESSOAS=["Gabriel","Alan","Lys","Rafa","Ellen","Evaldo"]; var H0=7, H1=20;
+var st={codigo:"", seg:segunda(new Date()), dia:0, itens:[], quem:""};
+function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){ return null; } }
+function pad(n){ return (n<10?"0":"")+n; }
+function iso(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function segunda(d){ var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); var w=x.getDay(); x.setDate(x.getDate()+(w===0?1:w===6?2:-(w-1))); return x; }
+function addD(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];}); }
+function hm(t){ return String(t).slice(0,5); }
+function hTxt(t){ var s=hm(t); return s.slice(3)==="00" ? (+s.slice(0,2))+"h" : s; }
+function mins(t){ var p=hm(t).split(":"); return (+p[0])*60+(+p[1]); }
+function toT(m){ return pad(Math.floor(m/60))+":"+pad(m%60); }
+var DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+function toast(m){ var t=document.createElement("div"); t.className="toast"; t.textContent=m; document.body.appendChild(t); setTimeout(function(){ t.remove(); },3200); }
+function cor(q){ var i=PESSOAS.indexOf(q); return "c"+((i<0?5:i)%6+1); }
+
+function lerCodigo(){ var m=location.hash.match(/c=([^&]+)/); if(m){ st.codigo=decodeURIComponent(m[1]); ls("sala-codigo", st.codigo); history.replaceState(null,"",location.pathname); } else st.codigo=ls("sala-codigo")||""; st.quem=ls("sala-quem")||""; }
+function gate(msg){
+  document.getElementById("app").innerHTML='<div class="gate"><div class="logo">MPMN</div><h3>Sala de reunião</h3><p class="muted" style="margin:0">Digite o código do escritório. Ele fica salvo neste aparelho.</p><input class="inp" id="gc" placeholder="Código do escritório" autocomplete="off"><div class="err">'+esc(msg||"")+'</div><button class="btn primary" id="gok">Entrar</button></div>';
+  var go=function(){ st.codigo=document.getElementById("gc").value.trim(); if(!st.codigo) return; ls("sala-codigo", st.codigo); carregar(true); };
+  document.getElementById("gok").onclick=go; document.getElementById("gc").onkeydown=function(e){ if(e.key==="Enter") go(); }; document.getElementById("gc").focus();
+}
+function carregar(primeira){
+  var de=iso(st.seg), ate=iso(addD(st.seg,4));
+  SB.rpc("sala_listar",{p_codigo:st.codigo, p_de:de, p_ate:ate}).then(function(r){
+    if(r.error){ if(/codigo_invalido/.test(r.error.message||"")){ ls("sala-codigo",null); gate("Código não confere."); } else if(primeira) gate("Sem conexão. Tente de novo."); return; }
+    st.itens=(r.data||[]).slice().sort(function(a,b){ return (a.data+a.inicio).localeCompare(b.data+b.inicio); }); tela();
+  });
+}
+function resumo(){
+  var L=["*Agenda da semana sala reunião- (DEIXAR ORGANIZADO)*",""];
+  for(var i=0;i<5;i++){ var d=addD(st.seg,i), k=iso(d); var its=st.itens.filter(function(x){return x.data===k;}); if(!its.length) continue;
+    L.push(DIAS[d.getDay()]+" - "+pad(d.getDate())+"/"+pad(d.getMonth()+1)); its.forEach(function(x){ L.push("  • "+hTxt(x.inicio)+" - "+x.quem+(x.assunto?" ("+x.assunto+")":"")); }); L.push(""); }
+  if(L.length===2) L.push("Sala livre a semana toda.");
+  return L.join("\n").trim();
+}
+function copiar(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ toast("Resumo copiado. Cole no grupo do WhatsApp."); }).catch(function(){ prompt("Copie o texto:", t); }); }
+function gcal(x){ var d=x.data.replace(/-/g,""); var a=hm(x.inicio).replace(":","")+"00", b=hm(x.fim).replace(":","")+"00";
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("Sala de reunião · "+x.quem+(x.assunto?" · "+x.assunto:""))+"&dates="+d+"T"+a+"/"+d+"T"+b+"&ctz=America/Sao_Paulo&location="+encodeURIComponent("Sala de reunião MPMN"); }
+function tela(){
+  var hoje=iso(new Date()); var fimSem=addD(st.seg,4);
+  var titulo=pad(st.seg.getDate())+"/"+pad(st.seg.getMonth()+1)+" a "+pad(fimSem.getDate())+"/"+pad(fimSem.getMonth()+1);
+  var h='<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Clique num horário livre para reservar. Segunda a sexta, de meia em meia hora.</p></div><span class="grow"></span><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>';
+  h+='<div class="nav"><button class="btn" id="bAnt" aria-label="Semana anterior">‹</button><b>'+titulo+'</b><button class="btn" id="bProx" aria-label="Próxima semana">›</button><button class="btn" id="bHoje">Esta semana</button></div>';
+  h+='<div class="days-tabs">'; for(var i=0;i<5;i++){ var d=addD(st.seg,i); h+='<button data-tab="'+i+'" class="'+(i===st.dia?"on":"")+'">'+DIAS[d.getDay()].slice(0,3)+'<b>'+d.getDate()+'</b></button>'; } h+='</div>';
+  h+='<div class="cal"><div class="hd corner"></div>'; for(i=0;i<5;i++){ d=addD(st.seg,i); h+='<div class="hd'+(iso(d)===hoje?" hj":"")+(i===st.dia?" sel":"")+'">'+DIAS[d.getDay()]+'<b>'+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</b></div>'; }
+  h+='<div class="hrs">'; for(var hh=H0;hh<H1;hh++) h+='<div class="hr">'+hh+'h</div>'; h+='</div>';
+  var agora=new Date(), mAg=agora.getHours()*60+agora.getMinutes();
+  for(i=0;i<5;i++){ d=addD(st.seg,i); var k=iso(d); h+='<div class="col'+(i===st.dia?" sel":"")+'" data-d="'+k+'">';
+    for(var m=H0*60;m<H1*60;m+=30) h+='<div class="slot'+(m%60===30?" h":"")+'" data-d="'+k+'" data-t="'+toT(m)+'" title="Reservar '+toT(m)+'"></div>';
+    st.itens.filter(function(x){return x.data===k;}).forEach(function(x){ var top=(mins(x.inicio)-H0*60)/30, alt=(mins(x.fim)-mins(x.inicio))/30;
+      h+='<div class="ev '+cor(x.quem)+'" data-id="'+x.id+'" style="top:calc(var(--row)*'+top+' + 1px);height:calc(var(--row)*'+alt+' - 3px)"><b>'+esc(x.quem)+'</b><small>'+hm(x.inicio)+'–'+hm(x.fim)+(x.assunto?' · '+esc(x.assunto):'')+'</small></div>'; });
+    if(k===hoje && mAg>H0*60 && mAg<H1*60) h+='<div class="now" style="top:calc(var(--row)*'+((mAg-H0*60)/30)+')"></div>';
+    h+='</div>'; }
+  h+='</div><p class="muted" style="font-size:12.5px;margin-top:10px">Dica: salve este link na tela inicial do celular. Para avisar o grupo, use “Copiar resumo para o grupo”.</p>';
+  document.getElementById("app").innerHTML=h;
+}
+function form(pre){
+  var d=pre.data||iso(addD(st.seg,st.dia)); var opts=""; for(var m=H0*60;m<H1*60;m+=30) opts+='<option '+(toT(m)===(pre.t||"14:00")?"selected":"")+'>'+toT(m)+'</option>';
+  var bg=document.createElement("div"); bg.className="bg";
+  bg.innerHTML='<div class="mod"><h3>Reservar a sala</h3><div class="f"><label>Quem vai usar</label><select class="inp" id="fQ">'+PESSOAS.map(function(p){return '<option '+(st.quem===p?"selected":"")+'>'+p+'</option>';}).join("")+'</select></div>'
+   +'<div class="g2"><div class="f"><label>Dia</label><input class="inp" type="date" id="fD" value="'+d+'"></div><div class="f"><label>Início</label><select class="inp" id="fI">'+opts+'</select></div></div>'
+   +'<div class="g2"><div class="f"><label>Duração</label><select class="inp" id="fDur"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option><option value="180">3 horas</option></select></div><div class="f"><label>Com quem / assunto</label><input class="inp" id="fA" placeholder="Ex.: cliente Maria"></div></div>'
+   +'<div class="err" id="fE"></div><div class="acts"><button class="btn" id="fC">Cancelar</button><button class="btn primary" id="fOk">Reservar</button></div></div>';
+  document.body.appendChild(bg);
+  bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); }); document.getElementById("fC").onclick=function(){ bg.remove(); };
+  document.getElementById("fOk").onclick=function(){
+    var q=document.getElementById("fQ").value, dd=document.getElementById("fD").value, ini=document.getElementById("fI").value, dur=+document.getElementById("fDur").value, a=document.getElementById("fA").value.trim();
+    var fim=toT(mins(ini)+dur); if(mins(ini)+dur>H1*60){ document.getElementById("fE").textContent="Passa do fim do expediente (20h)."; return; }
+    ls("sala-quem",q); st.quem=q; this.disabled=true; var self=this;
+    SB.rpc("sala_reservar",{p_codigo:st.codigo,p_data:dd,p_inicio:ini,p_fim:fim,p_quem:q,p_assunto:a}).then(function(r){ self.disabled=false;
+      var x=r.data||{}; if(r.error||x.erro){ document.getElementById("fE").textContent=(x.erro||"Não consegui reservar. Tente de novo."); return; }
+      bg.remove(); toast("Reservado: "+q+", "+hTxt(ini)+"."); var dt=new Date(dd+"T12:00:00"); st.seg=segunda(dt); st.dia=Math.max(0,Math.min(4,dt.getDay()-1)); carregar(); });
+  };
+}
+function detalhe(x){
+  var bg=document.createElement("div"); bg.className="bg"; var d=new Date(x.data+"T12:00:00");
+  bg.innerHTML='<div class="mod"><h3>'+esc(x.quem)+'</h3><p style="margin:0">'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+' · '+hm(x.inicio)+' às '+hm(x.fim)+'</p>'+(x.assunto?'<p class="muted" style="margin:0">'+esc(x.assunto)+'</p>':'')
+   +'<div class="acts"><a class="btn" target="_blank" rel="noopener" href="'+gcal(x)+'" style="text-decoration:none">Pôr no meu Google Agenda</a><button class="btn danger" id="dX">Cancelar reserva</button><button class="btn primary" id="dF">Fechar</button></div></div>';
+  document.body.appendChild(bg); bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); }); document.getElementById("dF").onclick=function(){ bg.remove(); };
+  document.getElementById("dX").onclick=function(){ if(!confirm("Cancelar a reserva de "+x.quem+" das "+hm(x.inicio)+"?")) return; SB.rpc("sala_cancelar",{p_codigo:st.codigo,p_id:x.id}).then(function(r){ bg.remove(); if(r.error||(r.data&&r.data.erro)){ toast("Não consegui cancelar."); return; } toast("Reserva cancelada."); carregar(); }); };
+}
+document.addEventListener("click",function(e){ var t=e.target;
+  var ev=t.closest(".ev"); if(ev){ var x=st.itens.find(function(y){return y.id===ev.dataset.id;}); if(x) detalhe(x); return; }
+  var s=t.closest(".slot"); if(s){ form({data:s.dataset.d, t:s.dataset.t}); return; }
+  var tb=t.closest("[data-tab]"); if(tb){ st.dia=+tb.dataset.tab; tela(); return; }
+  if(t.id==="bNova") form({}); if(t.id==="bRes") copiar(resumo());
+  if(t.id==="bAnt"){ st.seg=addD(st.seg,-7); carregar(); } if(t.id==="bProx"){ st.seg=addD(st.seg,7); carregar(); }
+  if(t.id==="bHoje"){ st.seg=segunda(new Date()); var w=new Date().getDay(); st.dia=(w>=1&&w<=5)?w-1:0; carregar(); }
+});
+lerCodigo(); var w0=new Date().getDay(); st.dia=(w0>=1&&w0<=5)?w0-1:0;
+if(!st.codigo) gate(""); else carregar(true);
+setInterval(function(){ if(st.codigo && document.visibilityState==="visible" && !document.querySelector(".bg")) carregar(); }, 30000);
+})();
+</script>
+</body>
+</html>
