@@ -167,7 +167,7 @@ function telaMes(){
 function diaModal(k){
   var d=new Date(k+"T12:00:00"); var its=st.itens.filter(function(x){return x.data===k;});
   var bg=document.createElement("div"); bg.className="bg";
-  var lista=its.length? its.map(function(x){ return '<button class="dl '+cor(x.quem)+'" data-ev="'+x.id+'"><span class="dlh">'+hm(x.inicio)+' – '+hm(x.fim)+'</span><span><b>'+esc(x.quem)+' <em class="tg">'+esc(tipoN(x))+'</em></b>'+(priv(x)?'<small>Detalhes só para a equipe</small>':(x.assunto?'<small>'+esc(x.assunto)+'</small>':''))+(x.visivel==="equipe"&&!priv(x)?'<small>🔒 Só a equipe vê os detalhes</small>':'')+'</span></button>'; }).join("") : '<p class="muted" style="margin:0">Sala livre o dia todo.</p>';
+  var lista=its.length? its.map(function(x){ return '<button class="dl '+cor(x.quem)+'" data-ev="'+x.id+'"><span class="dlh">'+hm(x.inicio)+' – '+hm(x.fim)+'</span><span><b>'+esc(x.quem)+' <em class="tg">'+esc(tipoN(x))+'</em></b>'+(priv(x)?'<small>Detalhes só para a equipe</small>':(x.assunto||x.cliente?'<small>'+esc([x.cliente,x.assunto].filter(Boolean).join(' · '))+'</small>':''))+(x.visivel==="equipe"&&!priv(x)?'<small>🔒 Só a equipe vê os detalhes</small>':'')+'</span></button>'; }).join("") : '<p class="muted" style="margin:0">Sala livre o dia todo.</p>';
   bg.innerHTML='<div class="mod"><h3>'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</h3><div class="dlist">'+lista+'</div><p class="muted" style="font-size:12.5px;margin:0">Toque num horário para ver detalhes, pôr no Google Agenda ou cancelar.</p><div class="acts"><button class="btn" id="dmF">Fechar</button><button class="btn primary" id="dmR">Reservar neste dia</button></div></div>';
   document.body.appendChild(bg); bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); });
   document.getElementById("dmF").onclick=function(){ bg.remove(); };
@@ -181,25 +181,26 @@ function form(pre){
    +'<div class="g2"><div class="f"><label>Dia</label><input class="inp" type="date" id="fD" value="'+d+'"></div><div class="f"><label>Início</label><select class="inp" id="fI">'+opts+'</select></div></div>'
    +'<div class="g2"><div class="f"><label>Duração</label><select class="inp" id="fDur"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option><option value="180">3 horas</option></select></div><div class="f"><label>Com quem / assunto</label><input class="inp" id="fA" placeholder="Ex.: reunião cliente"></div></div>'
    +'<div class="g2"><div class="f"><label>Tipo</label><select class="inp" id="fT"><option value="reuniao">Reunião</option><option value="atendimento">Atendimento</option><option value="audiencia">Audiência</option><option value="evento">Evento</option><option value="outro">Outro</option></select></div><div class="f"><label>Quem vê os detalhes</label><select class="inp" id="fV"><option value="todos">Todos</option><option value="equipe">Só a equipe do Painel</option></select></div></div>'
+   +(SBI?'<div class="g2"><div class="f"><label>Cliente (só a equipe vê)</label><input class="inp" id="fCli" list="fCliL" placeholder="Nome do cliente"><datalist id="fCliL">'+(st.pessoas||[]).map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist></div><div class="f"><label>Link da pasta (Drive/Dropbox)</label><input class="inp" id="fPasta" placeholder="https://…"></div></div>':'')
    +'<p class="muted" style="font-size:12.5px;margin:0">“Só a equipe do Painel”: quem abre pelo link vê apenas que a sala está reservada, sem o tipo e o assunto.</p>'
    +'<div class="err" id="fE"></div><div class="acts"><button class="btn" id="fC">Cancelar</button><button class="btn primary" id="fOk">Reservar</button></div></div>';
   document.body.appendChild(bg);
   bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); }); document.getElementById("fC").onclick=function(){ bg.remove(); };
   document.getElementById("fOk").onclick=function(){
-    var q=document.getElementById("fQ").value, dd=document.getElementById("fD").value, ini=document.getElementById("fI").value, dur=+document.getElementById("fDur").value, a=document.getElementById("fA").value.trim(), tp=document.getElementById("fT").value, vs=document.getElementById("fV").value;
+    var q=document.getElementById("fQ").value, dd=document.getElementById("fD").value, ini=document.getElementById("fI").value, dur=+document.getElementById("fDur").value, a=document.getElementById("fA").value.trim(), tp=document.getElementById("fT").value, vs=document.getElementById("fV").value, cli=SBI&&document.getElementById("fCli")?document.getElementById("fCli").value.trim():"", pst=SBI&&document.getElementById("fPasta")?document.getElementById("fPasta").value.trim():"";
     var fim=toT(mins(ini)+dur); if(mins(ini)+dur>H1*60){ document.getElementById("fE").textContent="Passa do fim do expediente (20h)."; return; }
     ls("sala-quem",q); st.quem=q; this.disabled=true; var self=this;
-    SB.rpc("sala_reservar",{p_codigo:st.codigo,p_data:dd,p_inicio:ini,p_fim:fim,p_quem:q,p_assunto:a,p_tipo:tp,p_visivel:vs}).then(function(r){ self.disabled=false;
+    (SBI||SB).rpc("sala_reservar",{p_codigo:st.codigo,p_data:dd,p_inicio:ini,p_fim:fim,p_quem:q,p_assunto:a,p_tipo:tp,p_visivel:vs,p_cliente:cli,p_pasta:pst}).then(function(r){ self.disabled=false;
       var x=r.data||{}; if(r.error||x.erro){ document.getElementById("fE").textContent=(x.erro||"Não consegui reservar. Tente de novo."); return; }
       bg.remove(); toast("Reservado: "+q+", "+hTxt(ini)+"."); var dt=new Date(dd+"T12:00:00"); st.mes=new Date(dt.getFullYear(), dt.getMonth(), 1); st.seg=segunda(dt); st.dia=Math.max(0,Math.min(4,dt.getDay()-1)); carregar(); });
   };
 }
 function detalhe(x){
   var bg=document.createElement("div"); bg.className="bg"; var d=new Date(x.data+"T12:00:00");
-  bg.innerHTML='<div class="mod"><h3>'+esc(x.quem)+'</h3><p style="margin:0">'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+' · '+hm(x.inicio)+' às '+hm(x.fim)+'</p>'+'<p style="margin:0"><span class="tg2">'+esc(tipoN(x))+'</span>'+(x.visivel==="equipe"?' <span class="muted">🔒 detalhes só para a equipe</span>':'')+'</p>'+(x.assunto?'<p class="muted" style="margin:0">'+esc(x.assunto)+'</p>':'')
+  bg.innerHTML='<div class="mod"><h3>'+esc(x.quem)+'</h3><p style="margin:0">'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+' · '+hm(x.inicio)+' às '+hm(x.fim)+'</p>'+'<p style="margin:0"><span class="tg2">'+esc(tipoN(x))+'</span>'+(x.visivel==="equipe"?' <span class="muted">🔒 detalhes só para a equipe</span>':'')+'</p>'+(x.assunto?'<p class="muted" style="margin:0">'+esc(x.assunto)+'</p>':'')+(x.cliente?'<p style="margin:0">Cliente: <b>'+esc(x.cliente)+'</b></p>':'')+(x.pasta?'<p style="margin:0"><a href="'+esc(x.pasta)+'" target="_blank" rel="noopener">📁 Abrir a pasta do cliente</a></p>':'')
    +'<div class="acts"><a class="btn" target="_blank" rel="noopener" href="'+gcal(x)+'" style="text-decoration:none">Pôr no meu Google Agenda</a><button class="btn danger" id="dX">Cancelar reserva</button><button class="btn primary" id="dF">Fechar</button></div></div>';
   document.body.appendChild(bg); bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); }); document.getElementById("dF").onclick=function(){ bg.remove(); };
-  document.getElementById("dX").onclick=function(){ if(!confirm("Cancelar a reserva de "+x.quem+" das "+hm(x.inicio)+"?")) return; SB.rpc("sala_cancelar",{p_codigo:st.codigo,p_id:x.id}).then(function(r){ bg.remove(); if(r.error||(r.data&&r.data.erro)){ toast("Não consegui cancelar."); return; } toast("Reserva cancelada."); carregar(); }); };
+  document.getElementById("dX").onclick=function(){ if(!confirm("Cancelar a reserva de "+x.quem+" das "+hm(x.inicio)+"?")) return; (SBI||SB).rpc("sala_cancelar",{p_codigo:st.codigo,p_id:x.id}).then(function(r){ bg.remove(); if(r.error||(r.data&&r.data.erro)){ toast("Não consegui cancelar."); return; } toast("Reserva cancelada."); carregar(); }); };
 }
 document.addEventListener("click",function(e){ var t=e.target;
   var ev=t.closest(".ev"); if(ev){ var x=st.itens.find(function(y){return y.id===ev.dataset.id;}); if(x) detalhe(x); return; }
@@ -216,7 +217,7 @@ document.addEventListener("click",function(e){ var t=e.target;
   if(t.id==="bHoje"){ st.seg=segunda(new Date()); var w=new Date().getDay(); st.dia=(w>=1&&w<=5)?w-1:0; carregar(); }
 });
 if("serviceWorker" in navigator && location.protocol==="https:"){ window.addEventListener("load",function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); }); }
-if(EMBED){ window.addEventListener("message",function(e){ if(e.origin!==location.origin||!e.data||!e.data.mpToken) return; SBI=window.supabase.createClient(CFG.url, CFG.anonKey, {auth:{persistSession:false,autoRefreshToken:false}, global:{headers:{Authorization:"Bearer "+e.data.mpToken}}}); carregar(); }); try{ parent.postMessage({salaPronta:true}, location.origin); }catch(e){} }
+if(EMBED){ window.addEventListener("message",function(e){ if(e.origin!==location.origin||!e.data||!e.data.mpToken) return; SBI=window.supabase.createClient(CFG.url, CFG.anonKey, {auth:{persistSession:false,autoRefreshToken:false}, global:{headers:{Authorization:"Bearer "+e.data.mpToken}}}); st.pessoas=Array.isArray(e.data.pessoas)?e.data.pessoas.slice(0,500):[]; carregar(); }); try{ parent.postMessage({salaPronta:true}, location.origin); }catch(e){} }
 lerCodigo(); st.vista=ls("sala-vista")||"mes"; var w0=new Date().getDay(); st.dia=(w0>=1&&w0<=5)?w0-1:0;
 if(!st.codigo) gate(""); else carregar(true);
 setInterval(function(){ if(st.codigo && document.visibilityState==="visible" && !document.querySelector(".bg")) carregar(); }, 30000);
