@@ -4141,6 +4141,7 @@ function ajRender(){
   const ac=$("#acBtn"); if(ac) ac.remove();
   const real = ui.vcReal ? ui.vcReal.papel : ui.papel;
   if(ui.view==="central" && real==="master" && !ui.verComo && !$("#pfBtn")){ const ph=$("#content .phead .row"); if(ph) ph.insertAdjacentHTML("afterbegin", `<button class="btn sm" id="pfBtn" data-act="perfis">Perfis da equipe</button>`); }
+  if((ui.view==="central"||ui.view==="hoje") && !$("#salaBtn")){ const ph=$("#content .phead"); if(ph){ const ico=`<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`; const b=`<button class="btn sm primary" id="salaBtn" data-act="salaAbrir" title="Abrir a agenda da sala de reunião">${ico}Agenda da sala</button>`; const row=ph.querySelector(".row"); if(row) row.insertAdjacentHTML("afterbegin", b); else ph.insertAdjacentHTML("beforeend", `<div class="row" style="gap:8px">${b}</div>`); } }
   const fab=$("#pnFab"); if(fab) fab.title="Clique para colar um post-it nesta página. Depois é só escrever e arrastar.";
 }
 (function(){ const st=document.createElement("style"); st.textContent = ""
@@ -4155,6 +4156,9 @@ function ajRender(){
  + ".ps-t{border:0;background:transparent;resize:vertical;min-height:90px;padding:6px 10px 10px;font:14px/1.45 var(--f-body);color:#2b2b2b;outline:none;white-space:pre-wrap}"
  + ".ps.min .ps-t,.ps.min .ps-novo{display:none}.ps.min{width:180px}"
  + ".pd-ajuda{margin-top:6px;font-size:13px}.pd-ajuda summary{cursor:pointer;color:var(--accent,#0f5c4d);font-weight:600}.pd-ajuda p{margin:6px 0}.pd-ajuda ul{margin:4px 0 6px;padding-left:18px}.pd-ajuda li{margin:2px 0}"
+ + ".pn-banner{color:#3b3200}.pn-banner b{color:#3b3200}.pn-banner .btn{color:var(--fg)}"
+ + ".pn-card .lnk,.pn-card button.lnk,.pn-card a{color:#0d5c63!important;font-weight:700}.pn-card .pn-meta{color:#4a4a4a}.pn-tag{background:#c0392b!important;color:#fff!important}"
+ + ".pn-full,.pn-full .pn-txt{color:#222}.ps .lnk{color:#0d5c63!important;font-weight:700}"
  + "@media (max-width:640px){ .ps{width:190px} }";
  document.head.appendChild(st); })();
 const ajRenderBase = render;

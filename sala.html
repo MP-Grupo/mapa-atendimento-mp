@@ -54,6 +54,20 @@ h1,h2,h3{font-family:var(--f-display);margin:0}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#16232a;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60}
 .gate{max-width:380px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
 @media (max-width:700px){ .cal{grid-template-columns:44px minmax(0,1fr)} .col:not(.sel),.hd:not(.sel):not(.corner){display:none} .days-tabs{display:flex} .nav b{min-width:0;flex:1} }
+.vistas{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;margin-bottom:12px}
+.vistas button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-weight:600;font-size:13.5px;color:var(--muted)}.vistas button.on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.mes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.mh{text-align:center;font-size:12.5px;color:var(--muted);font-weight:600;padding:2px 0}
+.md{background:var(--surface);border:1px solid var(--line);border-radius:11px;min-height:96px;padding:6px 7px;display:flex;flex-direction:column;gap:3px;cursor:pointer;overflow:hidden}
+.md:hover{border-color:var(--accent)}.md.fora{opacity:.45}.md.passado .mi{opacity:.65}
+.md.hj{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.md.hj .mn{background:var(--accent);color:var(--accent-fg)}
+.mn{align-self:flex-start;font-weight:700;font-size:13px;border-radius:99px;padding:0 7px;line-height:20px}
+.mi{display:block;font-size:12px;border-radius:6px;padding:2px 6px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mi b{font-weight:700}
+.mmais{font-size:11.5px;color:var(--muted);font-weight:600;padding-left:2px}
+.mi.c1,.dl.c1{background:#0d5c63}.mi.c2,.dl.c2{background:#6b4fa0}.mi.c3,.dl.c3{background:#b06a00}.mi.c4,.dl.c4{background:#2f7d4f}.mi.c5,.dl.c5{background:#a8324f}.mi.c6,.dl.c6{background:#3b5b8c}
+.dlist{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto}
+.dl{display:flex;gap:12px;align-items:center;text-align:left;border:0;border-radius:10px;padding:9px 12px;color:#fff}.dl .dlh{font-weight:700;font-size:14px;white-space:nowrap}.dl span{display:flex;flex-direction:column}.dl small{opacity:.9;font-size:12.5px}
+@media (max-width:700px){ .md{min-height:70px;padding:4px} .mi{font-size:10.5px;padding:1px 4px} .mi b{display:block} .vistas button{padding:6px 9px;font-size:12.5px} }
 </style>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -65,7 +79,7 @@ h1,h2,h3{font-family:var(--f-display);margin:0}
 "use strict";
 var CFG=window.MAPA_CONFIG||{}; var SB=window.supabase.createClient(CFG.url, CFG.anonKey, {auth:{persistSession:false}});
 var PESSOAS=["Gabriel","Alan","Lys","Rafa","Ellen","Evaldo"]; var H0=7, H1=20;
-var st={codigo:"", seg:segunda(new Date()), dia:0, itens:[], quem:""};
+var st={codigo:"", seg:segunda(new Date()), dia:0, itens:[], quem:"", vista:"mes", mes:new Date(new Date().getFullYear(), new Date().getMonth(), 1)};
 function ls(k,v){ try{ if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){ return null; } }
 function pad(n){ return (n<10?"0":"")+n; }
 function iso(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -86,8 +100,10 @@ function gate(msg){
   var go=function(){ st.codigo=document.getElementById("gc").value.trim(); if(!st.codigo) return; ls("sala-codigo", st.codigo); carregar(true); };
   document.getElementById("gok").onclick=go; document.getElementById("gc").onkeydown=function(e){ if(e.key==="Enter") go(); }; document.getElementById("gc").focus();
 }
+function gradeMes(){ var ini=segunda(st.mes); if(ini>st.mes && ini.getDate()!==1) ini=addD(ini,-7); if(st.mes.getDay()===0||st.mes.getDay()===6){ ini=segunda(st.mes); } var fimMes=new Date(st.mes.getFullYear(), st.mes.getMonth()+1, 0); var sem=[]; var d=new Date(ini); while(d<=fimMes){ sem.push(new Date(d)); d=addD(d,7); } return sem; }
+function faixa(){ if(st.vista==="mes"){ var S=gradeMes(); return [S[0], addD(S[S.length-1],4)]; } return [st.seg, addD(st.seg,4)]; }
 function carregar(primeira){
-  var de=iso(st.seg), ate=iso(addD(st.seg,4));
+  var R=faixa(); var de=iso(R[0]), ate=iso(R[1]);
   SB.rpc("sala_listar",{p_codigo:st.codigo, p_de:de, p_ate:ate}).then(function(r){
     if(r.error){ if(/codigo_invalido/.test(r.error.message||"")){ ls("sala-codigo",null); st.codigo="livre"; if(primeira) gate("Sem conexão. Tente de novo."); } else if(primeira) gate("Sem conexão. Tente de novo."); return; }
     st.itens=(r.data||[]).slice().sort(function(a,b){ return (a.data+a.inicio).localeCompare(b.data+b.inicio); }); tela();
@@ -103,7 +119,7 @@ function resumo(){
 function copiar(t){ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){ toast("Resumo copiado. Cole no grupo do WhatsApp."); }).catch(function(){ prompt("Copie o texto:", t); }); }
 function gcal(x){ var d=x.data.replace(/-/g,""); var a=hm(x.inicio).replace(":","")+"00", b=hm(x.fim).replace(":","")+"00";
   return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("Sala de reunião · "+x.quem+(x.assunto?" · "+x.assunto:""))+"&dates="+d+"T"+a+"/"+d+"T"+b+"&ctz=America/Sao_Paulo&location="+encodeURIComponent("Sala de reunião MPMN"); }
-function tela(){
+function telaSemana(){
   var hoje=iso(new Date()); var fimSem=addD(st.seg,4);
   var titulo=pad(st.seg.getDate())+"/"+pad(st.seg.getMonth()+1)+" a "+pad(fimSem.getDate())+"/"+pad(fimSem.getMonth()+1);
   var h='<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Clique num horário livre para reservar. Segunda a sexta, de meia em meia hora.</p></div><span class="grow"></span><button class="tbtn" id="bTema" title="Tema claro / escuro">'+(document.documentElement.getAttribute("data-theme")==="dark"?"☀":"☾")+'</button><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>';
@@ -121,6 +137,33 @@ function tela(){
   h+='</div><p class="muted" style="font-size:12.5px;margin-top:10px">Dica: salve este link na tela inicial do celular. Para avisar o grupo, use “Copiar resumo para o grupo”.</p>';
   document.getElementById("app").innerHTML=h;
 }
+var MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function topo(){ return '<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Toque num dia para ver os horários marcados ou reservar. Segunda a sexta.</p></div><span class="grow"></span><button class="tbtn" id="bTema" title="Tema claro / escuro">'+(document.documentElement.getAttribute("data-theme")==="dark"?"☀":"☾")+'</button><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>'; }
+function abas(){ return '<div class="vistas"><button class="'+(st.vista==="mes"?"on":"")+'" data-vista="mes">Calendário</button><button class="'+(st.vista==="semana"?"on":"")+'" data-vista="semana">Horários da semana</button></div>'; }
+function tela(){ if(st.vista==="semana"){ telaSemana(); var app=document.getElementById("app"); var tp=app.querySelector(".top"); if(tp) tp.insertAdjacentHTML("afterend", abas()); return; } telaMes(); }
+function telaMes(){
+  var hoje=iso(new Date()); var S=gradeMes(); var mesN=st.mes.getMonth();
+  var h=topo()+abas();
+  h+='<div class="nav"><button class="btn" id="mAnt" aria-label="Mês anterior">‹</button><b>'+MESES[mesN].charAt(0).toUpperCase()+MESES[mesN].slice(1)+' de '+st.mes.getFullYear()+'</b><button class="btn" id="mProx" aria-label="Próximo mês">›</button><button class="btn" id="mHoje">Este mês</button></div>';
+  h+='<div class="mes"><div class="mh">Seg</div><div class="mh">Ter</div><div class="mh">Qua</div><div class="mh">Qui</div><div class="mh">Sex</div>';
+  S.forEach(function(seg){ for(var i=0;i<5;i++){ var d=addD(seg,i), k=iso(d); var its=st.itens.filter(function(x){return x.data===k;}); var fora=d.getMonth()!==mesN;
+    h+='<div class="md'+(fora?" fora":"")+(k===hoje?" hj":"")+(k<hoje?" passado":"")+'" data-dia="'+k+'"><span class="mn">'+d.getDate()+'</span>';
+    its.slice(0,4).forEach(function(x){ h+='<span class="mi '+cor(x.quem)+'"><b>'+hm(x.inicio)+'</b> '+esc(x.quem)+'</span>'; });
+    if(its.length>4) h+='<span class="mmais">+'+(its.length-4)+' mais</span>';
+    h+='</div>'; } });
+  h+='</div><p class="muted" style="font-size:12.5px;margin-top:10px">Toque no dia para ver todos os detalhes. Dica: salve este link na tela inicial do celular.</p>';
+  document.getElementById("app").innerHTML=h;
+}
+function diaModal(k){
+  var d=new Date(k+"T12:00:00"); var its=st.itens.filter(function(x){return x.data===k;});
+  var bg=document.createElement("div"); bg.className="bg";
+  var lista=its.length? its.map(function(x){ return '<button class="dl '+cor(x.quem)+'" data-ev="'+x.id+'"><span class="dlh">'+hm(x.inicio)+' – '+hm(x.fim)+'</span><span><b>'+esc(x.quem)+'</b>'+(x.assunto?'<small>'+esc(x.assunto)+'</small>':'')+'</span></button>'; }).join("") : '<p class="muted" style="margin:0">Sala livre o dia todo.</p>';
+  bg.innerHTML='<div class="mod"><h3>'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</h3><div class="dlist">'+lista+'</div><p class="muted" style="font-size:12.5px;margin:0">Toque num horário para ver detalhes, pôr no Google Agenda ou cancelar.</p><div class="acts"><button class="btn" id="dmF">Fechar</button><button class="btn primary" id="dmR">Reservar neste dia</button></div></div>';
+  document.body.appendChild(bg); bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); });
+  document.getElementById("dmF").onclick=function(){ bg.remove(); };
+  document.getElementById("dmR").onclick=function(){ bg.remove(); form({data:k}); };
+  bg.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ var x=st.itens.find(function(y){return y.id===b.dataset.ev;}); bg.remove(); if(x) detalhe(x); }; });
+}
 function form(pre){
   var d=pre.data||iso(addD(st.seg,st.dia)); var opts=""; for(var m=H0*60;m<H1*60;m+=30) opts+='<option '+(toT(m)===(pre.t||"14:00")?"selected":"")+'>'+toT(m)+'</option>';
   var bg=document.createElement("div"); bg.className="bg";
@@ -136,7 +179,7 @@ function form(pre){
     ls("sala-quem",q); st.quem=q; this.disabled=true; var self=this;
     SB.rpc("sala_reservar",{p_codigo:st.codigo,p_data:dd,p_inicio:ini,p_fim:fim,p_quem:q,p_assunto:a}).then(function(r){ self.disabled=false;
       var x=r.data||{}; if(r.error||x.erro){ document.getElementById("fE").textContent=(x.erro||"Não consegui reservar. Tente de novo."); return; }
-      bg.remove(); toast("Reservado: "+q+", "+hTxt(ini)+"."); var dt=new Date(dd+"T12:00:00"); st.seg=segunda(dt); st.dia=Math.max(0,Math.min(4,dt.getDay()-1)); carregar(); });
+      bg.remove(); toast("Reservado: "+q+", "+hTxt(ini)+"."); var dt=new Date(dd+"T12:00:00"); st.mes=new Date(dt.getFullYear(), dt.getMonth(), 1); st.seg=segunda(dt); st.dia=Math.max(0,Math.min(4,dt.getDay()-1)); carregar(); });
   };
 }
 function detalhe(x){
@@ -149,6 +192,11 @@ function detalhe(x){
 document.addEventListener("click",function(e){ var t=e.target;
   var ev=t.closest(".ev"); if(ev){ var x=st.itens.find(function(y){return y.id===ev.dataset.id;}); if(x) detalhe(x); return; }
   var s=t.closest(".slot"); if(s){ form({data:s.dataset.d, t:s.dataset.t}); return; }
+  var md=t.closest("[data-dia]"); if(md){ diaModal(md.dataset.dia); return; }
+  var vb=t.closest("[data-vista]"); if(vb){ st.vista=vb.dataset.vista; ls("sala-vista",st.vista); carregar(); return; }
+  if(t.id==="mAnt"){ st.mes=new Date(st.mes.getFullYear(), st.mes.getMonth()-1, 1); carregar(); return; }
+  if(t.id==="mProx"){ st.mes=new Date(st.mes.getFullYear(), st.mes.getMonth()+1, 1); carregar(); return; }
+  if(t.id==="mHoje"){ st.mes=new Date(new Date().getFullYear(), new Date().getMonth(), 1); carregar(); return; }
   var tb=t.closest("[data-tab]"); if(tb){ st.dia=+tb.dataset.tab; tela(); return; }
   if(t.id==="bNova") form({}); if(t.id==="bRes") copiar(resumo());
   if(t.id==="bTema"){ var nv=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark"; document.documentElement.setAttribute("data-theme",nv); ls("mp-tema",nv); t.textContent=nv==="dark"?"☀":"☾"; }
@@ -156,7 +204,7 @@ document.addEventListener("click",function(e){ var t=e.target;
   if(t.id==="bHoje"){ st.seg=segunda(new Date()); var w=new Date().getDay(); st.dia=(w>=1&&w<=5)?w-1:0; carregar(); }
 });
 if("serviceWorker" in navigator && location.protocol==="https:"){ window.addEventListener("load",function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); }); }
-lerCodigo(); var w0=new Date().getDay(); st.dia=(w0>=1&&w0<=5)?w0-1:0;
+lerCodigo(); st.vista=ls("sala-vista")||"mes"; var w0=new Date().getDay(); st.dia=(w0>=1&&w0<=5)?w0-1:0;
 if(!st.codigo) gate(""); else carregar(true);
 setInterval(function(){ if(st.codigo && document.visibilityState==="visible" && !document.querySelector(".bg")) carregar(); }, 30000);
 })();
