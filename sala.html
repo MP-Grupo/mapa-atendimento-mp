@@ -2,14 +2,24 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("mp-tema")||"dark")}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
+<link rel="manifest" href="manifest-sala.webmanifest">
+<meta name="theme-color" content="#0d5c63">
+<link rel="icon" type="image/png" href="sala-192.png">
+<link rel="apple-touch-icon" href="sala-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sala MPMN">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Sala de reunião · MPMN</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 :root{--bg:#f4f6f5;--surface:#fff;--surface-2:#eef2f1;--line:#dbe2e0;--fg:#16232a;--muted:#5d6c72;--accent:#0d5c63;--accent-fg:#fff;--accent-soft:#ddeced;--danger:#b3261e;--ok:#2a7a4b;
   --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Figtree","Segoe UI",system-ui,sans-serif;--row:26px}
-@media (prefers-color-scheme:dark){:root{--bg:#10171a;--surface:#182226;--surface-2:#1e2a2f;--line:#2c3a40;--fg:#e7eef0;--muted:#9aabb1;--accent:#5fb7bd;--accent-fg:#0b1a1c;--accent-soft:#1c393c;--danger:#ff8a80}}
+:root[data-theme="dark"]{--bg:#10171a;--surface:#182226;--surface-2:#1e2a2f;--line:#2c3a40;--fg:#e7eef0;--muted:#9aabb1;--accent:#5fb7bd;--accent-fg:#0b1a1c;--accent-soft:#1c393c;--danger:#ff8a80;color-scheme:dark}
+.tbtn{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;width:36px;height:36px;display:inline-grid;place-items:center;cursor:pointer}
 *{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body)}
 button,input,select{font:inherit;color:inherit}button{cursor:pointer}
 h1,h2,h3{font-family:var(--f-display);margin:0}
@@ -95,7 +105,7 @@ function gcal(x){ var d=x.data.replace(/-/g,""); var a=hm(x.inicio).replace(":",
 function tela(){
   var hoje=iso(new Date()); var fimSem=addD(st.seg,4);
   var titulo=pad(st.seg.getDate())+"/"+pad(st.seg.getMonth()+1)+" a "+pad(fimSem.getDate())+"/"+pad(fimSem.getMonth()+1);
-  var h='<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Clique num horário livre para reservar. Segunda a sexta, de meia em meia hora.</p></div><span class="grow"></span><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>';
+  var h='<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Clique num horário livre para reservar. Segunda a sexta, de meia em meia hora.</p></div><span class="grow"></span><button class="tbtn" id="bTema" title="Tema claro / escuro">'+(document.documentElement.getAttribute("data-theme")==="dark"?"☀":"☾")+'</button><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>';
   h+='<div class="nav"><button class="btn" id="bAnt" aria-label="Semana anterior">‹</button><b>'+titulo+'</b><button class="btn" id="bProx" aria-label="Próxima semana">›</button><button class="btn" id="bHoje">Esta semana</button></div>';
   h+='<div class="days-tabs">'; for(var i=0;i<5;i++){ var d=addD(st.seg,i); h+='<button data-tab="'+i+'" class="'+(i===st.dia?"on":"")+'">'+DIAS[d.getDay()].slice(0,3)+'<b>'+d.getDate()+'</b></button>'; } h+='</div>';
   h+='<div class="cal"><div class="hd corner"></div>'; for(i=0;i<5;i++){ d=addD(st.seg,i); h+='<div class="hd'+(iso(d)===hoje?" hj":"")+(i===st.dia?" sel":"")+'">'+DIAS[d.getDay()]+'<b>'+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</b></div>'; }
@@ -140,9 +150,11 @@ document.addEventListener("click",function(e){ var t=e.target;
   var s=t.closest(".slot"); if(s){ form({data:s.dataset.d, t:s.dataset.t}); return; }
   var tb=t.closest("[data-tab]"); if(tb){ st.dia=+tb.dataset.tab; tela(); return; }
   if(t.id==="bNova") form({}); if(t.id==="bRes") copiar(resumo());
+  if(t.id==="bTema"){ var nv=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark"; document.documentElement.setAttribute("data-theme",nv); ls("mp-tema",nv); t.textContent=nv==="dark"?"☀":"☾"; }
   if(t.id==="bAnt"){ st.seg=addD(st.seg,-7); carregar(); } if(t.id==="bProx"){ st.seg=addD(st.seg,7); carregar(); }
   if(t.id==="bHoje"){ st.seg=segunda(new Date()); var w=new Date().getDay(); st.dia=(w>=1&&w<=5)?w-1:0; carregar(); }
 });
+if("serviceWorker" in navigator && location.protocol==="https:"){ window.addEventListener("load",function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); }); }
 lerCodigo(); var w0=new Date().getDay(); st.dia=(w0>=1&&w0<=5)?w0-1:0;
 if(!st.codigo) gate(""); else carregar(true);
 setInterval(function(){ if(st.codigo && document.visibilityState==="visible" && !document.querySelector(".bg")) carregar(); }, 30000);

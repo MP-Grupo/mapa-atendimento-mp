@@ -2,7 +2,16 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script id="tema0">try{document.documentElement.setAttribute("data-theme",localStorage.getItem("mp-tema")||"dark")}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d5c63">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Painel M&amp;P">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Mapa de Atendimento M&amp;P</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
@@ -4107,15 +4116,28 @@ function pdAjuda(){
 }
 
 /* ---------- Sala de reunião: no arquivo de teste, explicar em vez de abrir ---------- */
-const psSalaBase = PACT.salaAbrir;
 PACT.salaAbrir = function(el){
   if(location.protocol==="file:"){ modal("Sala de reunião", `<p>A agenda da sala é uma página à parte, para quem não usa o sistema (Rafa, Lys).</p><p>Ela <b>ainda não está ativa</b>: passa a funcionar na publicação, quando rodarmos o arquivo da sala no Supabase e subirmos o <b>sala.html</b> no GitHub. No arquivo de teste ela não abre.</p><p class="muted">Depois de ativa, as reservas aparecem também aqui no Calendário.</p>`, [{label:"Entendi", cls:"primary"}]); return; }
-  return psSalaBase(el);
+  const w=window.open("", "_blank");
+  const abrir=c=>{ const u="sala.html"+(c?"#c="+encodeURIComponent(c):""); if(w) w.location.href=u; else location.href=u; };
+  if(typeof SB!=="undefined" && SB && SB.rpc){ SB.rpc("sala_codigo_interno").then(r=>abrir(r && !r.error ? r.data : "")).catch(()=>abrir("")); } else abrir("");
 };
+
+/* ---------- tema claro / escuro (vale para este aparelho; a página da sala segue o mesmo) ---------- */
+function temaAtual(){ return document.documentElement.getAttribute("data-theme")==="light" ? "light" : "dark"; }
+function temaBtn(){
+  const top=$(".top"); if(!top) return; let b=$("#temaBtn");
+  const esc0=temaAtual()==="dark";
+  const ico = esc0 ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>`;
+  if(!b){ const h=top.querySelector('[data-act="help"]'); const html=`<button class="iconbtn" id="temaBtn" data-act="temaTroca"></button>`; if(h) h.insertAdjacentHTML("beforebegin", html); else top.insertAdjacentHTML("beforeend", html); b=$("#temaBtn"); }
+  b.innerHTML=ico; b.title = esc0 ? "Mudar para o tema claro" : "Mudar para o tema escuro";
+}
+PACT.temaTroca = function(){ const novo = temaAtual()==="dark" ? "light" : "dark"; document.documentElement.setAttribute("data-theme", novo); try{ localStorage.setItem("mp-tema", novo); }catch(e){} temaBtn(); };
+if("serviceWorker" in navigator && location.protocol==="https:"){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
 
 /* ---------- render ---------- */
 function ajRender(){
-  psRender(); pdAjuda();
+  psRender(); pdAjuda(); temaBtn();
   const ac=$("#acBtn"); if(ac) ac.remove();
   const real = ui.vcReal ? ui.vcReal.papel : ui.papel;
   if(ui.view==="central" && real==="master" && !ui.verComo && !$("#pfBtn")){ const ph=$("#content .phead .row"); if(ph) ph.insertAdjacentHTML("afterbegin", `<button class="btn sm" id="pfBtn" data-act="perfis">Perfis da equipe</button>`); }

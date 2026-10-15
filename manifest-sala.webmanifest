@@ -1,0 +1,16 @@
+{
+  "id": "./sala.html",
+  "name": "Sala de reunião MPMN",
+  "short_name": "Sala MPMN",
+  "start_url": "./sala.html",
+  "scope": "./sala.html",
+  "display": "standalone",
+  "background_color": "#10171a",
+  "theme_color": "#0d5c63",
+  "lang": "pt-BR",
+  "icons": [
+    {"src": "sala-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "sala-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "sala-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
