@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("mp-tema")||"dark")}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
 <link rel="manifest" href="manifest-sala.webmanifest">
@@ -79,7 +80,7 @@ var DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 function toast(m){ var t=document.createElement("div"); t.className="toast"; t.textContent=m; document.body.appendChild(t); setTimeout(function(){ t.remove(); },3200); }
 function cor(q){ var i=PESSOAS.indexOf(q); return "c"+((i<0?5:i)%6+1); }
 
-function lerCodigo(){ var m=location.hash.match(/c=([^&]+)/); if(m){ st.codigo=decodeURIComponent(m[1]); ls("sala-codigo", st.codigo); history.replaceState(null,"",location.pathname); } else st.codigo=ls("sala-codigo")||""; st.quem=ls("sala-quem")||""; }
+function lerCodigo(){ var m=location.hash.match(/c=([^&]+)/); if(m){ st.codigo=decodeURIComponent(m[1]); ls("sala-codigo", st.codigo); history.replaceState(null,"",location.pathname); } else st.codigo=ls("sala-codigo")||"livre"; st.quem=ls("sala-quem")||""; }
 function gate(msg){
   document.getElementById("app").innerHTML='<div class="gate"><div class="logo">MPMN</div><h3>Sala de reunião</h3><p class="muted" style="margin:0">Digite o código do escritório. Ele fica salvo neste aparelho.</p><input class="inp" id="gc" placeholder="Código do escritório" autocomplete="off"><div class="err">'+esc(msg||"")+'</div><button class="btn primary" id="gok">Entrar</button></div>';
   var go=function(){ st.codigo=document.getElementById("gc").value.trim(); if(!st.codigo) return; ls("sala-codigo", st.codigo); carregar(true); };
@@ -88,7 +89,7 @@ function gate(msg){
 function carregar(primeira){
   var de=iso(st.seg), ate=iso(addD(st.seg,4));
   SB.rpc("sala_listar",{p_codigo:st.codigo, p_de:de, p_ate:ate}).then(function(r){
-    if(r.error){ if(/codigo_invalido/.test(r.error.message||"")){ ls("sala-codigo",null); gate("Código não confere."); } else if(primeira) gate("Sem conexão. Tente de novo."); return; }
+    if(r.error){ if(/codigo_invalido/.test(r.error.message||"")){ ls("sala-codigo",null); st.codigo="livre"; if(primeira) gate("Sem conexão. Tente de novo."); } else if(primeira) gate("Sem conexão. Tente de novo."); return; }
     st.itens=(r.data||[]).slice().sort(function(a,b){ return (a.data+a.inicio).localeCompare(b.data+b.inicio); }); tela();
   });
 }
