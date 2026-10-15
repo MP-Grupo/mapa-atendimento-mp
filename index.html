@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script id="tema0">try{document.documentElement.setAttribute("data-theme",localStorage.getItem("mp-tema")||"dark")}catch(e){document.documentElement.setAttribute("data-theme","dark")}</script>
+<style id="apStyle"></style>
+<script id="apBoot">try{var apc=localStorage.getItem("mp-ap-css");if(apc)document.getElementById("apStyle").textContent=apc;var apf=localStorage.getItem("mp-ap-font");if(apf){var l=document.createElement("link");l.rel="stylesheet";l.href="https://fonts.googleapis.com/css2?family="+apf+"&display=swap";document.head.appendChild(l);}}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d5c63">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -566,6 +568,7 @@ setTimeout(function(){ var b=document.getElementById("boot"); if(b && !window.__
     <button class="nav" data-go="ideias" id="nav-ideias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span>Ideias</span></button>
     <div class="ngrp">Sistema</div>
     <button class="nav" data-go="gestao" id="nav-gestao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Painel e dados</span></button>
+    <button class="nav" data-go="aparencia" id="nav-aparencia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="10" r="1.3" fill="currentColor"/><path d="M12 21c-1.5-2-1-4 1-4h2a3 3 0 0 0 0-6"/></svg><span>Aparência</span></button>
     <button class="nav" data-go="importar" id="nav-importar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span>Importar dados</span></button>
     <div class="ngrp">Em breve</div>
     <button class="nav nav-eb" data-go="eb-autenticador" id="nav-eb-autenticador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg><span>Autenticador eProc</span></button>
@@ -4560,6 +4563,221 @@ function r2Render(){
  document.head.appendChild(st); })();
 const r2RenderBase = render;
 render = function(){ r2RenderBase(); r2Render(); };
+/* ================= APARÊNCIA: linguagens visuais prontas + misturar + ajustes (cores, letra, cantos, menu, cartões, densidade, logo) ================= */
+const AP_PALETAS = {
+  verde:{n:"Verde M&P", l:{accent:"#0d5c63", accent2:"#0a4a50"}, d:{accent:"#5fb7bd", accent2:"#86cdd2"}},
+  marinho:{n:"Azul-marinho", l:{accent:"#1f3a63", accent2:"#172c4c"}, d:{accent:"#8fb0e6", accent2:"#b3c8f0"}},
+  petroleo:{n:"Azul petróleo", l:{accent:"#15616d", accent2:"#0f4a54"}, d:{accent:"#66c2cf", accent2:"#8fd6e0"}},
+  grafite:{n:"Grafite", l:{accent:"#2f3b44", accent2:"#1f282f"}, d:{accent:"#b7c3cc", accent2:"#d2dbe2"}},
+  vinho:{n:"Vinho", l:{accent:"#7a2638", accent2:"#5e1c2b"}, d:{accent:"#e08aa0", accent2:"#eeadbc"}},
+  terra:{n:"Terracota", l:{accent:"#9a4a2b", accent2:"#7c3a21"}, d:{accent:"#e6a083", accent2:"#f0bba6"}},
+  oliva:{n:"Oliva", l:{accent:"#5a6b2f", accent2:"#465424"}, d:{accent:"#b9c97a", accent2:"#cdd99b"}},
+  dourado:{n:"Dourado sóbrio", l:{accent:"#8a6a1f", accent2:"#6d5318"}, d:{accent:"#d9bb6a", accent2:"#e6cf93"}}
+};
+const AP_SANS='"Segoe UI",system-ui,-apple-system,sans-serif';
+const AP_FONTES = {
+  atual:{n:"Bricolage + Figtree (atual)", d:'"Bricolage Grotesque",'+AP_SANS, b:'"Figtree",'+AP_SANS, g:"Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700", hw:700, ls:"-.01em"},
+  caderno:{n:"Source Sans 3", d:'"Source Sans 3",'+AP_SANS, b:'"Source Sans 3",'+AP_SANS, g:"Source+Sans+3:wght@400;500;600;700", hw:700, ls:"-.01em"},
+  manrope:{n:"Manrope (compacta)", d:'"Manrope",'+AP_SANS, b:'"Manrope",'+AP_SANS, g:"Manrope:wght@400;500;600;700", hw:600, ls:"-.02em"},
+  plex:{n:"IBM Plex Sans", d:'"IBM Plex Sans",'+AP_SANS, b:'"IBM Plex Sans",'+AP_SANS, g:"IBM+Plex+Sans:wght@400;500;600;700", hw:600, ls:"-.005em"},
+  jakarta:{n:"Plus Jakarta (títulos pesados)", d:'"Plus Jakarta Sans",'+AP_SANS, b:'"Plus Jakarta Sans",'+AP_SANS, g:"Plus+Jakarta+Sans:wght@400;500;600;700;800", hw:800, ls:"-.025em"},
+  nunitosans:{n:"Nunito Sans (arredondada)", d:'"Nunito Sans",'+AP_SANS, b:'"Nunito Sans",'+AP_SANS, g:"Nunito+Sans:wght@400;600;700;800", hw:800, ls:"-.01em"},
+  outfit:{n:"Outfit (títulos finos)", d:'"Outfit",'+AP_SANS, b:'"Outfit",'+AP_SANS, g:"Outfit:wght@300;400;500;600;700", hw:400, ls:"-.01em"},
+  newsreader:{n:"Newsreader + Karla (revista)", d:'"Newsreader",Georgia,serif', b:'"Karla",'+AP_SANS, g:"Newsreader:opsz,wght@6..72,500;6..72,600&family=Karla:wght@400;500;600;700", hw:500, ls:"-.01em"},
+  geist:{n:"Geist (técnica)", d:'"Geist",'+AP_SANS, b:'"Geist",'+AP_SANS, g:"Geist:wght@400;500;600;700", hw:600, ls:"-.02em"},
+  baskerville:{n:"Baskerville + Source Sans", d:'"Libre Baskerville",Georgia,serif', b:'"Source Sans 3",'+AP_SANS, g:"Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@400;500;600;700", hw:700, ls:"0"},
+  classica:{n:"Source Serif + Inter", d:'"Source Serif 4","Georgia",serif', b:'"Inter",'+AP_SANS, g:"Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700", hw:700, ls:"-.01em"},
+  neutra:{n:"Inter", d:'"Inter",'+AP_SANS, b:'"Inter",'+AP_SANS, g:"Inter:wght@400;500;600;700", hw:700, ls:"-.01em"},
+  humanista:{n:"Nunito", d:'"Nunito",'+AP_SANS, b:'"Nunito",'+AP_SANS, g:"Nunito:wght@400;600;700;800", hw:700, ls:"-.01em"},
+  sistema:{n:"Do computador (Segoe UI)", d:AP_SANS, b:AP_SANS, g:"", hw:700, ls:"-.01em"}
+};
+/* Linguagens: tokens completos claro (l) e escuro (d). "no espírito de" = referência de clima; cores e letras são nossas (não é cópia de marca). */
+const AP_LINGS = {
+  atual:{n:"Verde M&P (atual)", ref:"", sub:"o Painel de hoje", desc:"O que a Ellen já conhece: verde-petróleo, cartões com borda fina.", f:"atual", r:[12,9,8], cards:"borda", dens:"normal", menu:"claro",
+    l:{bg:"#f4f6f5",s:"#ffffff",s2:"#eef2f1",s3:"#e4eae8",line:"#dbe2e0",fg:"#16232a",muted:"#5d6c72",accent:"#0d5c63",a2:"#0a4a50",soft:"#ddeced"},
+    d:{bg:"#10171a",s:"#182226",s2:"#1e2a2f",s3:"#25333a",line:"#2c3a40",fg:"#e7eef0",muted:"#9aabb1",accent:"#5fb7bd",a2:"#86cdd2",soft:"#1c393c"}},
+  caderno:{n:"Caderno", ref:"Notion", desc:"Branco quente, cinza-papel, cantos pequenos, um violeta-tinta só no que importa.", f:"caderno", r:[8,6,5], cards:"borda", dens:"normal", menu:"claro",
+    l:{bg:"#fbfaf8",s:"#ffffff",s2:"#f4f2ee",s3:"#ebe8e2",line:"#e6e3dd",fg:"#2f2d29",muted:"#706d67",accent:"#5b4fa8",a2:"#483e8a",soft:"#ece9f7"},
+    d:{bg:"#1b1a18",s:"#232220",s2:"#2b2a27",s3:"#34322f",line:"#3a3835",fg:"#ecebe8",muted:"#a19e98",accent:"#a99cf0",a2:"#c2b8f5",soft:"#2d2a42"}},
+  noturno:{n:"Noturno", ref:"Linear", desc:"Feito para o escuro: quase preto, letra compacta, lavanda como único acento.", f:"manrope", r:[8,6,4], cards:"borda", dens:"compacta", menu:"claro",
+    l:{bg:"#f7f7f9",s:"#ffffff",s2:"#f0f0f3",s3:"#e7e7ec",line:"#e2e2e8",fg:"#1b1c21",muted:"#5f616b",accent:"#4f55c9",a2:"#3f44a8",soft:"#e7e8fa"},
+    d:{bg:"#0c0d10",s:"#131418",s2:"#1a1b20",s3:"#22232a",line:"#26272e",fg:"#e6e7eb",muted:"#8c8f99",accent:"#8f96f5",a2:"#aab0f8",soft:"#22243d"}},
+  bancario:{n:"Bancário", ref:"Stripe", desc:"Texto azul-marinho, fundos azulados, índigo no botão. Tom de banco moderno.", f:"plex", r:[8,6,4], cards:"sombra", dens:"normal", menu:"claro",
+    l:{bg:"#f6f9fc",s:"#ffffff",s2:"#eef3f9",s3:"#e3eaf3",line:"#dfe6ef",fg:"#1a2b4b",muted:"#53627c",accent:"#3b47c4",a2:"#2e389e",soft:"#e6e8fb"},
+    d:{bg:"#0b1526",s:"#111e33",s2:"#17253d",s3:"#1e2e48",line:"#24344f",fg:"#e6ecf5",muted:"#93a2ba",accent:"#8d98f5",a2:"#aab3f8",soft:"#1f2850"}},
+  vitrine:{n:"Vitrine", ref:"Apple", desc:"Cinza-pérola e cartões brancos soltos, títulos pesados, um azul só para ações.", f:"jakarta", r:[14,11,8], cards:"solto", dens:"espacada", menu:"claro",
+    l:{bg:"#f5f5f7",s:"#ffffff",s2:"#f0f0f2",s3:"#e8e8ed",line:"#e3e3e8",fg:"#1d1d1f",muted:"#6b6b70",accent:"#0a66d6",a2:"#0852ad",soft:"#e3eefc"},
+    d:{bg:"#0b0b0c",s:"#1c1c1e",s2:"#242426",s3:"#2c2c2e",line:"#2f2f33",fg:"#f5f5f7",muted:"#a1a1a6",accent:"#4a9bf5",a2:"#74b2f8",soft:"#152a45"}},
+  acolhida:{n:"Acolhida", ref:"Airbnb", desc:"Letra arredondada, cantos generosos, coral como única cor forte. Tom de atendimento.", f:"nunitosans", r:[16,12,10], cards:"sombra", dens:"espacada", menu:"claro",
+    l:{bg:"#fafafa",s:"#ffffff",s2:"#f4f4f4",s3:"#ebebeb",line:"#e4e4e4",fg:"#222222",muted:"#666666",accent:"#b53f33",a2:"#98352b",soft:"#fbe9e6"},
+    d:{bg:"#151414",s:"#1e1d1d",s2:"#262525",s3:"#2f2e2e",line:"#353333",fg:"#f2f0ef",muted:"#a8a4a2",accent:"#f08a7c",a2:"#f4a79c",soft:"#3a2220"}},
+  sereno:{n:"Sereno", ref:"Mercury", desc:"Quase-branco, texto violeta-escuro, títulos finos, índigo suave. Calmo e silencioso.", f:"outfit", r:[12,9,8], cards:"borda", dens:"normal", menu:"claro",
+    l:{bg:"#fbfbfd",s:"#ffffff",s2:"#f4f4f8",s3:"#ebebf2",line:"#e7e6ef",fg:"#2a2540",muted:"#67637d",accent:"#5a55c4",a2:"#4844a3",soft:"#ecebfa"},
+    d:{bg:"#121119",s:"#1a1922",s2:"#21202b",s3:"#292834",line:"#2e2d3a",fg:"#ebe9f4",muted:"#9e9ab2",accent:"#a5a1f2",a2:"#bebbf6",soft:"#2a2846"}},
+  revista:{n:"Revista", ref:"Oura", desc:"Papel claro, títulos em serifa, texto sem serifa discreto, azul nos botões.", f:"newsreader", r:[10,8,6], cards:"solto", dens:"espacada", menu:"claro",
+    l:{bg:"#f3f1ec",s:"#fffefb",s2:"#ece9e2",s3:"#e3dfd6",line:"#e0dcd2",fg:"#24221f",muted:"#67625a",accent:"#2d5b8f",a2:"#234873",soft:"#e2eaf4"},
+    d:{bg:"#161513",s:"#1f1d1a",s2:"#27251f",s3:"#302d27",line:"#36332c",fg:"#efece5",muted:"#aaa498",accent:"#8fb6e6",a2:"#aecbef",soft:"#1f2c3d"}},
+  mono:{n:"Monocromo", ref:"Cal.com", desc:"Preto, branco e cinza, sem cor de marca, botões pretos, bastante espaço.", f:"geist", r:[12,9,6], cards:"borda", dens:"espacada", menu:"claro",
+    l:{bg:"#f9f9f9",s:"#ffffff",s2:"#f3f3f3",s3:"#e9e9e9",line:"#e5e5e5",fg:"#111111",muted:"#666666",accent:"#111111",a2:"#000000",soft:"#ececec"},
+    d:{bg:"#0f0f0f",s:"#171717",s2:"#1f1f1f",s3:"#272727",line:"#2c2c2c",fg:"#f2f2f2",muted:"#a3a3a3",accent:"#f2f2f2",a2:"#ffffff",soft:"#2a2a2a"}},
+  marinho:{n:"Marinho & Dourado", ref:"", sub:"inspirada na Plataforma antiga", desc:"Menu azul-marinho, detalhe dourado, títulos em serifa clássica.", f:"baskerville", r:[10,8,6], cards:"borda", dens:"normal", menu:"cor",
+    extra:'.rail .logo:before{background:#c9a24a!important;color:#14223a!important}',
+    l:{bg:"#f5f6f8",s:"#ffffff",s2:"#eef0f4",s3:"#e4e7ee",line:"#dde1e9",fg:"#16233a",muted:"#56607a",accent:"#1f3a63",a2:"#172c4c",soft:"#e3e9f3"},
+    d:{bg:"#0d1626",s:"#142036",s2:"#1a2840",s3:"#22314c",line:"#28385a",fg:"#e9edf4",muted:"#98a4ba",accent:"#d4b467",a2:"#e3c98b",soft:"#2e2b20"}}
+};
+/* Padrão escolhido pelo Gabriel em 15/10/2026: Monocromo + letra Inter + destaque Grafite, tema escuro */
+const AP_PADRAO = {ling:"mono", cores:"", paleta:"grafite", cor:"", fonte:"neutra", cantos:"ling", menu:"ling", cartoes:"ling", densidade:"ling", sigla:"M&P", nome:"Painel M&P", tema:"escuro"};
+/* Rascunho: a escolha fica guardada no aparelho (localStorage) e continua valendo ao navegar e ao recarregar, até "Aplicar para todos" ou "Descartar". */
+const AP_TESTE = !!(window.MAPA_CONFIG && window.MAPA_CONFIG.url==="demo");
+function apLS(k,v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)||"null"); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); }catch(e){ return null; } }
+function apSouMaster(){ return (typeof souMasterReal==="function" ? souMasterReal() : ui.papel==="master"); }
+function apRascunhoGuardar(){ if(ui.ap) apLS("mp-ap-rascunho", ui.ap); }
+function apGet(){ let a=(S && S.aparencia && typeof S.aparencia==="object") ? S.aparencia : {}; if(AP_TESTE && !Object.keys(a).length) a=apLS("mp-ap-teste")||{}; const r=Object.assign({}, AP_PADRAO, a); if(!AP_LINGS[r.ling]) r.ling="atual"; return r; }
+function apHex(h){ return /^#[0-9a-f]{6}$/i.test(h||"") ? h : ""; }
+function apRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16,(n>>8)&255,n&255]; }
+function apToHex(a){ return "#"+a.map(x=>Math.max(0,Math.min(255,Math.round(x))).toString(16).padStart(2,"0")).join(""); }
+function apMix(a,b,p){ const A=apRgb(a), B=apRgb(b); return apToHex(A.map((v,i)=>v*p+B[i]*(1-p))); }
+function apClarear(hex, p){ return apMix("#ffffff", hex, p); }
+function apEscurecer(hex, p){ return apMix("#000000", hex, p); }
+function apLum(h){ return apRgb(h).map(v=>{ v/=255; return v<=.03928? v/12.92 : Math.pow((v+.055)/1.055,2.4); }).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0); }
+function apContraste(a,b){ const x=apLum(a), y=apLum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); }
+function apSobre(acc){ return apContraste(acc,"#ffffff")>=apContraste(acc,"#111111") ? "#ffffff" : "#111111"; }
+function apLing(a){ return AP_LINGS[a.ling]||AP_LINGS.atual; }
+function apFonteKey(a){ return (a.fonte && a.fonte!=="ling" && AP_FONTES[a.fonte]) ? a.fonte : apLing(a).f; }
+function apCores(a){
+  const base = AP_LINGS[a.cores] || apLing(a);
+  const T = {l:Object.assign({}, base.l), d:Object.assign({}, base.d)};
+  const c = apHex(a.cor); const p = AP_PALETAS[a.paleta];
+  let acc = null;
+  if(c) acc = {l:{accent:c, accent2:apEscurecer(c,.18)}, d:{accent:apClarear(c,.45), accent2:apClarear(c,.6)}};
+  else if(p) acc = p;
+  if(acc){ ["l","d"].forEach(m=>{ T[m].accent=acc[m].accent; T[m].a2=acc[m].accent2; T[m].soft=apMix(acc[m].accent, T[m].s, m==="l"?.13:.22); }); }
+  T.l.afg=apSobre(T.l.accent); T.d.afg=apSobre(T.d.accent);
+  return T;
+}
+function apVars(t){ return `--bg:${t.bg};--surface:${t.s};--surface-2:${t.s2};--surface-3:${t.s3};--line:${t.line};--fg:${t.fg};--muted:${t.muted};--accent:${t.accent};--accent-2:${t.a2};--accent-soft:${t.soft};--accent-fg:${t.afg}`; }
+function apCss(a){
+  const L=apLing(a), T=apCores(a), F=AP_FONTES[apFonteKey(a)]||AP_FONTES.atual;
+  const qual=(k,lk)=> (a[k] && a[k]!=="ling") ? a[k] : L[lk];
+  const cantos=qual("cantos","r"), cartoes=qual("cartoes","cards"), dens=qual("densidade","dens"), menu=qual("menu","menu");
+  const rad = Array.isArray(cantos) ? cantos : ({reto:[4,6,3], suave:[12,9,8], redondo:[18,14,12]}[cantos]||[12,9,8]);
+  let css="";
+  css+=`html:root[data-theme="light"],html:root:not([data-theme]){${apVars(T.l)};color-scheme:light}html:root[data-theme="dark"]{${apVars(T.d)};color-scheme:dark}`;
+  css+=`html:root{--f-display:${F.d};--f-body:${F.b}}html body{font-family:var(--f-body)}html h1,html h2,html h3,html h4{font-family:var(--f-display);font-weight:${F.hw};letter-spacing:${F.ls}}.logo:after{font-weight:${Math.max(F.hw,600)}!important}`;
+  css+=`.pg-sec,.pf-one,.tf-box,.card,.pf-b,.modal,.cal,.sl-d,.md,.ch-panel,.pd-panel,.imp-c,.inst-box{border-radius:${rad[0]}px!important}.btn,.inp,.nav,.ind,.wk-d,.seg,.pz-row2,.pz-li,.pf-li,.cal-it,.ag-it,.tf-card,.cs-card,.mais-b,.search{border-radius:${rad[1]}px!important}.tag,.pz-pill,.st-pendente{border-radius:${rad[2]}px!important}`;
+  if(menu==="escuro"){ const k=T.d; css+=`.rail{background:${k.s}!important;border-right-color:${k.line}!important}.rail .nav{color:${k.muted}!important}.rail .nav:hover{background:${k.s2}!important;color:${k.fg}!important}.rail .nav.on{background:${k.soft}!important;color:${k.accent}!important}.rail .ngrp{color:${k.muted}!important}.rail .logo:after{color:${k.fg}!important}.rail .logo:before{background:${k.accent}!important;color:${k.afg}!important}.rail .iconbtn{color:${k.muted}}`; }
+  else if(menu==="cor"){ const k=T.l; css+=`.rail{background:${k.accent}!important;border-right-color:${k.a2}!important}.rail .nav{color:rgba(255,255,255,.78)!important}.rail .nav:hover{background:rgba(255,255,255,.12)!important;color:#fff!important}.rail .nav.on{background:rgba(255,255,255,.2)!important;color:#fff!important}.rail .ngrp{color:rgba(255,255,255,.55)!important}.rail .logo:after{color:#fff!important}.rail .logo:before{background:#fff!important;color:${k.accent}!important}.rail .iconbtn{color:#fff}.rail .dot{box-shadow:0 0 0 2px ${k.accent}}`; }
+  if(cartoes==="plano"){ css+=`.pg-sec,.pf-one,.tf-box,.card,.pf-b,.ind,.sl-d{border-color:transparent!important;box-shadow:none!important;background:var(--surface-2)!important}`; }
+  else if(cartoes==="solto"){ css+=`.pg-sec,.pf-one,.tf-box,.card,.pf-b,.ind,.sl-d{border-color:transparent!important;box-shadow:none!important;background:var(--surface)!important}`; }
+  else if(cartoes==="sombra"){ css+=`.pg-sec,.pf-one,.tf-box,.card,.pf-b,.ind{border-color:transparent!important;box-shadow:0 1px 2px rgba(16,35,42,.08),0 8px 24px rgba(16,35,42,.10)!important}:root[data-theme="dark"] .pg-sec,:root[data-theme="dark"] .pf-one,:root[data-theme="dark"] .card,:root[data-theme="dark"] .pf-b,:root[data-theme="dark"] .ind{border-color:var(--line)!important;box-shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)!important}`; }
+  if(dens==="compacta"){ css+=`html{font-size:93%}.pg-sec,.pf-one,.tf-box{padding:10px 12px!important}.ind{padding:8px 10px!important}.rail .nav{padding:5px 10px!important;font-size:13px!important}.content{padding-top:14px!important}`; }
+  else if(dens==="espacada"){ css+=`.pg-sec,.pf-one,.tf-box{padding:20px 22px!important}.rail .nav{padding:10px 12px!important}`; }
+  if(L.extra && !a.cores && menu===L.menu) css+=L.extra;
+  const sg=String(a.sigla||"M&P").slice(0,4).replace(/["\\]/g,""), nm=String(a.nome||"Painel M&P").slice(0,24).replace(/["\\]/g,"");
+  css+=`.logo:before{content:"${sg}"!important}.logo:after{content:"${nm}"!important}`;
+  return css;
+}
+function apFonteCarregar(a){ const k=apFonteKey(a); const F=AP_FONTES[k]; if(!F||!F.g) return; const id="apFont-"+k; if(document.getElementById(id)) return; const l=document.createElement("link"); l.id=id; l.rel="stylesheet"; l.href="https:\/\/fonts.googleapis.com/css2?family="+F.g+"&display=swap"; document.head.appendChild(l); }
+function apFontesTodas(){ Object.entries(AP_FONTES).forEach(([k,F])=>{ if(!F.g) return; const id="apFont-"+k; if(document.getElementById(id)) return; const l=document.createElement("link"); l.id=id; l.rel="stylesheet"; l.href="https:\/\/fonts.googleapis.com/css2?family="+F.g+"&display=swap"; document.head.appendChild(l); }); }
+function apAplicar(a, guardar){
+  a=a||apGet(); let st=document.getElementById("apStyle"); if(!st){ st=document.createElement("style"); st.id="apStyle"; document.head.appendChild(st); }
+  const css=apCss(a); st.textContent=css; apFonteCarregar(a);
+  const T=apCores(a); const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.content=T.l.accent;
+  if(guardar!==false){ try{ const F=AP_FONTES[apFonteKey(a)]; localStorage.setItem("mp-ap-css", css); localStorage.setItem("mp-ap-accent", JSON.stringify({l:T.l.accent, d:T.d.accent})); if(F && F.g) localStorage.setItem("mp-ap-font", F.g); else localStorage.removeItem("mp-ap-font"); }catch(e){} }
+  if(!ui.apTemaFeito && a.tema){ ui.apTemaFeito=true; try{ if(!localStorage.getItem("mp-tema")){ document.documentElement.setAttribute("data-theme", a.tema==="claro"?"light":"dark"); if(typeof temaBtn==="function") temaBtn(); } }catch(e){} }
+}
+ui.ap = null;
+function apCartaoLing(k, L, on){
+  const F=AP_FONTES[L.f]||AP_FONTES.atual; const mini=(t)=>`<span class="ap-lm" style="background:${t.bg}"><span class="ap-lk" style="background:${t.s};border-color:${t.line};color:${t.fg};border-radius:${Math.min(L.r[0],12)}px"><b style="font-family:${F.d};font-weight:${F.hw}">Aa</b><i style="background:${t.muted};opacity:.45"></i><i style="background:${t.muted};opacity:.3;width:60%"></i><u style="background:${t.accent};border-radius:${Math.min(L.r[1],9)}px"></u></span></span>`;
+  return `<button type="button" class="ap-lc${on?" on":""}" data-apling="${k}" aria-pressed="${on}"><span class="ap-lp">${mini(L.l)}${mini(L.d)}</span><span class="ap-ln"><b>${esc(L.n)}</b><small>${L.sub? esc(L.sub) : "no espírito de "+esc(L.ref)}</small></span><span class="ap-ld">${esc(L.desc)}</span></button>`;
+}
+function viewAparencia(){
+  if(!(typeof souMasterReal==="function" ? souMasterReal() : ui.papel==="master")) return `<div class="phead"><div><h1>Aparência</h1><p>Só o Gabriel desenha a aparência do Painel.</p></div></div>`;
+  if(!ui.ap){ const r=apLS("mp-ap-rascunho"); ui.ap = r ? Object.assign({}, AP_PADRAO, r) : apGet(); apAplicar(ui.ap,false); } const a = ui.ap; apFontesTodas();
+  const L = apLing(a);
+  const opt=(k,lista)=>`<div class="ap-opts">${lista.map(([v,n,extra])=>`<button type="button" class="ap-o${a[k]===v?" on":""}" data-apk="${k}" data-apv="${v}">${extra||""}<span>${esc(n)}</span></button>`).join("")}</div>`;
+  const daL=(txt)=>["ling", "Da linguagem"+(txt?" ("+txt+")":""), `<i class="ap-sw ap-swL"></i>`];
+  const nomeR={reto:"retos",suave:"suaves",redondo:"redondos"}, nomeC={borda:"borda fina",plano:"plano",sombra:"sombra",solto:"soltos"}, nomeD={compacta:"compacto",normal:"normal",espacada:"espaçado"}, nomeM={claro:"igual ao fundo",escuro:"escuro",cor:"na cor"};
+  const pal=[["ling", a.cores? "Das cores escolhidas" : "Da linguagem", `<i class="ap-sw" style="background:${(AP_LINGS[a.cores]||L).l.accent}"></i>`]].concat(Object.entries(AP_PALETAS).map(([k,p])=>[k,p.n,`<i class="ap-sw" style="background:${p.l.accent}"></i>`]));
+  const cores=[["", "Da linguagem", `<i class="ap-sw" style="background:${L.l.bg};box-shadow:inset 0 0 0 4px ${L.l.accent}"></i>`]].concat(Object.entries(AP_LINGS).filter(([k])=>k!==a.ling).map(([k,X])=>[k, X.n, `<i class="ap-sw" style="background:${X.l.bg};box-shadow:inset 0 0 0 4px ${X.l.accent}"></i>`]));
+  const fontes=[["ling","Da linguagem ("+(AP_FONTES[L.f]||{}).n+")",`<i class="ap-f" style="font-family:${(AP_FONTES[L.f]||AP_FONTES.atual).d}">Aa</i>`]].concat(Object.entries(AP_FONTES).filter(([k])=>k!==L.f).map(([k,f])=>[k,f.n,`<i class="ap-f" style="font-family:${f.d};font-weight:${f.hw}">Aa</i>`]));
+  const mudou=JSON.stringify(a)!==JSON.stringify(apGet());
+  return `<div class="phead"><div><div class="crumb">Sistema › Aparência</div><h1>Aparência</h1><p>Escolha e veja na hora: a tela inteira muda enquanto você testa. Nada vale para a equipe até você clicar em <b>Aplicar para todos</b>.</p></div><div class="row" style="gap:8px"><button class="btn" data-act="apDescartar" ${mudou?"":"disabled"}>Descartar</button><button class="btn" data-act="apPadrao">Voltar ao padrão</button><button class="btn primary" data-act="apSalvar" ${mudou?"":"disabled"}>Aplicar para todos</button></div></div>
+  <section class="pg-sec"><div class="pf-bh"><h3>1 · Linguagem visual</h3><span class="muted" style="font-size:12.5px">cada uma muda tudo de uma vez · metade clara e metade escura na miniatura</span></div>
+    <p class="muted" style="font-size:13px;margin:0 0 10px">"No espírito de" é só a referência de clima. As cores e as letras são nossas, não cópia de marca. Use o ☀ do topo para conferir claro e escuro.</p>
+    <div class="ap-lgrid">${Object.entries(AP_LINGS).map(([k,X])=>apCartaoLing(k,X,a.ling===k)).join("")}</div></section>
+  <section class="pg-sec"><div class="pf-bh"><h3>2 · Misturar (opcional)</h3><span class="muted" style="font-size:12.5px">ex.: "${esc(L.n)} com as cores do Bancário"</span></div>
+    <div class="ap-mx"><div><h4>Cores (fundo, texto e destaque) de</h4>${opt("cores",cores)}</div>
+    <div><h4>Letra (muda títulos e textos do Painel inteiro)</h4>${opt("fonte",fontes)}</div></div></section>
+  <div class="pg-2">
+    <section class="pg-sec"><div class="pf-bh"><h3>Cor de destaque</h3></div>${opt("paleta",pal)}
+      <div class="row" style="gap:10px;align-items:center;margin-top:10px"><label class="muted" style="font-size:13px" for="apCor">Ou escolha a sua cor:</label><input type="color" id="apCor" value="${esc(apHex(a.cor)||apCores(a).l.accent)}" style="width:44px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--surface)"><button class="btn sm" data-act="apCorUsar">Usar esta cor</button>${apHex(a.cor)?`<button class="lnk" data-act="apCorLimpar">voltar</button>`:""}</div>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 0">Muda só botões, links e item marcado do menu. O escuro é gerado a partir dela.</p></section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Cantos</h3></div>${opt("cantos",[daL(Array.isArray(L.r)?L.r[0]+" px":""),["reto","Retos",`<i class="ap-r" style="border-radius:3px"></i>`],["suave","Suaves",`<i class="ap-r" style="border-radius:9px"></i>`],["redondo","Redondos",`<i class="ap-r" style="border-radius:14px"></i>`]])}</section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Cartões</h3></div>${opt("cartoes",[daL(nomeC[L.cards]),["borda","Com borda fina"],["plano","Sem borda (fundo cinza)"],["solto","Brancos soltos"],["sombra","Com sombra"]])}</section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Espaçamento</h3></div>${opt("densidade",[daL(nomeD[L.dens]),["compacta","Compacto (cabe mais)"],["normal","Normal"],["espacada","Espaçado (mais ar)"]])}</section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Menu lateral</h3></div>${opt("menu",[daL(nomeM[L.menu]),["claro","Igual ao fundo"],["escuro","Escuro sempre"],["cor","Na cor de destaque"]])}</section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Tema ao abrir</h3></div>${opt("tema",[["escuro","Escuro"],["claro","Claro"]])}<p class="muted" style="font-size:12.5px;margin:8px 0 0">Cada pessoa ainda pode trocar no ☀ do topo; a escolha dela fica guardada no aparelho.</p></section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Nome e sigla</h3></div><div class="cb-form"><div class="df"><label for="apSigla">Sigla (até 4 letras)</label><input class="inp" id="apSigla" value="${esc(a.sigla)}" maxlength="4"></div><div class="df"><label for="apNome">Nome do sistema</label><input class="inp" id="apNome" value="${esc(a.nome)}" maxlength="24"></div></div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Aparece no alto do menu. Ex.: “Painel M&amp;P”, “MPM&amp;N”, “Central M&amp;P”.</p></section>
+  </div>
+  <section class="pg-sec"><div class="pf-bh"><h3>Prévia dos elementos</h3></div><p class="muted" style="font-size:13px;margin:0 0 10px">Só para conferir, não faz nada ao clicar: é como ficam, com a sua escolha, os botões, etiquetas, campo de texto, indicadores do Painel de gestão e uma linha de lista (como em Pessoas ou Atendimentos).</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn primary">Botão principal</button><button class="btn">Botão comum</button><span class="tag">etiqueta</span><span class="pz-pill">prazo</span><input class="inp" style="max-width:200px" placeholder="Campo de texto" aria-label="Campo de exemplo"></div>
+    <div class="inds"><button class="ind"><span>Tarefas não concluídas</span><b>12</b></button><button class="ind al"><span>Prazos em 7 dias</span><b>3</b></button><button class="ind"><span>Casos ativos</span><b>8</b></button></div>
+    <div class="pf-li" style="margin-top:10px"><b>Caso de exemplo</b><span class="muted">Maria Exemplo</span><span class="tag">Em andamento</span></div></section>`;
+}
+function apMexer(k,v){ ui.ap = ui.ap||apGet(); ui.ap[k]=v; if(k==="cores") ui.ap.paleta="ling"; apRascunhoGuardar(); apAplicar(ui.ap, false); render(); }
+function apEscolherLing(k){ if(!AP_LINGS[k]) return; const keep=ui.ap||apGet(); ui.ap=Object.assign({}, AP_PADRAO, {ling:k, sigla:keep.sigla, nome:keep.nome, tema:keep.tema}); apRascunhoGuardar(); apAplicar(ui.ap,false); render(); }
+document.addEventListener("click", e=>{ const t=e.target.closest && e.target.closest("[data-apling]"); if(t){ apEscolherLing(t.dataset.apling); return; } const b=e.target.closest && e.target.closest("[data-apk]"); if(b){ apMexer(b.dataset.apk, b.dataset.apv); } });
+document.addEventListener("input", e=>{ const t=e.target; if(!t) return; if(t.id==="apSigla"||t.id==="apNome"){ ui.ap=ui.ap||apGet(); ui.ap[t.id==="apSigla"?"sigla":"nome"]=t.value; apRascunhoGuardar(); apAplicar(ui.ap,false); const h=$("#content .phead .row"); if(h){ h.querySelectorAll("button").forEach(x=>{ if(/Aplicar|Descartar/.test(x.textContent)) x.disabled=false; }); } } });
+Object.assign(PACT, {
+  apCorUsar:()=>{ const c=$("#apCor"); if(c) apMexer("cor", c.value); },
+  apCorLimpar:()=>apMexer("cor",""),
+  apDescartar:()=>{ ui.ap=null; apLS("mp-ap-rascunho", null); apAplicar(apGet(), true); render(); },
+  apIrAparencia:()=>{ ui.view="aparencia"; render(); },
+  apPadrao:()=>{ ui.ap=Object.assign({}, AP_PADRAO); apRascunhoGuardar(); apAplicar(ui.ap,false); render(); },
+  apSalvar:()=>{ if(!ui.ap) return; snap(); S.aparencia=Object.assign({}, ui.ap); apLS("mp-ap-rascunho", null); if(AP_TESTE) apLS("mp-ap-teste", S.aparencia); logA("alterou a aparência do Painel ("+apLing(ui.ap).n+")"); apAplicar(S.aparencia, true); ui.ap=null; save(); render(); toast("Aparência aplicada para toda a equipe."); }
+});
+if(typeof R2_VIEWS!=="undefined") R2_VIEWS.aparencia=viewAparencia;
+let apUlt="";
+function apRender(){
+  const n=$("#nav-aparencia"); const m=(typeof souMasterReal==="function" ? souMasterReal() : ui.papel==="master"); if(n){ n.style.display = m ? "" : "none"; n.classList.toggle("on", ui.view==="aparencia"); }
+  if(!ui.ap && m){ const r=apLS("mp-ap-rascunho"); if(r){ ui.ap=Object.assign({}, AP_PADRAO, r); apUlt=""; } }
+  if(ui.ap && m){ const j="R"+JSON.stringify(ui.ap); if(j!==apUlt){ apUlt=j; apAplicar(ui.ap, false); } }
+  else { ui.ap=null; const j=JSON.stringify(apGet()); if(j!==apUlt){ apUlt=j; apAplicar(apGet(), true); } }
+  /* aviso de prévia: aparece em todas as telas enquanto houver rascunho diferente do aplicado */
+  let bar=document.getElementById("apBarra"); const ativo = m && ui.ap && JSON.stringify(ui.ap)!==JSON.stringify(apGet());
+  if(!ativo){ if(bar) bar.remove(); return; }
+  if(!bar){ bar=document.createElement("div"); bar.id="apBarra"; document.body.appendChild(bar); }
+  bar.innerHTML=`<span>Prévia da aparência: <b>${esc(apLing(ui.ap).n)}</b> · só você está vendo</span>${ui.view!=="aparencia"?`<button class="btn sm" data-act="apIrAparencia">Ajustar</button>`:""}<button class="btn sm" data-act="apDescartar">Descartar</button><button class="btn sm primary" data-act="apSalvar">Aplicar para todos</button>`;
+}
+(function(){ const st=document.createElement("style"); st.textContent = ""
+ + ".ap-opts{display:flex;flex-wrap:wrap;gap:6px}.ap-o{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:9px;padding:7px 11px;font-size:13.5px;font-weight:600;cursor:pointer;min-height:36px}.ap-o.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}"
+ + ".ap-sw{width:16px;height:16px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}.ap-swL{background:conic-gradient(var(--accent) 0 50%,var(--surface-3) 0)}.ap-f{font-size:17px;font-weight:700;line-height:1}.ap-r{width:18px;height:14px;display:inline-block;border:2px solid currentColor}"
+ + ".ap-lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}"
+ + ".ap-lc{display:flex;flex-direction:column;gap:8px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:8px 8px 12px;cursor:pointer}.ap-lc:hover{border-color:var(--muted)}.ap-lc.on{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}"
+ + ".ap-lp{display:grid;grid-template-columns:1fr 1fr;border-radius:8px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}.ap-lm{display:block;padding:10px}.ap-lk{display:flex;flex-direction:column;gap:5px;border:1px solid;padding:8px;height:84px}.ap-lk b{font-size:20px;line-height:1}.ap-lk i{display:block;height:5px;border-radius:3px}.ap-lk u{display:block;height:14px;width:58%;margin-top:auto}"
+ + ".ap-ln{display:flex;flex-direction:column;padding:0 4px}.ap-ln b{font-size:14.5px}.ap-ln small{color:var(--muted);font-size:12px}.ap-ld{font-size:12.5px;color:var(--muted);line-height:1.4;padding:0 4px}"
+ + "#apBarra{position:fixed;left:50%;transform:translateX(-50%);bottom:58px;z-index:60;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;justify-content:center;background:var(--surface);color:var(--fg);border:1px solid var(--accent);border-radius:12px;padding:8px 10px 8px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:13.5px;max-width:calc(100vw - 24px)}@media (max-width:760px){#apBarra{flex-wrap:wrap;white-space:normal;bottom:64px}}"
+ + ".ap-mx{display:grid;gap:14px}.ap-mx h4{font-size:13px;margin:0 0 6px;color:var(--muted);font-family:var(--f-body);font-weight:600;letter-spacing:0}";
+ document.head.appendChild(st); })();
+
+const apRenderBase = render;
+render = function(){ apRenderBase(); apRender(); };
+/* ================= RODADA 3 (15/10, noite): funil sem arrastar para o lado; post-it solto pela tela toda ================= */
+/* 1) A área de conteúdo passa a usar a largura toda; cada bloco continua limitado a 1240px, menos o funil (kanban) e a camada de post-its. */
+document.head.insertAdjacentHTML("beforeend", "<style id=\"r3Style\">"
+ + ".content{max-width:none}.content>*{max-width:1240px}.content>#psLayer,.content>.kb.kb-wrap{max-width:none}"
+ + ".kb.kb-wrap{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));overflow:visible;padding-bottom:0}"
+ + ".kb.kb-wrap .kb-list{max-height:none;overflow:visible}"
+ + ".kb.kb-wrap .kb-col{min-height:150px}"
+ + "@media (max-width:640px){ .kb.kb-wrap{grid-template-columns:1fr} .kb.kb-wrap .kb-col{min-height:0} }"
+ + "</style>");
+/* 2) Depois de cada render: marca a tela no body e abre o funil de Atendimentos e casos em linhas (todas as colunas visíveis). */
+const r3Base=render;
+render=function(){ r3Base();
+  try{ document.body.dataset.view=ui.view||"";
+    if(ui.view==="casos"){ const kb=document.querySelector("#content .kb"); if(kb) kb.classList.add("kb-wrap"); }
+  }catch(e){} };
 /* ================= LOGIN, PERFIS E PERMISSÕES (Supabase) ================= */
 const CFG = window.MAPA_CONFIG || {};
 const SB = (window.supabase && CFG.url && CFG.anonKey) ? window.supabase.createClient(CFG.url, CFG.anonKey, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}) : null;
