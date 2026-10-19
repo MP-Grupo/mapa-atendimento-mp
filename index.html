@@ -4626,7 +4626,9 @@ const AP_LINGS = {
     d:{bg:"#0d1626",s:"#142036",s2:"#1a2840",s3:"#22314c",line:"#28385a",fg:"#e9edf4",muted:"#98a4ba",accent:"#d4b467",a2:"#e3c98b",soft:"#2e2b20"}}
 };
 /* Padrão escolhido pelo Gabriel em 15/10/2026: Monocromo + letra Inter + destaque Grafite, tema escuro */
-const AP_PADRAO = {ling:"mono", cores:"", paleta:"grafite", cor:"", fonte:"neutra", cantos:"ling", menu:"ling", cartoes:"ling", densidade:"ling", sigla:"M&P", nome:"Painel M&P", tema:"escuro"};
+const AP_PADRAO = {ling:"mono", cores:"", paleta:"grafite", cor:"", fonte:"neutra", cantos:"ling", menu:"ling", cartoes:"ling", densidade:"ling", sigla:"M&P", nome:"Painel M&P", tema:"escuro", logo:"verde"};
+/* verde do ícone do app (desktop/celular) */
+const AP_VERDE_MP="#0d5c63";
 /* Rascunho: a escolha fica guardada no aparelho (localStorage) e continua valendo ao navegar e ao recarregar, até "Aplicar para todos" ou "Descartar". */
 const AP_TESTE = !!(window.MAPA_CONFIG && window.MAPA_CONFIG.url==="demo");
 function apLS(k,v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)||"null"); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); }catch(e){ return null; } }
@@ -4673,6 +4675,7 @@ function apCss(a){
   if(dens==="compacta"){ css+=`html{font-size:93%}.pg-sec,.pf-one,.tf-box{padding:10px 12px!important}.ind{padding:8px 10px!important}.rail .nav{padding:5px 10px!important;font-size:13px!important}.content{padding-top:14px!important}`; }
   else if(dens==="espacada"){ css+=`.pg-sec,.pf-one,.tf-box{padding:20px 22px!important}.rail .nav{padding:10px 12px!important}`; }
   if(L.extra && !a.cores && menu===L.menu) css+=L.extra;
+  if(a.logo==="verde") css+=`.logo:before,.rail .logo:before{background:${AP_VERDE_MP}!important;color:#ffffff!important}`;
   const sg=String(a.sigla||"M&P").slice(0,4).replace(/["\\]/g,""), nm=String(a.nome||"Painel M&P").slice(0,24).replace(/["\\]/g,"");
   css+=`.logo:before{content:"${sg}"!important}.logo:after{content:"${nm}"!important}`;
   return css;
@@ -4682,7 +4685,7 @@ function apFontesTodas(){ Object.entries(AP_FONTES).forEach(([k,F])=>{ if(!F.g) 
 function apAplicar(a, guardar){
   a=a||apGet(); let st=document.getElementById("apStyle"); if(!st){ st=document.createElement("style"); st.id="apStyle"; document.head.appendChild(st); }
   const css=apCss(a); st.textContent=css; apFonteCarregar(a);
-  const T=apCores(a); const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.content=T.l.accent;
+  const T=apCores(a); const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.content=(a.logo==='verde')?AP_VERDE_MP:T.l.accent;
   if(guardar!==false){ try{ const F=AP_FONTES[apFonteKey(a)]; localStorage.setItem("mp-ap-css", css); localStorage.setItem("mp-ap-accent", JSON.stringify({l:T.l.accent, d:T.d.accent})); if(F && F.g) localStorage.setItem("mp-ap-font", F.g); else localStorage.removeItem("mp-ap-font"); }catch(e){} }
   if(!ui.apTemaFeito && a.tema){ ui.apTemaFeito=true; try{ if(!localStorage.getItem("mp-tema")){ document.documentElement.setAttribute("data-theme", a.tema==="claro"?"light":"dark"); if(typeof temaBtn==="function") temaBtn(); } }catch(e){} }
 }
@@ -4718,7 +4721,7 @@ function viewAparencia(){
     <section class="pg-sec"><div class="pf-bh"><h3>Espaçamento</h3></div>${opt("densidade",[daL(nomeD[L.dens]),["compacta","Compacto (cabe mais)"],["normal","Normal"],["espacada","Espaçado (mais ar)"]])}</section>
     <section class="pg-sec"><div class="pf-bh"><h3>Menu lateral</h3></div>${opt("menu",[daL(nomeM[L.menu]),["claro","Igual ao fundo"],["escuro","Escuro sempre"],["cor","Na cor de destaque"]])}</section>
     <section class="pg-sec"><div class="pf-bh"><h3>Tema ao abrir</h3></div>${opt("tema",[["escuro","Escuro"],["claro","Claro"]])}<p class="muted" style="font-size:12.5px;margin:8px 0 0">Cada pessoa ainda pode trocar no ☀ do topo; a escolha dela fica guardada no aparelho.</p></section>
-    <section class="pg-sec"><div class="pf-bh"><h3>Nome e sigla</h3></div><div class="cb-form"><div class="df"><label for="apSigla">Sigla (até 4 letras)</label><input class="inp" id="apSigla" value="${esc(a.sigla)}" maxlength="4"></div><div class="df"><label for="apNome">Nome do sistema</label><input class="inp" id="apNome" value="${esc(a.nome)}" maxlength="24"></div></div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Aparece no alto do menu. Ex.: “Painel M&amp;P”, “MPM&amp;N”, “Central M&amp;P”.</p></section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Nome e sigla</h3></div><div class="cb-form"><div class="df"><label for="apSigla">Sigla (até 4 letras)</label><input class="inp" id="apSigla" value="${esc(a.sigla)}" maxlength="4"></div><div class="df"><label for="apNome">Nome do sistema</label><input class="inp" id="apNome" value="${esc(a.nome)}" maxlength="24"></div></div><div style="margin-top:10px"><label class="muted" style="font-size:13px">Cor do selo M&amp;P</label>${opt("logo",[["verde","Verde M&P (igual ao ícone do app)",`<i class="ap-sw" style="background:${AP_VERDE_MP}"></i>`],["destaque","Na cor de destaque",`<i class="ap-sw" style="background:${apCores(a).l.accent}"></i>`]])}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Aparece no alto do menu. Ex.: “Painel M&amp;P”, “MPM&amp;N”, “Central M&amp;P”.</p></section>
   </div>
   <section class="pg-sec"><div class="pf-bh"><h3>Prévia dos elementos</h3></div><p class="muted" style="font-size:13px;margin:0 0 10px">Só para conferir, não faz nada ao clicar: é como ficam, com a sua escolha, os botões, etiquetas, campo de texto, indicadores do Painel de gestão e uma linha de lista (como em Pessoas ou Atendimentos).</p>
     <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn primary">Botão principal</button><button class="btn">Botão comum</button><span class="tag">etiqueta</span><span class="pz-pill">prazo</span><input class="inp" style="max-width:200px" placeholder="Campo de texto" aria-label="Campo de exemplo"></div>
@@ -4763,6 +4766,277 @@ function apRender(){
 
 const apRenderBase = render;
 render = function(){ apRenderBase(); apRender(); };
+/* ================= SEMANA (v5): planejamento semanal do Gabriel — agenda, prazos, projeto, WhatsApp, delegação e procedimento que melhora a cada revisão ================= */
+/* Regra de montagem: comentário sempre em linha própria. */
+/* Dados: S.planoSemana (uma ficha por semana) e S.procSemana (rituais, regras e pautas fixas). Só o master vê a tela; o que ele delega vira tarefa (S.tarefas) para a pessoa. */
+const SM_BLOCOS = {agenda:{n:"Agenda e atendimento", d:"reuniões, consultas, retornos e blocos de dossiê"}, prazos:{n:"Prazos e atendimentos", d:"prazos fatais, retornos obrigatórios, atrasados e decisões"}, projeto:{n:"Desenvolvimento do projeto (Mapa)", d:"versão em curso, backlog v5–v7, publicação"}, whats:{n:"WhatsApp: respostas e integrações", d:"respostas pendentes, Make/Z-API, mensagens prontas"}, equipe:{n:"Direcionamento da equipe", d:"o que cada pessoa recebe nesta semana"}};
+const SM_DONOS = ["Gabriel","Alan","Evaldo","Ellen","Sócios"];
+const SM_DIAS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const SM_SEED_PROC = {
+  rituais:[
+    {id:"smr1", dia:0, hora:"18:00", quem:"Gabriel", texto:"Planejar a semana no Mapa (tela Semana): foco, agenda, prazos, projeto, WhatsApp e delegação."},
+    {id:"smr2", dia:1, hora:"08:30", quem:"Gabriel", texto:"Enviar o direcionamento da semana (Por pessoa › Enviar tarefas e Copiar para o WhatsApp)."},
+    {id:"smr3", dia:7, hora:"11:00", quem:"Gabriel", texto:"Bloco de decisão 1: responder os pedidos do tipo Decisão e Urgente."},
+    {id:"smr4", dia:7, hora:"16:30", quem:"Gabriel", texto:"Bloco de decisão 2: responder os pedidos do tipo Decisão e Urgente."},
+    {id:"smr5", dia:5, hora:"16:00", quem:"Ellen", texto:"Resumo da semana: feitos, números, travas e sugestões (pelo chat ou Pedidos até a v6)."},
+    {id:"smr6", dia:5, hora:"17:00", quem:"Gabriel", texto:"Fechar a semana no Mapa: revisão, lições e o que passa para a próxima."}
+  ],
+  regras:[
+    {id:"smg1", texto:"Tudo o que o Gabriel delega vira tarefa com responsável e data. Sem tarefa no Mapa, não foi delegado.", origem:"procedimento inicial", em:"", ativo:true},
+    {id:"smg2", texto:"Decisão da equipe entra pelos Pedidos (Decisão para o bloco) e é respondida às 11h e 16h30, não pelo WhatsApp.", origem:"procedimento inicial", em:"", ativo:true},
+    {id:"smg3", texto:"Item aberto no fim da semana: ou passa para a próxima com data nova, ou é fechado com motivo. Nunca some.", origem:"procedimento inicial", em:"", ativo:true},
+    {id:"smg4", texto:"Toda revisão de sexta registra pelo menos uma lição. Lição repetida em duas semanas vira regra.", origem:"procedimento inicial", em:"", ativo:true},
+    {id:"smg5", texto:"No plano, cliente só pelo primeiro nome ou iniciais. Nada de senha, código do eProc ou documento pessoal.", origem:"procedimento inicial", em:"", ativo:true}
+  ],
+  pautas:{
+    agenda:[{id:"smp1", texto:"Reservar duas manhãs sem reunião para dossiês e estratégia de casos"}],
+    prazos:[{id:"smp2", texto:"Conferir com o Alan os prazos fatais dos próximos 15 dias"}, {id:"smp3", texto:"Confirmar com a Ellen os retornos obrigatórios da semana"}],
+    projeto:[{id:"smp4", texto:"Conferir se a versão publicada do Mapa é a esperada (bytes e selo)"}, {id:"smp5", texto:"Escolher uma entrega do backlog v5–v7 para a semana"}, {id:"smp6", texto:"Colher feedback da Ellen sobre o uso do Mapa"}],
+    whats:[{id:"smp7", texto:"Zerar respostas pendentes no WhatsApp comercial e no atendimento"}, {id:"smp8", texto:"Conferir automações Make/Z-API: erros e mensagens não entregues"}, {id:"smp9", texto:"Revisar as mensagens prontas mais usadas na Biblioteca"}],
+    equipe:[{id:"smp10", texto:"Definir as 3 prioridades da Ellen para a semana"}]
+  }
+};
+function smAll(){ if(!Array.isArray(S.planoSemana)) S.planoSemana=[]; return S.planoSemana; }
+function smProc(){
+  if(!S.procSemana || typeof S.procSemana!=="object"){ S.procSemana = Object.assign({versao:1, atualizadoEm:"", hist:[]}, JSON.parse(JSON.stringify(SM_SEED_PROC))); }
+  const p=S.procSemana; ["rituais","regras","hist"].forEach(k=>{ if(!Array.isArray(p[k])) p[k]=[]; });
+  if(!p.pautas || typeof p.pautas!=="object") p.pautas={}; Object.keys(SM_BLOCOS).forEach(k=>{ if(!Array.isArray(p.pautas[k])) p.pautas[k]=[]; });
+  return p;
+}
+function smMaster(){ return typeof souMasterReal==="function" ? souMasterReal() : (ui.papel==="master" && !ui.verComo); }
+function smSegunda(d){ d=d?new Date(d.getTime()):new Date(); d.setHours(0,0,0,0); const w=d.getDay(); d.setDate(d.getDate()-((w+6)%7)); return isoDia(d); }
+/* Domingo planeja a semana que começa amanhã; nos outros dias, a semana corrente. */
+function smRefPadrao(){ const h=new Date(); if(h.getDay()===0){ h.setDate(h.getDate()+1); } return smSegunda(h); }
+function smSomar(iso, n){ const d=lmIsoDate(iso); d.setDate(d.getDate()+n); return isoDia(d); }
+function smDias(sem){ const L=[]; for(let i=0;i<7;i++) L.push(smSomar(sem,i)); return L; }
+function smRotulo(sem){ return fmtIso(sem)+" a "+fmtIso(smSomar(sem,6)); }
+function smDiaRot(iso){ const d=lmIsoDate(iso); return SM_DIAS[d.getDay()]+" "+d.getDate(); }
+function smSem(){ if(!ui.smSem) ui.smSem=smRefPadrao(); return ui.smSem; }
+function smRec(sem){ return smAll().find(r=>r.sem===(sem||smSem())) || null; }
+function smItem(id){ for(const r of smAll()){ const it=(r.itens||[]).find(x=>x.id===id); if(it) return {r,it}; } return null; }
+function smNovoRec(sem){ const r={id:uid(), sem, criadoEm:Date.now(), criadoPor:ui.me||"?", planejadaEm:0, foco:["","",""], itens:[], revisao:null}; smAll().push(r); return r; }
+function smNorm(r){ r.foco=Array.isArray(r.foco)?r.foco:["","",""]; while(r.foco.length<3) r.foco.push(""); r.itens=Array.isArray(r.itens)?r.itens:[]; r.itens.forEach(it=>{ if(!SM_BLOCOS[it.bloco]) it.bloco="agenda"; if(!SM_DONOS.includes(it.dono)) it.dono="Gabriel"; if(!["aberto","feito","adiado","cancelado"].includes(it.status)) it.status="aberto"; it.dia=/^\d{4}-\d{2}-\d{2}$/.test(it.dia||"")?it.dia:""; }); return r; }
+/* Sincroniza com as tarefas: tarefa concluída marca o item; item marcado conclui a tarefa. */
+function smSync(r){ (r.itens||[]).forEach(it=>{ if(!it.tarefaId) return; const t=tfAll().find(x=>x.id===it.tarefaId); if(!t) return; if(t.done && it.status==="aberto"){ it.status="feito"; it.feitoEm=t.doneEm||Date.now(); } }); }
+function smTarefa(r, it){
+  if(it.tarefaId && tfAll().some(t=>t.id===it.tarefaId)) return null;
+  const t={id:uid(), t:Date.now(), quem:ui.me||"?", txt:it.texto, area:"05", resp:it.dono, dataComp:it.dia||"", data:"", pessoa:"", caso:"", status:"pendente", done:false, obs:"Plano da semana de "+smRotulo(r.sem)+" · "+(SM_BLOCOS[it.bloco]||SM_BLOCOS.agenda).n+(it.obs?"\n"+it.obs:"")};
+  tfAll().push(t); it.tarefaId=t.id; return t;
+}
+function smAutoPrazos(sem){
+  const dias=smDias(sem), ini=dias[0], fim=dias[6]; const L=[];
+  pzAll().map(pzN).filter(p=>!p.done && p.data && p.data>=ini && p.data<=fim).forEach(p=>L.push({k:"pz", id:p.id, t:(p.caso||p.processo||"Prazo"), sub:"Prazo fatal "+fmtIso(p.data)+(p.texto?" · "+p.texto.slice(0,60):""), dono:p.resp||"Alan", dia:p.data, fatal:true}));
+  if(typeof retPendentes==="function") retPendentes().forEach(a=>L.push({k:"ret", id:a.id, t:a.nome, sub:"Retorno obrigatório "+fmtIso(a.retorno)+(a.retornoObs?" · "+a.retornoObs.slice(0,50):""), dono:a.resp||"Ellen", dia:(a.retorno>=ini&&a.retorno<=fim)?a.retorno:dias[0]}));
+  S.atendimentos.filter(a=>a.status==="ativo" && slaState(a)==="late").forEach(a=>{ if(!L.some(x=>x.k==="ret"&&x.id===a.id)) L.push({k:"late", id:a.id, t:a.nome, sub:"Cliente atrasado no passo atual", dono:a.resp||"Ellen", dia:dias[0], late:true}); });
+  (S.pedidos||[]).filter(p=>p.status!=="atendido" && (p.tipo==="decisao"||p.tipo==="urgente")).forEach(p=>L.push({k:"pd", id:p.id, t:(p.tipo==="urgente"?"Urgente: ":"Decidir: ")+p.texto.slice(0,70).replace(/\n/g," "), sub:"Pedido de "+p.quem+" · "+fmtT(p.t), dono:"Gabriel", dia:dias[0], urg:p.tipo==="urgente"}));
+  return L;
+}
+function smJaPlanejado(r, k, id){ return (r.itens||[]).some(it=>it.ref===k+":"+id); }
+function smLiItem(it, r){
+  const feito=it.status==="feito", adiado=it.status==="adiado"||it.status==="cancelado";
+  return `<div class="sm-it${feito?" done":""}${adiado?" off":""}" data-smid="${it.id}"><input type="checkbox" data-act="smFeito" data-id="${it.id}" ${feito?"checked":""} ${adiado?"disabled":""} aria-label="Concluir"><span class="sm-tx" data-act="smEditar" data-id="${it.id}"><b>${esc(it.texto)}</b><small>${it.dia?smDiaRot(it.dia)+(it.hora?" "+it.hora:"")+" · ":""}${esc((SM_BLOCOS[it.bloco]||{}).n||"")}${it.origem?" · "+esc(it.origem):""}${it.tarefaId?" · tarefa criada":""}</small></span>${respInic(it.dono)}</div>`;
+}
+function smLiMini(it){ const feito=it.status==="feito"; return `<div class="sm-mini${feito?" done":""}" data-act="smEditar" data-id="${it.id}" title="${esc((SM_BLOCOS[it.bloco]||{}).n||"")}"><span>${it.hora?esc(it.hora)+" ":""}${esc(it.texto)}</span>${respInic(it.dono)}</div>`; }
+function smPautaChips(k, r){ const P=smProc().pautas[k]||[]; if(!P.length) return ""; return `<div class="sm-pautas"><small class="muted">Pauta fixa:</small>${P.map(p=>{ const ja=(r&&r.itens||[]).some(it=>it.pauta===p.id); return `<button class="sm-chip${ja?" on":""}" data-act="smPautaAdd" data-k="${k}" data-id="${p.id}" ${ja?"disabled":""} title="${ja?"já está no plano":"adicionar ao plano"}">${ja?"✓ ":"+ "}${esc(p.texto)}</button>`; }).join("")}</div>`; }
+function smBloco(k, r){
+  const its=(r?r.itens:[]).filter(it=>it.bloco===k).sort((a,b)=>(a.dia||"9").localeCompare(b.dia||"9"));
+  const B=SM_BLOCOS[k];
+  let auto="";
+  if(k==="prazos" && r){ const A=smAutoPrazos(r.sem); if(A.length) auto=`<div class="sm-auto"><small class="muted">Puxado do sistema (prazos, retornos, atrasados, decisões):</small>${A.map(x=>`<div class="sm-ai${x.fatal?" fatal":""}${x.late||x.urg?" late":""}"><span class="sm-tx"><b>${esc(x.t)}</b><small>${esc(x.sub)}</small></span>${respInic(x.dono)}${smJaPlanejado(r,x.k,x.id)?`<span class="tag">no plano</span>`:`<button class="btn sm" data-act="smPlanejarAuto" data-k="${x.k}" data-id="${x.id}">Planejar</button>`}</div>`).join("")}</div>`; }
+  return `<section class="pg-sec sm-sec"><div class="pf-bh"><h3>${esc(B.n)} <span class="count">${its.length}</span></h3>${r?`<button class="btn sm" data-act="smNovo" data-bloco="${k}">+ item</button>`:""}</div><p class="muted sm-desc">${esc(B.d)}</p>${auto}${its.length?its.map(it=>smLiItem(it,r)).join(""):(r?`<p class="muted sm-vazio">Nada planejado aqui ainda.</p>`:"")}${smPautaChips(k,r)}</section>`;
+}
+function smPorPessoa(r){
+  const G={}; SM_DONOS.forEach(d=>G[d]=[]); (r.itens||[]).filter(it=>it.status==="aberto"||it.status==="feito").forEach(it=>{ (G[it.dono]||G.Gabriel).push(it); });
+  return `<section class="pg-sec sm-sec"><div class="pf-bh"><h3>Por pessoa · direcionamento</h3><span class="muted" style="font-size:12.5px">o que cada um recebe nesta semana</span></div><div class="sm-pp">${SM_DONOS.filter(d=>G[d].length).map(d=>{ const sem=G[d].filter(it=>!it.tarefaId && it.status==="aberto").length; return `<div class="sm-pc"><div class="sm-ph"><b>${esc(d)}</b><span class="count">${G[d].length}</span></div><ul>${G[d].sort((a,b)=>(a.dia||"9").localeCompare(b.dia||"9")).map(it=>`<li class="${it.status==="feito"?"done":""}">${it.dia?"<small>"+smDiaRot(it.dia)+"</small> ":""}${esc(it.texto)}</li>`).join("")}</ul><div class="row" style="gap:6px;flex-wrap:wrap">${d!=="Gabriel"&&sem?`<button class="btn sm primary" data-act="smEnviar" data-dono="${d}">Enviar ${sem} tarefa${sem>1?"s":""}</button>`:""}<button class="btn sm" data-act="smCopiar" data-dono="${d}">Copiar para o WhatsApp</button></div></div>`; }).join("")||`<p class="muted">Delegue itens (responsável diferente de você) e eles aparecem aqui.</p>`}</div></section>`;
+}
+function smGrade(r){
+  const sem=smSem(), dias=smDias(sem), hj=isoDia();
+  return `<section class="pg-sec sm-sec"><div class="pf-bh"><h3>Agenda da semana</h3><span class="muted" style="font-size:12.5px">compromissos, tarefas, prazos e lembretes já cadastrados + itens do plano</span></div><div class="sm-g">${dias.map(iso=>{ const its=(r?r.itens:[]).filter(it=>it.dia===iso && it.status!=="cancelado"); const tids=its.map(it=>it.tarefaId).filter(Boolean); const cal=(typeof calItens==="function"?calItens(iso):[]).filter(x=>!x.rec && !(x.k==="tf" && tids.includes(x.id))); return `<div class="sm-d${iso===hj?" hj":""}"><div class="sm-dh"><b>${smDiaRot(iso)}</b>${r?`<button class="lnk" data-act="smNovo" data-dia="${iso}" title="Novo item neste dia">+</button>`:""}</div>${cal.map(x=>calLi(x)).join("")}${its.map(it=>smLiMini(it)).join("")}${!cal.length&&!its.length?`<span class="sl-livre">livre</span>`:""}</div>`; }).join("")}</div><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-act="smEvNovo">Novo compromisso</button><button class="btn sm" data-go="calendario">Abrir o calendário</button></div></section>`;
+}
+function smProcHtml(){
+  const P=smProc(); const dn=d=>d===7?"Dias úteis":SM_DIAS[d];
+  return `<details class="more sm-proc" ${ui.smProcAberto?"open":""}><summary>Procedimento da semana <span class="muted">· rituais, regras e pautas fixas · melhora a cada revisão${P.atualizadoEm?" · atualizado em "+esc(fmtT(P.atualizadoEm)):""}</span></summary>
+    <div class="pg-2">
+      <section class="pg-sec"><div class="pf-bh"><h3>Rituais</h3><div class="row" style="gap:6px"><button class="btn sm" data-act="smRitualNovo">+ ritual</button><button class="btn sm" data-act="smRitualLembretes" title="Cria um lembrete semanal para cada ritual que ainda não tem">Criar lembretes</button></div></div>
+        ${P.rituais.slice().sort((a,b)=>(a.dia===7?8:a.dia===0?7:a.dia)-(b.dia===7?8:b.dia===0?7:b.dia)||(a.hora||"").localeCompare(b.hora||"")).map(x=>`<div class="sm-rg"><span class="tag">${dn(x.dia)} ${esc(x.hora||"")}</span><span class="sm-tx"><b>${esc(x.texto)}</b><small>${esc(x.quem)}</small></span><button class="lnk" data-act="smRitualEditar" data-id="${x.id}">editar</button></div>`).join("")||`<p class="muted">Nenhum ritual.</p>`}</section>
+      <section class="pg-sec"><div class="pf-bh"><h3>Regras</h3><button class="btn sm" data-act="smRegraNova">+ regra</button></div>
+        ${P.regras.filter(g=>g.ativo!==false).map(g=>`<div class="sm-rg"><span class="sm-tx"><b>${esc(g.texto)}</b><small>${esc(g.origem||"")}${g.em?" · "+esc(fmtT(g.em)):""}</small></span><button class="lnk" data-act="smRegraEditar" data-id="${g.id}">editar</button></div>`).join("")||`<p class="muted">Nenhuma regra.</p>`}</section>
+    </div>
+    <section class="pg-sec" style="margin-top:12px"><div class="pf-bh"><h3>Pautas fixas por bloco</h3><span class="muted" style="font-size:12.5px">entram no plano com um clique</span></div>
+      ${Object.keys(SM_BLOCOS).map(k=>`<div class="sm-pb"><b>${esc(SM_BLOCOS[k].n)}</b><div class="sm-pautas">${(P.pautas[k]||[]).map(p=>`<span class="sm-chip st"><span>${esc(p.texto)}</span><button class="lnk" data-act="smPautaEditar" data-k="${k}" data-id="${p.id}" title="editar">✎</button></span>`).join("")}<button class="sm-chip" data-act="smPautaNova" data-k="${k}">+ pauta</button></div></div>`).join("")}</section>
+    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm" data-act="smProcCopiar">Copiar procedimento (texto)</button>${P.hist.length?`<details class="more" style="margin:0"><summary>Histórico de melhorias (${P.hist.length})</summary><ul class="sm-hist">${P.hist.slice(0,30).map(h=>`<li><small>${esc(fmtT(h.t))} · ${esc(h.quem)}</small> ${esc(h.txt)}</li>`).join("")}</ul></details>`:""}</div>
+  </details>`;
+}
+function viewSemana(){
+  if(!smMaster()) return `<div class="phead"><div><h1>Semana</h1><p>Só o Gabriel planeja a semana aqui. O que ele delegar aparece em Tarefas, no Meu dia e nos post-its.</p></div></div>`;
+  const sem=smSem(); let r=smRec(sem); if(r){ smNorm(r); smSync(r); }
+  const hoje=isoDia(), atual=smRefPadrao(); const fech=r&&r.revisao;
+  const n=r?r.itens.length:0, nf=r?r.itens.filter(i=>i.status==="feito").length:0, na=r?r.itens.filter(i=>i.status==="aberto").length:0;
+  const prev=smRec(smSomar(sem,-7)); const prevAb=prev?prev.itens.filter(i=>i.status==="aberto").length:0;
+  const status = !r ? `<span class="tag warn">ainda não planejada</span>` : fech ? `<span class="tag ok">fechada em ${esc(fmtT(r.revisao.fechadaEm))}</span>` : `<span class="tag">${nf}/${n} feitos · ${na} abertos</span>`;
+  const head=`<div class="phead"><div><div class="crumb">Principal › Semana</div><h1>Semana de ${esc(smRotulo(sem))} ${status}</h1><p>${r?`Planejada em ${esc(fmtT(r.planejadaEm||r.criadoEm))} por ${esc(r.criadoPor)}.`:"Planeje no domingo: foco, agenda, prazos, projeto, WhatsApp e quem faz o quê."}${sem!==atual?` <button class="lnk" data-act="smIr" data-sem="${atual}">Ir para a semana atual</button>`:""}</p></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><div class="seg"><button data-act="smNav" data-d="-7" title="Semana anterior">‹</button><button data-act="smNav" data-d="7" title="Próxima semana">›</button></div>${!r?`<button class="btn primary" data-act="smPlanejar">${ic("plus")} Planejar esta semana</button>`:fech?`<button class="btn" data-act="smReabrir">Reabrir</button>`:`<button class="btn" data-act="smNovo">${ic("plus")} Item</button><button class="btn primary" data-act="smFechar">Fechar a semana</button>`}</div></div>`;
+  if(!r){
+    return head+`<section class="pg-sec sm-sec"><div class="pf-bh"><h3>Antes de começar</h3></div><ul class="sm-ul">
+      <li>${prevAb?`<b>${prevAb}</b> ${prevAb>1?"itens abertos":"item aberto"} na semana passada ${prev.revisao?"":"(ainda não fechada)"} — ao planejar, você escolhe se eles passam para esta.`:"Nenhum item aberto na semana passada."}</li>
+      <li><b>${smAutoPrazos(sem).length}</b> itens puxados do sistema (prazos, retornos, atrasados, decisões) para olhar no bloco Prazos e atendimentos.</li>
+      <li><b>${Object.values(smProc().pautas).reduce((s,a)=>s+a.length,0)}</b> pautas fixas do procedimento, prontas para entrar com um clique.</li></ul>
+      <button class="btn primary" data-act="smPlanejar">${ic("plus")} Planejar esta semana</button></section>`+smGrade(null)+smProcHtml();
+  }
+  const foco=`<section class="pg-sec sm-sec"><div class="pf-bh"><h3>Foco da semana</h3><span class="muted" style="font-size:12.5px">as 3 coisas que, feitas, fazem a semana valer</span></div><div class="sm-foco">${[0,1,2].map(i=>`<label><span>${i+1}</span><input class="inp" data-smfoco="${i}" value="${esc(r.foco[i]||"")}" placeholder="${["Ex.: fechar o contrato da holding","Ex.: publicar a v5 do Mapa","Ex.: zerar retornos atrasados"][i]}"></label>`).join("")}</div></section>`;
+  const rev = fech ? `<section class="pg-sec sm-sec sm-rev"><div class="pf-bh"><h3>Revisão da semana</h3></div><div class="pg-2"><div><b>Funcionou</b><p>${esc(r.revisao.bom||"—")}</p></div><div><b>Travou</b><p>${esc(r.revisao.travou||"—")}</p></div></div>${(r.revisao.licoes||[]).length?`<b>Lições</b><ul class="sm-ul">${r.revisao.licoes.map(l=>`<li>${esc(l.texto)}${l.virouRegra?' <span class="tag ok">virou regra</span>':""}</li>`).join("")}</ul>`:""}${r.revisao.numeros?`<details class="more"><summary>Números da semana</summary><pre class="sm-pre">${esc(r.revisao.numeros)}</pre></details>`:""}</section>` : "";
+  return head+foco+smGrade(r)+`<div class="pg-2">${smBloco("prazos",r)}${smBloco("agenda",r)}</div><div class="pg-2">${smBloco("projeto",r)}${smBloco("whats",r)}</div>${smBloco("equipe",r)}${smPorPessoa(r)}${rev}${smProcHtml()}`;
+}
+function smItemModal(it, pre){
+  const r=smRec(); if(!r) return; const novo=!it; it = it || Object.assign({texto:"", bloco:"agenda", dono:"Gabriel", dia:"", hora:"", obs:""}, pre||{});
+  const dias=smDias(r.sem);
+  modal(novo?"Novo item da semana":"Item da semana", `<div class="cb-form">
+    <div class="df cb-span"><label>O que</label><input class="inp" id="smTx" value="${esc(it.texto)}" placeholder="Ex.: Ligar para o cliente R. sobre a proposta"></div>
+    <div class="df"><label>Bloco</label><select class="inp" id="smBl">${Object.keys(SM_BLOCOS).map(k=>`<option value="${k}" ${it.bloco===k?"selected":""}>${esc(SM_BLOCOS[k].n)}</option>`).join("")}</select></div>
+    <div class="df"><label>Quem faz</label><select class="inp" id="smDn">${SM_DONOS.map(d=>`<option ${it.dono===d?"selected":""}>${d}</option>`).join("")}</select></div>
+    <div class="df"><label>Dia</label><select class="inp" id="smDi"><option value="">Sem dia fixo</option>${dias.map(d=>`<option value="${d}" ${it.dia===d?"selected":""}>${smDiaRot(d)}</option>`).join("")}</select></div>
+    <div class="df"><label>Hora (opcional)</label><input class="inp" type="time" id="smHr" value="${esc(it.hora||"")}"></div>
+    <div class="df cb-span"><label>Detalhe (sem dados sensíveis do cliente)</label><textarea class="inp" id="smOb" style="min-height:56px">${esc(it.obs||"")}</textarea></div>
+    <div class="cb-span"><label class="sm-ck"><input type="checkbox" id="smCt" ${it.tarefaId?"checked disabled":""}> Criar tarefa para quem faz (aparece em Tarefas e no Meu dia da pessoa)</label></div>
+  </div>`,
+  [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ snap(); r.itens=r.itens.filter(x=>x.id!==it.id); logA("tirou do plano da semana: "+it.texto); save(); render(); toast("Item removido do plano.",()=>{ undo(); render(); }); }},
+    {label:it.status==="cancelado"?"Reabrir":"Cancelar item", fn:()=>{ snap(); it.status = it.status==="cancelado"?"aberto":"cancelado"; save(); render(); }}]),
+   {label:"Voltar"},{label:novo?"Adicionar":"Salvar", cls:"primary", fn:()=>{
+    const v=$("#smTx").value.trim(); if(!v){ $("#smTx").focus(); return false; }
+    snap(); if(novo){ it=Object.assign({id:uid(), t:Date.now(), quem:ui.me||"?", status:"aberto", tarefaId:"", origem:"", ref:it.ref||"", pauta:it.pauta||""}, it); r.itens.push(it); }
+    Object.assign(it,{texto:v, bloco:$("#smBl").value, dono:$("#smDn").value, dia:$("#smDi").value, hora:$("#smHr").value, obs:$("#smOb").value.trim()});
+    const tf=tfAll().find(x=>x.id===it.tarefaId); if(tf){ tf.txt=v; tf.resp=it.dono; tf.dataComp=it.dia||""; }
+    else if($("#smCt").checked){ smTarefa(r,it); }
+    logA((novo?"planejou na semana: ":"ajustou no plano da semana: ")+v+" ("+it.dono+")"); save(); render(); }}], true);
+  setTimeout(()=>{ const t=$("#smTx"); if(t) t.focus(); },40);
+}
+function smPlanejarModal(){
+  const sem=smSem(); const prev=smRec(smSomar(sem,-7)); const ab=prev?prev.itens.filter(i=>i.status==="aberto"):[]; const P=smProc(); const np=Object.values(P.pautas).reduce((s,a)=>s+a.length,0);
+  modal("Planejar a semana de "+smRotulo(sem), `<p class="muted" style="margin:0 0 10px">Começa com o que já existe. Depois você ajusta cada bloco, delega e define o foco.</p><div class="sm-ul">
+    <label class="sm-ck"><input type="checkbox" id="smPl1" ${ab.length?"checked":"disabled"}> Trazer <b>${ab.length}</b> ${ab.length===1?"item aberto":"itens abertos"} da semana passada (ficam marcados como "vindo de ${prev?fmtIso(prev.sem):"—"}")</label>
+    <label class="sm-ck"><input type="checkbox" id="smPl2" ${np?"checked":"disabled"}> Incluir as <b>${np}</b> pautas fixas do procedimento</label>
+    <label class="sm-ck"><input type="checkbox" id="smPl3" checked> Marcar o <b>foco</b> agora (3 prioridades)</label></div>`,
+  [{label:"Cancelar"},{label:"Criar o plano", cls:"primary", fn:()=>{
+    snap(); const r=smNovoRec(sem); r.planejadaEm=Date.now();
+    if($("#smPl1").checked) ab.forEach(o=>smAdiar(o, r, prev.sem));
+    if($("#smPl2").checked) Object.keys(SM_BLOCOS).forEach(k=>(P.pautas[k]||[]).forEach(p=>{ r.itens.push({id:uid(), t:Date.now(), quem:ui.me||"?", texto:p.texto, bloco:k, dono:"Gabriel", dia:"", hora:"", obs:"", status:"aberto", tarefaId:"", origem:"pauta fixa", pauta:p.id, ref:""}); }));
+    logA("planejou a semana de "+smRotulo(sem)); save(); render(); toast("Plano criado. Agora ajuste os blocos e delegue.");
+    if($("#smPl3").checked) setTimeout(()=>{ const f=$('[data-smfoco="0"]'); if(f) f.focus(); },60);
+  }}]);
+}
+function smFecharModal(){
+  const r=smRec(); if(!r) return; const ab=r.itens.filter(i=>i.status==="aberto"), fe=r.itens.filter(i=>i.status==="feito");
+  const num=(typeof resumoSemana==="function"?resumoSemana():"")+"\nPlano: "+fe.length+" feitos · "+ab.length+" abertos · "+r.itens.filter(i=>i.status==="cancelado").length+" cancelados"+(r.foco.some(Boolean)?"\nFoco: "+r.foco.filter(Boolean).join(" | "):"");
+  modal("Fechar a semana de "+smRotulo(r.sem), `<div class="cb-form">
+    <div class="df cb-span"><label>Números</label><pre class="sm-pre">${esc(num)}</pre></div>
+    <div class="df"><label>O que funcionou</label><textarea class="inp" id="smRb" style="min-height:70px" placeholder="Ex.: bloco de decisão evitou interrupções"></textarea></div>
+    <div class="df"><label>O que travou</label><textarea class="inp" id="smRt" style="min-height:70px" placeholder="Ex.: documentos do cliente demoraram"></textarea></div>
+    <div class="df cb-span"><label>Lições (uma por linha)</label><textarea class="inp" id="smRl" style="min-height:70px" placeholder="Ex.: pedir documentos na própria reunião, com lista pronta"></textarea></div>
+    <div class="cb-span"><label class="sm-ck"><input type="checkbox" id="smRg"> Transformar as lições em <b>regras do procedimento</b> agora</label></div>
+    <div class="cb-span"><label class="sm-ck"><input type="checkbox" id="smRp" ${ab.length?"checked":"disabled"}> Levar os <b>${ab.length}</b> itens abertos para a próxima semana (${smRotulo(smSomar(r.sem,7))})</label></div>
+  </div>`,
+  [{label:"Cancelar"},{label:"Fechar a semana", cls:"primary", fn:()=>{
+    const bom=$("#smRb").value.trim(), travou=$("#smRt").value.trim(); const lic=$("#smRl").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    if(!bom && !travou && !lic.length && !ui.smFecharSem){ ui.smFecharSem=true; toast("A regra pede ao menos uma lição. Escreva uma ou clique de novo para fechar assim mesmo."); return false; }
+    ui.smFecharSem=false;
+    snap(); const P=smProc(); const regra=$("#smRg").checked;
+    r.revisao={bom, travou, licoes:lic.map(t=>({id:uid(), texto:t, virouRegra:regra})), numeros:num, fechadaEm:Date.now(), por:ui.me||"?"};
+    if(regra && lic.length){ lic.forEach(t=>P.regras.push({id:uid(), texto:t, origem:"lição da semana de "+smRotulo(r.sem), em:Date.now(), ativo:true})); P.atualizadoEm=Date.now(); P.hist.unshift({t:Date.now(), quem:ui.me||"?", txt:lic.length+" lição(ões) viraram regra (semana de "+smRotulo(r.sem)+")"}); }
+    if($("#smRp").checked && ab.length){ const prox=smSomar(r.sem,7); const n=smRec(prox)||smNovoRec(prox); ab.forEach(o=>smAdiar(o, n, r.sem)); }
+    logA("fechou a semana de "+smRotulo(r.sem)+" ("+fe.length+" feitos, "+ab.length+" passaram)"); save(); render(); toast("Semana fechada. "+(ab.length?ab.length+" item(ns) passaram para a próxima.":"Nada ficou para trás."));
+  }}], true);
+}
+/* Leva um item aberto para a semana seguinte; a tarefa ligada (se houver) ganha a data nova. */
+function smAdiar(o, dest, semOrigem){ o.status="adiado"; const novo=Object.assign({}, o, {id:uid(), t:Date.now(), status:"aberto", dia:o.dia?smSomar(o.dia,7):"", origem:"vindo de "+fmtIso(semOrigem), adiadoDe:o.id}); dest.itens.push(novo); const t=tfAll().find(x=>x.id===novo.tarefaId); if(t && !t.done) t.dataComp=novo.dia||""; return novo; }
+function smTextoPessoa(r, dono){
+  const its=r.itens.filter(it=>it.dono===dono && it.status!=="cancelado").sort((a,b)=>(a.dia||"9").localeCompare(b.dia||"9"));
+  const L=["Semana de "+smRotulo(r.sem)+" — "+dono]; if(r.foco.some(Boolean)) L.push("Foco do escritório: "+r.foco.filter(Boolean).join(" | ")); L.push("");
+  its.forEach(it=>L.push((it.status==="feito"?"[x] ":"[ ] ")+(it.dia?smDiaRot(it.dia)+(it.hora?" "+it.hora:"")+" · ":"")+it.texto)); if(!its.length) L.push("(nada delegado)");
+  L.push("", "Dúvida ou decisão: registre em Pedidos (bloco das 11h e 16h30)."); return L.join("\n");
+}
+function smProcTexto(){
+  const P=smProc(); const dn=d=>d===7?"Dias úteis":SM_DIAS[d]; const L=["PROCEDIMENTO DA SEMANA — M&P"+(P.atualizadoEm?" (atualizado em "+fmtT(P.atualizadoEm)+")":""), "", "Rituais:"];
+  P.rituais.forEach(x=>L.push("- "+dn(x.dia)+" "+(x.hora||"")+" · "+x.quem+": "+x.texto)); L.push("", "Regras:"); P.regras.filter(g=>g.ativo!==false).forEach(g=>L.push("- "+g.texto));
+  L.push("", "Pautas fixas:"); Object.keys(SM_BLOCOS).forEach(k=>{ if((P.pautas[k]||[]).length){ L.push(SM_BLOCOS[k].n+":"); P.pautas[k].forEach(p=>L.push("  - "+p.texto)); } }); return L.join("\n");
+}
+function smProcMudou(txt){ const P=smProc(); P.atualizadoEm=Date.now(); P.hist.unshift({t:Date.now(), quem:ui.me||"?", txt}); if(P.hist.length>200) P.hist.length=200; }
+function smRitualModal(x){
+  const P=smProc(); const novo=!x; x=x||{dia:1, hora:"", quem:"Gabriel", texto:""};
+  modal(novo?"Novo ritual":"Ritual", `<div class="cb-form"><div class="df cb-span"><label>O que acontece</label><input class="inp" id="smRtTx" value="${esc(x.texto)}"></div>
+    <div class="df"><label>Quando</label><select class="inp" id="smRtDia">${[1,2,3,4,5,6,0,7].map(d=>`<option value="${d}" ${x.dia===d?"selected":""}>${d===7?"Dias úteis":SM_DIAS[d]}</option>`).join("")}</select></div>
+    <div class="df"><label>Hora</label><input class="inp" type="time" id="smRtHr" value="${esc(x.hora||"")}"></div>
+    <div class="df"><label>Quem</label><select class="inp" id="smRtQm">${SM_DONOS.map(d=>`<option ${x.quem===d?"selected":""}>${d}</option>`).join("")}</select></div></div>`,
+  [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ snap(); P.rituais=P.rituais.filter(y=>y.id!==x.id); smProcMudou("removeu o ritual: "+x.texto); save(); render(); }}]),{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{ const v=$("#smRtTx").value.trim(); if(!v) return false; snap(); if(novo){ x.id=uid(); P.rituais.push(x); } Object.assign(x,{texto:v, dia:+$("#smRtDia").value, hora:$("#smRtHr").value, quem:$("#smRtQm").value}); smProcMudou((novo?"criou":"ajustou")+" o ritual: "+v); save(); render(); }}]);
+}
+function smRegraModal(g){
+  const P=smProc(); const novo=!g; g=g||{texto:"", origem:"", ativo:true};
+  modal(novo?"Nova regra":"Regra", `<div class="df"><label>Regra</label><textarea class="inp" id="smRgTx" style="min-height:70px">${esc(g.texto)}</textarea></div><div class="df"><label>Origem (de onde veio)</label><input class="inp" id="smRgOr" value="${esc(g.origem||"")}" placeholder="Ex.: lição da semana de 19/10"></div>`,
+  [...(novo?[]:[{label:"Desativar", cls:"danger", fn:()=>{ snap(); g.ativo=false; smProcMudou("desativou a regra: "+g.texto); save(); render(); }}]),{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{ const v=$("#smRgTx").value.trim(); if(!v) return false; snap(); if(novo){ g.id=uid(); g.em=Date.now(); P.regras.push(g); } Object.assign(g,{texto:v, origem:$("#smRgOr").value.trim()}); smProcMudou((novo?"criou":"ajustou")+" a regra: "+v); save(); render(); }}]);
+}
+function smPautaModal(k, p){
+  const P=smProc(); const novo=!p; p=p||{texto:""};
+  modal((novo?"Nova pauta fixa · ":"Pauta fixa · ")+SM_BLOCOS[k].n, `<div class="df"><label>Pauta</label><input class="inp" id="smPaTx" value="${esc(p.texto)}"></div>`,
+  [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ snap(); P.pautas[k]=P.pautas[k].filter(y=>y.id!==p.id); smProcMudou("removeu a pauta: "+p.texto); save(); render(); }}]),{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{ const v=$("#smPaTx").value.trim(); if(!v) return false; snap(); if(novo){ p.id=uid(); P.pautas[k].push(p); } p.texto=v; smProcMudou((novo?"criou":"ajustou")+" a pauta: "+v); save(); render(); }}]);
+}
+/* Aviso no Meu dia e no Painel: semana sem plano. */
+function smBanner(){
+  const old=$("#smBanner"); if(old) old.remove();
+  if(!smMaster() || !(ui.view==="hoje"||ui.view==="central")) return;
+  const sem=smRefPadrao(); const r=smRec(sem); const dom=new Date().getDay()===0;
+  const ph=$("#content .phead"); if(!ph) return;
+  if(!r) ph.insertAdjacentHTML("afterend", `<div id="smBanner" class="banner sm-banner"><span>${dom?"Hoje é domingo: ":""}a semana de <b>${esc(smRotulo(sem))}</b> ainda não foi planejada.</span><button class="btn sm primary" data-act="smIr" data-sem="${sem}">Planejar a semana</button></div>`);
+  else if(r.revisao==null && new Date().getDay()===5 && new Date().getHours()>=16) ph.insertAdjacentHTML("afterend", `<div id="smBanner" class="banner sm-banner"><span>Sexta à tarde: hora de <b>fechar a semana</b> (revisão e lições).</span><button class="btn sm primary" data-act="smIr" data-sem="${sem}">Abrir a semana</button></div>`);
+}
+Object.assign(PACT, {
+  smIr:(b)=>{ ui.smSem=(b&&b.dataset.sem)||smRefPadrao(); go("semana"); },
+  smNav:(b)=>{ ui.smSem=smSomar(smSem(), +b.dataset.d); render(); },
+  smPlanejar:()=>smPlanejarModal(),
+  smFechar:()=>smFecharModal(),
+  smReabrir:()=>{ const r=smRec(); if(!r) return; snap(); r.revisaoAnterior=r.revisao; r.revisao=null; logA("reabriu a semana de "+smRotulo(r.sem)); save(); render(); },
+  smNovo:(b)=>smItemModal(null, {bloco:(b&&b.dataset.bloco)||"agenda", dia:(b&&b.dataset.dia)||""}),
+  smEditar:(b)=>{ const f=smItem(b.dataset.id); if(f) smItemModal(f.it); },
+  smFeito:(b)=>{ const f=smItem(b.dataset.id); if(!f) return; snap(); const it=f.it; const v = it.status!=="feito"; it.status = v ? "feito" : "aberto"; it.feitoEm = v ? Date.now() : 0; const t=tfAll().find(x=>x.id===it.tarefaId); if(t){ t.status = v?"concluida":"pendente"; t.done=v; t.doneEm=v?Date.now():0; t.doneBy=v?(ui.me||"?"):""; } logA((v?"concluiu":"reabriu")+" no plano da semana: "+it.texto); save(); render(); },
+  smEvNovo:()=>{ if(typeof evModal==="function") evModal(null, {data:smDias(smSem())[0]}); },
+  smPlanejarAuto:(b)=>{ const r=smRec(); if(!r) return; const x=smAutoPrazos(r.sem).find(y=>y.k===b.dataset.k && y.id===b.dataset.id); if(!x) return; smItemModal(null, {bloco:"prazos", texto:x.t+(x.k==="pz"?" — prazo fatal "+fmtIso(x.dia):x.k==="ret"?" — retorno":x.k==="late"?" — destravar atendimento":""), dono:x.dono, dia:x.dia, ref:x.k+":"+x.id}); },
+  smPautaAdd:(b)=>{ const r=smRec(); if(!r) return; const p=(smProc().pautas[b.dataset.k]||[]).find(y=>y.id===b.dataset.id); if(!p) return; snap(); r.itens.push({id:uid(), t:Date.now(), quem:ui.me||"?", texto:p.texto, bloco:b.dataset.k, dono:"Gabriel", dia:"", hora:"", obs:"", status:"aberto", tarefaId:"", origem:"pauta fixa", pauta:p.id, ref:""}); save(); render(); },
+  smEnviar:(b)=>{ const r=smRec(); if(!r) return; const d=b.dataset.dono; snap(); let n=0; r.itens.filter(it=>it.dono===d && it.status==="aberto" && !it.tarefaId).forEach(it=>{ if(smTarefa(r,it)) n++; });
+    if(n && d!=="Sócios") S.postits.push({id:uid(), t:Date.now(), quem:ui.me||"?", pagina:"hoje", cliente:"", passo:"", para:d, texto:"Plano da semana de "+smRotulo(r.sem)+": "+n+" tarefa"+(n>1?"s suas estão":" sua está")+" em Tarefas. Dúvidas: Pedidos (11h/16h30).", cor:"amarelo", feito:false, feitoPor:"", feitoEm:0, pessoa:"", lidoPor:[], solto:false, x:0, y:0, min:false, vis:[]});
+    logA("enviou "+n+" tarefa(s) da semana para "+d); save(); render(); toast(n?n+" tarefa(s) criadas para "+d+" e um post-it de aviso.":"Nada novo para enviar."); },
+  smCopiar:(b)=>{ const r=smRec(); if(!r) return; copyText(smTextoPessoa(r, b.dataset.dono), "Copiado. Cole no WhatsApp de "+b.dataset.dono+"."); },
+  smRitualNovo:()=>smRitualModal(null),
+  smRitualEditar:(b)=>{ const x=smProc().rituais.find(y=>y.id===b.dataset.id); if(x) smRitualModal(x); },
+  smRitualLembretes:()=>{ const P=smProc(); snap(); let n=0; const hj=new Date(); P.rituais.forEach(x=>{ if(x.dia===7 || !x.hora) return; const tit="Ritual: "+x.texto.slice(0,60); if(lmAll().some(l=>l.titulo===tit && l.ativo!==false)) return; const d=new Date(hj.getTime()); d.setHours(0,0,0,0); d.setDate(d.getDate()+((x.dia-d.getDay()+7)%7)); lmAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", para:SM_DONOS.includes(x.quem)&&x.quem!=="Sócios"?x.quem:"Todos", titulo:tit, obs:"Ritual do procedimento da semana. Edite em Semana › Procedimento.", quando:isoDia(d), hora:x.hora, repetir:"semanal", tipo:"", feitoEm:{}, ativo:true}); n++; }); logA("criou "+n+" lembrete(s) dos rituais da semana"); save(); render(); toast(n?n+" lembrete(s) semanais criados. Lembre: o aviso só toca com a página aberta.":"Todos os rituais já têm lembrete."); },
+  smRegraNova:()=>smRegraModal(null),
+  smRegraEditar:(b)=>{ const g=smProc().regras.find(y=>y.id===b.dataset.id); if(g) smRegraModal(g); },
+  smPautaNova:(b)=>smPautaModal(b.dataset.k, null),
+  smPautaEditar:(b)=>{ const p=(smProc().pautas[b.dataset.k]||[]).find(y=>y.id===b.dataset.id); if(p) smPautaModal(b.dataset.k, p); },
+  smProcCopiar:()=>copyText(smProcTexto(), "Procedimento copiado.")
+});
+let smFocoT=null;
+document.addEventListener("input", e=>{ const t=e.target; if(!t || t.dataset.smfoco===undefined) return; const r=smRec(); if(!r) return; r.foco[+t.dataset.smfoco]=t.value; clearTimeout(smFocoT); smFocoT=setTimeout(()=>{ if(typeof saveSoon==="function") saveSoon(); else save(); }, 500); });
+document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("sm-proc")) ui.smProcAberto=t.open; }, true);
+if(typeof R2_VIEWS!=="undefined") R2_VIEWS.semana=viewSemana;
+(function(){ const h=$("#nav-hoje"); if(h && !$("#nav-semana")) h.insertAdjacentHTML("afterend", `<button class="nav" data-go="semana" id="nav-semana"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M14 14h3M7 18h3"/></svg><span>Semana</span></button>`); })();
+function smRender(){
+  const n=$("#nav-semana"); const m=smMaster(); if(n){ n.style.display = m ? "" : "none"; n.classList.toggle("on", ui.view==="semana"); const r=m?smRec(smRefPadrao()):null; const dot=n.querySelector(".dot"); if(dot) dot.remove(); if(m && !r) n.insertAdjacentHTML("beforeend", `<span class="dot">!</span>`); }
+  smBanner();
+}
+(function(){ const st=document.createElement("style"); st.textContent = ""
+ + ".sm-sec{margin-top:12px}.sm-desc{font-size:12.5px;margin:0 0 8px}.sm-vazio{font-size:13px;margin:4px 0}"
+ + ".sm-foco{display:grid;gap:8px}.sm-foco label{display:flex;align-items:center;gap:10px}.sm-foco label span{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800;display:grid;place-items:center;font-size:13px;flex:none}.sm-foco .inp{flex:1}"
+ + ".sm-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.sm-d{min-height:90px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:6px 7px}.sm-d.hj{border-color:var(--accent)}.sm-dh{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin-bottom:4px}.sm-dh b{font-size:13px}.sm-g .cal-it{padding:4px 6px;margin-bottom:3px}.sm-mini{display:flex;align-items:flex-start;gap:4px;font-size:12px;line-height:1.3;background:var(--accent-soft);color:var(--fg);border-radius:6px;padding:4px 6px;margin-bottom:3px;cursor:pointer}.sm-mini span{flex:1;min-width:0}.sm-mini.done span{text-decoration:line-through;color:var(--muted)}.sm-mini .av-mini{flex:none}"
+ + ".sm-it,.sm-ai,.sm-rg{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);margin-bottom:5px}.sm-it.done .sm-tx b{text-decoration:line-through;color:var(--muted)}.sm-it.off{opacity:.55}.sm-it input{flex:none}"
+ + ".sm-tx{flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer}.sm-tx b{font-size:13.5px;font-weight:600;white-space:normal}.sm-tx small{color:var(--muted);font-size:11.5px}.sm-g .sm-tx b{font-size:12.5px}"
+ + ".sm-auto{background:var(--surface-2);border-radius:10px;padding:8px;margin-bottom:8px}.sm-ai{background:var(--surface)}.sm-ai.fatal{border-left:3px solid var(--danger)}.sm-ai.late{border-left:3px solid var(--warn,#c7912a)}"
+ + ".sm-pautas{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.sm-chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--line);background:transparent;color:var(--fg);border-radius:99px;padding:4px 10px;font-size:12.5px;cursor:pointer}.sm-chip:hover{border-color:var(--accent)}.sm-chip.on{opacity:.55;cursor:default}.sm-chip.st{border-style:solid;cursor:default}.sm-chip .lnk{padding:0}"
+ + ".sm-pp{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}.sm-pc{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2)}.sm-ph{display:flex;align-items:center;gap:8px;margin-bottom:6px}.sm-pc ul{margin:0 0 8px;padding-left:16px;font-size:13px}.sm-pc li.done{text-decoration:line-through;color:var(--muted)}.sm-pc li small{color:var(--muted)}"
+ + ".sm-ul{margin:0 0 10px;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:13.5px}.sm-ck{display:flex;gap:8px;align-items:flex-start;list-style:none;font-size:13.5px;cursor:pointer}.sm-ck input{margin-top:3px;flex:none}.sm-pre{white-space:pre-wrap;font:12.5px/1.45 var(--f-body);background:var(--surface-2);border-radius:8px;padding:8px 10px;margin:0;max-height:220px;overflow:auto}"
+ + ".sm-proc{margin-top:14px}.sm-proc>summary{font-weight:700;cursor:pointer}.sm-pb{margin-bottom:8px}.sm-pb>b{font-size:13px}.sm-hist{margin:6px 0 0;padding-left:16px;font-size:12.5px}.sm-rev p{margin:2px 0 8px;white-space:pre-wrap}"
+ + ".tag.warn{background:var(--warn-soft,#fff3d6);color:var(--warn,#8a5a00)}.tag.ok{background:var(--ok-soft,#e6f4ea);color:var(--ok,#1e6b3a)}.sm-banner{margin-bottom:12px}"
+ + "@media (max-width:900px){ .sm-g{grid-template-columns:repeat(2,minmax(0,1fr))} }@media (max-width:640px){ .sm-g{grid-template-columns:1fr} .sm-d{min-height:0} }";
+ document.head.appendChild(st); })();
+const smRenderBase = render;
+render = function(){ smRenderBase(); smRender(); };
 /* ================= RODADA 3 (15/10, noite): funil sem arrastar para o lado; post-it solto pela tela toda ================= */
 /* 1) A área de conteúdo passa a usar a largura toda; cada bloco continua limitado a 1240px, menos o funil (kanban) e a camada de post-its. */
 document.head.insertAdjacentHTML("beforeend", "<style id=\"r3Style\">"
