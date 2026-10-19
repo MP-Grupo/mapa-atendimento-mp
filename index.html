@@ -3210,7 +3210,7 @@ function meuFiltro(r){ return !ui.pg.meus || r===ui.me || (r==="Sócios" && isAp
 /* ---------- Pessoas ---------- */
 function viewPessoas(){
   const q=ui.ps.busca.toLowerCase();
-  const L=psAll().filter(p=>(!ui.ps.papel||p.papel===ui.ps.papel) && (!q || [p.nome,p.tel,p.email,p.cidade,p.doc].join(" ").toLowerCase().includes(q))).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const L=psAll().filter(p=>(!ui.ps.papel||p.papel===ui.ps.papel) && (!q || [p.nome,p.tel,p.email,p.cidade,p.doc].join(" ").toLowerCase().includes(q))).sort((a,b)=>agCmpNome(a.nome,b.nome));
   return `<div class="phead"><div><div class="crumb">Gestão › Pessoas</div><h1>Pessoas</h1><p>Clientes, leads, partes e parceiros. Clique para abrir a ficha.</p></div><button class="btn primary" data-act="psNova">${ic("plus")} Adicionar pessoa</button></div>
     <div class="tb"><input class="inp" id="psBusca" placeholder="Buscar por nome, telefone, e-mail ou cidade" value="${esc(ui.ps.busca)}"><select class="inp" id="psPapel" style="width:auto"><option value="">Todos os tipos</option>${PS_PAPEIS.map(p=>`<option ${ui.ps.papel===p?"selected":""}>${p}</option>`).join("")}</select><span class="muted" style="font-size:13px">${L.length} pessoa(s)</span></div>
     ${L.length?`<div class="tbl"><div class="tr th"><span></span><span>Nome</span><span>Tipo</span><span>Telefone</span><span>Casos</span><span>Tarefas</span></div>${L.map(p=>{ const nc=csAll().filter(c=>c.pessoa===p.id && !csFim(c)).length, nt=tfLista().filter(t=>t.pessoa===p.id && !t.done).length;
@@ -3362,13 +3362,13 @@ function viewTarefas2(){
   const f=ui.tf; const q=(f.busca||"").toLowerCase();
   const L=tfLista().filter(t=>(!f.area||t.area===f.area) && (!f.resp||t.resp===f.resp) && (!q||[t.txt,psNome(t.pessoa)].join(" ").toLowerCase().includes(q)));
   const leg = ui.papel==="master" && !S.legadoImportado;
-  const head=`<div class="phead"><div><div class="crumb">Gestão › Tarefas</div><h1>Tarefas</h1><p>Data de compromisso (quando fazer) e data fatal (o limite). Vincule ao cliente ou ao caso.</p></div><div class="row" style="gap:8px">${leg?`<button class="btn" data-act="tfLegado" title="Escolha o arquivo PLATAFORMA_2a.html">Trazer da Plataforma antiga</button>`:""}<button class="btn primary" data-act="tfNova">${ic("plus")} Nova tarefa</button></div></div>
+  const head=`<div class="phead"><div><div class="crumb">Gestão › Tarefas</div><h1>Tarefas</h1><p>Data de compromisso (quando fazer) e data fatal (o limite). Vincule ao cliente ou ao caso.</p></div><div class="row" style="gap:8px">${leg?`<button class="btn" data-act="tfLegado" title="Escolha o arquivo PLATAFORMA_2a.html">Trazer da Plataforma antiga</button>`:""}${agTfBotoes()}<button class="btn primary" data-act="tfNova">${ic("plus")} Nova tarefa</button></div></div>
     <div class="tb"><input class="inp" id="tfBusca" placeholder="Buscar tarefa ou pessoa" value="${esc(f.busca||"")}"><select class="inp" id="tfFArea" style="width:auto"><option value="">Todas as áreas</option>${Object.entries(TF_AREAS).map(([k,v])=>`<option value="${k}" ${f.area===k?"selected":""}>${k} · ${esc(v)}</option>`).join("")}</select><select class="inp" id="tfFResp" style="width:auto"><option value="">Todas as pessoas</option>${TF_RESP.map(r=>`<option ${f.resp===r?"selected":""}>${r}</option>`).join("")}</select><span class="grow"></span><div class="seg"><button class="${f.modo!=="lista"?"on":""}" data-act="tfModo" data-v="quadro">Quadro</button><button class="${f.modo==="lista"?"on":""}" data-act="tfModo" data-v="lista">Lista</button></div></div>`;
   if(f.modo==="lista"){
-    const ab=L.filter(t=>!t.done).sort((a,b)=>(a.data||"9").localeCompare(b.data||"9")), fe=L.filter(t=>t.done).sort((a,b)=>(b.doneEm||0)-(a.doneEm||0)).slice(0,30);
+    const ab=L.filter(t=>!t.done).sort(agTfOrdem), fe=L.filter(t=>t.done).sort((a,b)=>(b.doneEm||0)-(a.doneEm||0)).slice(0,30);
     return head+`<div class="tf-box">${ab.length?ab.map(tfLi2).join(""):`<p class="muted" style="margin:0">Nenhuma tarefa aberta.</p>`}</div>${fe.length?`<details class="more" style="margin-top:14px"><summary>Concluídas (${fe.length})</summary><div class="tf-box">${fe.map(tfLi2).join("")}</div></details>`:""}`;
   }
-  return head+`<div class="kb kb3">${Object.entries(TF_ST).map(([k,n])=>{ let it=L.filter(t=>t.status===k); if(k==="concluida") it=it.sort((a,b)=>(b.doneEm||0)-(a.doneEm||0)).slice(0,25); else it=it.sort((a,b)=>(a.data||"9").localeCompare(b.data||"9"));
+  return head+`<div class="kb kb3">${Object.entries(TF_ST).map(([k,n])=>{ let it=L.filter(t=>t.status===k); if(k==="concluida") it=it.sort((a,b)=>(b.doneEm||0)-(a.doneEm||0)).slice(0,25); else it=it.sort(agTfOrdem);
     return `<section class="kb-col" data-drop="tf" data-col="${k}"><header><span class="st-${k}">${n}</span><span class="count">${it.length}</span>${k!=="concluida"?`<button class="lnk" data-act="tfNova" data-st="${k}" title="Nova tarefa">+</button>`:""}</header><div class="kb-list">${it.map(tfCard).join("")}</div></section>`; }).join("")}</div>`;
 }
 function tfModal2(t, pre){
@@ -3379,17 +3379,18 @@ function tfModal2(t, pre){
     <div class="df"><label>Data fatal</label><input class="inp" type="date" id="tf2Fatal" value="${esc(t.data||"")}"></div>
     <div class="df"><label>Responsável</label><select class="inp" id="tf2Resp">${TF_RESP.map(r=>`<option ${t.resp===r?"selected":""}>${r}</option>`).join("")}</select></div>
     <div class="df"><label>Situação</label><select class="inp" id="tf2St">${Object.entries(TF_ST).map(([k,n])=>`<option value="${k}" ${t.status===k?"selected":""}>${n}</option>`).join("")}</select></div>
+    <div class="df"><label>Prioridade</label><select class="inp" id="tf2Prio">${[["","Normal"],["alta","Alta"],["media","Média"],["baixa","Baixa"]].map(([k,n])=>`<option value="${k}" ${(t.prio||"")===k?"selected":""}>${n}</option>`).join("")}</select></div>
     <div class="df"><label>Pessoa</label><select class="inp" id="tf2Pes">${psOpts(t.pessoa)}</select></div>
     <div class="df"><label>Caso</label><select class="inp" id="tf2Caso">${csOpts(t.caso)}</select></div>
     <div class="df"><label>Área</label><select class="inp" id="tf2Area"><option value="">—</option>${Object.entries(TF_AREAS).map(([k,v])=>`<option value="${k}" ${t.area===k?"selected":""}>${k} · ${esc(v)}</option>`).join("")}</select></div>
     <div class="df cb-span"><label>Descrição</label><textarea class="inp" id="tf2Obs" style="min-height:60px">${esc(t.obs||"")}</textarea></div>
-  </div>${novo?"":`<p class="muted" style="font-size:12.5px;margin:0">Criada por ${esc(t.quem||"?")} em ${esc(fmtT(t.t))}${t.done?" · concluída por "+esc(t.doneBy||"?"):""}</p>`}`,
+  </div>${novo?"":`<p class="muted" style="font-size:12.5px;margin:0">Criada por ${esc(t.quem||"?")} em ${esc(fmtT(t.t))}${t.done?" · concluída por "+esc(t.doneBy||"?")+(t.doneEm?" em "+esc(fmtT(t.doneEm)):""):""}${t.recId?" · criada por uma recorrente":""}${t.modeloId?" · criada por modelo":""}</p>`}`,
   [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ if(!(isApprover()||t.quem===ui.me)){ toast("Só quem criou ou um sócio exclui."); return false; } snap(); S.tarefas=tfAll().filter(x=>x.id!==t.id); save(); render(); toast("Tarefa excluída.",()=>{ undo(); render(); }); }}]),
    {label:"Cancelar"},{label:novo?"Criar tarefa":"Salvar", cls:"primary", fn:()=>{
     const v=$("#tf2Txt").value.trim(); if(!v){ $("#tf2Txt").focus(); return false; }
     snap(); if(novo){ t=Object.assign({id:uid(), t:Date.now(), quem:ui.me||"?"}, t); tfAll().push(t); }
     const st=$("#tf2St").value; if(st==="concluida" && t.status!=="concluida"){ t.doneEm=Date.now(); t.doneBy=ui.me||"?"; }
-    Object.assign(t,{txt:v, dataComp:$("#tf2Comp").value, data:$("#tf2Fatal").value, resp:$("#tf2Resp").value, status:st, done:st==="concluida", pessoa:$("#tf2Pes").value, caso:$("#tf2Caso").value, area:$("#tf2Area").value, obs:$("#tf2Obs").value.trim()});
+    Object.assign(t,{txt:v, dataComp:$("#tf2Comp").value, data:$("#tf2Fatal").value, resp:$("#tf2Resp").value, status:st, done:st==="concluida", pessoa:$("#tf2Pes").value, caso:$("#tf2Caso").value, area:$("#tf2Area").value, prio:$("#tf2Prio").value, obs:$("#tf2Obs").value.trim()});
     logA((novo?"criou a tarefa “":"editou a tarefa “")+v+"”"); save(); render(); }}], true);
   setTimeout(()=>{ const t1=$("#tf2Txt"); if(t1 && novo) t1.focus(); },40);
 }
@@ -3432,14 +3433,15 @@ function evModal(e, pre){
     <div class="df"><label>Data</label><input class="inp" type="date" id="evData" value="${esc(e.data)}"></div>
     <div class="df"><label>Hora</label><input class="inp" type="time" id="evHora" value="${esc(e.hora)}"></div>
     <div class="df"><label>Pessoa</label><select class="inp" id="evPes">${psOpts(e.pessoa)}</select></div>
-    <div class="df"><label>Local ou link</label><input class="inp" id="evLocal" value="${esc(e.local||"")}"></div>
+    <div class="df"><label>Local</label><input class="inp" id="evLocal" value="${esc(e.local||"")}" placeholder="Ex.: sala de reunião, fórum"></div>
+    <div class="df cb-span"><label>Link da reunião ou audiência (Meet, Zoom, Teams, sala virtual)</label><input class="inp" id="evLink" value="${esc(e.link||"")}" placeholder="https://…"></div>
     <div class="df cb-span"><label>Link da pasta do cliente (Drive ou Dropbox)</label><input class="inp" id="evPasta" value="${esc(e.pasta||"")}" placeholder="Cole o link da pasta (opcional)"></div>
     <div class="df cb-span"><label>Observações</label><textarea class="inp" id="evObs" style="min-height:60px">${esc(e.obs||"")}</textarea></div>
   </div>`,
   [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ snap(); S.eventos=evAll().filter(x=>x.id!==e.id); save(); render(); toast("Compromisso excluído.",()=>{ undo(); render(); }); }}]),
    {label:"Cancelar"},{label:novo?"Agendar":"Salvar", cls:"primary", fn:()=>{ const tit=$("#evTit").value.trim(); if(!tit){ $("#evTit").focus(); return false; } if(!$("#evData").value){ toast("Escolha a data."); return false; }
     snap(); if(novo){ e=Object.assign({id:uid(), t:Date.now(), quem:ui.me||"?"}, e); evAll().push(e); }
-    Object.assign(e,{titulo:tit, tipo:$("#evTipo").value, resp:$("#evResp").value, data:$("#evData").value, hora:$("#evHora").value, pessoa:$("#evPes").value, local:$("#evLocal").value.trim(), pasta:$("#evPasta").value.trim(), obs:$("#evObs").value.trim()});
+    Object.assign(e,{titulo:tit, tipo:$("#evTipo").value, resp:$("#evResp").value, data:$("#evData").value, hora:$("#evHora").value, pessoa:$("#evPes").value, local:$("#evLocal").value.trim(), link:agUrl($("#evLink").value), pasta:$("#evPasta").value.trim(), obs:$("#evObs").value.trim()});
     logA((novo?"agendou “":"editou o compromisso “")+tit+"” em "+fmtIso(e.data)); save(); render(); }}], true);
 }
 
@@ -3455,10 +3457,10 @@ function viewPainel(){
   const evSem=semana.reduce((n,d)=>n+evAll().filter(e=>e.data===d && meuFiltro(e.resp)).length,0);
   const ind=(lab,v,go,al)=>`<button class="ind${al&&v?" al":""}" ${go}><span>${lab}</span><b>${v}</b></button>`;
   const aba=ui.pg.aba;
-  const nasc=psAll().filter(p=>p.nasc && p.nasc.slice(5)===h.slice(5));
+  const nasc=agAnivProx(7);
   const alertas = aba==="tarefas" ? (Tatr.length?Tatr.sort((a,b)=>a.data.localeCompare(b.data)).slice(0,8).map(tfLi2).join(""):`<p class="muted pf-v">Nenhuma tarefa atrasada.</p>`)
     : aba==="prazos" ? (P7.length?P7.sort((a,b)=>a.data.localeCompare(b.data)).map(p=>`<div class="pz-li ${pzCls(p)}" data-act="pzEdit" data-id="${p.id}"><span class="pz-d">${esc(fmtIso(p.data))}</span><span class="pz-c"><b>${esc(p.caso)}</b>${p.acao?`<small>${esc(p.acao)}</small>`:""}</span><span class="pz-pill">${esc(pzLabel(p))}</span></div>`).join(""):`<p class="muted pf-v">Nenhum prazo nos próximos 7 dias.</p>`)
-    : (nasc.length?nasc.map(p=>`<div class="pf-li" data-act="psAbrir" data-id="${p.id}"><b>${esc(p.nome)}</b><span class="muted">faz aniversário hoje</span></div>`).join(""):`<p class="muted pf-v">Nenhum aniversário hoje.</p>`);
+    : agAnivHtml();
   const dsel=ui.pg.dia; let ag=calItens(dsel).filter(x=>meuFiltro(x.r)||x.k==="lm");
   const atrasadas = ui.pg.ocultaAtr ? [] : tfLista().filter(t=>!t.done && t.data && t.data<h && meuFiltro(t.resp) && dsel===h);
   const pnM=(typeof pnAll==="function")?pnAll().filter(n=>!n.feito && (pnParaMim(n)||(!meus&&isApprover()))).sort((a,b)=>(pnNovo(b)-pnNovo(a))||(b.t-a.t)):[];
@@ -3820,7 +3822,7 @@ function salaBuscar(){
   SB.rpc("sala_listar_interno",{p_de:de, p_ate:ate}).then(r=>{ ui.sala.busy=false; ui.sala.t=Date.now(); ui.sala.de=de; ui.sala.ate=ate;
     const novo = Array.isArray(r && r.data) ? r.data : []; const mudou = JSON.stringify(novo)!==JSON.stringify(ui.sala.itens); ui.sala.itens=novo; if(mudou && (ui.view==="calendario"||ui.view==="central")) render(); }).catch(()=>{ ui.sala.busy=false; ui.sala.t=Date.now(); });
 }
-function salaCal(iso){ return ui.sala.itens.filter(x=>x.data===iso).map(x=>({k:"sala", id:x.id, h:String(x.inicio).slice(0,5), t:"Sala · "+x.quem+(x.tipo&&x.tipo!=="reuniao"?" ("+({atendimento:"Atendimento",audiencia:"Audiência",evento:"Evento",outro:"Outro"}[x.tipo]||"")+")":""), sub:String(x.inicio).slice(0,5)+"–"+String(x.fim).slice(0,5)+(x.cliente?" · "+x.cliente:"")+(x.assunto?" · "+x.assunto:""), r:x.quem})); }
+function salaCal(iso){ return ui.sala.itens.filter(x=>x.data===iso).map(x=>({k:"sala", id:x.id, h:String(x.inicio).slice(0,5), t:"Sala · "+x.quem+(x.tipo&&x.tipo!=="reuniao"?" ("+({atendimento:"Atendimento",audiencia:"Audiência",evento:"Evento",outro:"Outro"}[x.tipo]||"")+")":""), sub:String(x.inicio).slice(0,5)+"–"+String(x.fim).slice(0,5)+(x.cliente?" · "+x.cliente:"")+(x.assunto?" · "+x.assunto:""), r:x.quem, link:agUrl(x.link)})); }
 function salaRender(){ if(ui.view==="calendario"||ui.view==="central") salaBuscar(); }
 Object.assign(PACT, { salaAbrir:()=>{ window.open("sala.html", "_blank", "noopener"); } });
 (function(){ const st=document.createElement("style"); st.textContent=".k-sala{--k:#3b5b8c}"; document.head.appendChild(st); })();
@@ -4626,7 +4628,7 @@ const AP_LINGS = {
     d:{bg:"#0d1626",s:"#142036",s2:"#1a2840",s3:"#22314c",line:"#28385a",fg:"#e9edf4",muted:"#98a4ba",accent:"#d4b467",a2:"#e3c98b",soft:"#2e2b20"}}
 };
 /* Padrão escolhido pelo Gabriel em 15/10/2026: Monocromo + letra Inter + destaque Grafite, tema escuro */
-const AP_PADRAO = {ling:"mono", cores:"", paleta:"grafite", cor:"", fonte:"neutra", cantos:"ling", menu:"ling", cartoes:"ling", densidade:"ling", sigla:"M&P", nome:"Painel M&P", tema:"escuro", logo:"verde"};
+const AP_PADRAO = {ling:"mono", cores:"", paleta:"grafite", cor:"", fonte:"neutra", cantos:"ling", menu:"ling", cartoes:"ling", densidade:"ling", sigla:"M&P", nome:"Painel M&P", tema:"escuro", logo:"cinza"};
 /* verde do ícone do app (desktop/celular) */
 const AP_VERDE_MP="#0d5c63";
 /* Rascunho: a escolha fica guardada no aparelho (localStorage) e continua valendo ao navegar e ao recarregar, até "Aplicar para todos" ou "Descartar". */
@@ -4676,6 +4678,7 @@ function apCss(a){
   else if(dens==="espacada"){ css+=`.pg-sec,.pf-one,.tf-box{padding:20px 22px!important}.rail .nav{padding:10px 12px!important}`; }
   if(L.extra && !a.cores && menu===L.menu) css+=L.extra;
   if(a.logo==="verde") css+=`.logo:before,.rail .logo:before{background:${AP_VERDE_MP}!important;color:#ffffff!important}`;
+  if(a.logo==="cinza") css+=`.logo:before,.rail .logo:before{background:#b7c3cc!important;color:#171717!important}`;
   const sg=String(a.sigla||"M&P").slice(0,4).replace(/["\\]/g,""), nm=String(a.nome||"Painel M&P").slice(0,24).replace(/["\\]/g,"");
   css+=`.logo:before{content:"${sg}"!important}.logo:after{content:"${nm}"!important}`;
   return css;
@@ -4721,7 +4724,7 @@ function viewAparencia(){
     <section class="pg-sec"><div class="pf-bh"><h3>Espaçamento</h3></div>${opt("densidade",[daL(nomeD[L.dens]),["compacta","Compacto (cabe mais)"],["normal","Normal"],["espacada","Espaçado (mais ar)"]])}</section>
     <section class="pg-sec"><div class="pf-bh"><h3>Menu lateral</h3></div>${opt("menu",[daL(nomeM[L.menu]),["claro","Igual ao fundo"],["escuro","Escuro sempre"],["cor","Na cor de destaque"]])}</section>
     <section class="pg-sec"><div class="pf-bh"><h3>Tema ao abrir</h3></div>${opt("tema",[["escuro","Escuro"],["claro","Claro"]])}<p class="muted" style="font-size:12.5px;margin:8px 0 0">Cada pessoa ainda pode trocar no ☀ do topo; a escolha dela fica guardada no aparelho.</p></section>
-    <section class="pg-sec"><div class="pf-bh"><h3>Nome e sigla</h3></div><div class="cb-form"><div class="df"><label for="apSigla">Sigla (até 4 letras)</label><input class="inp" id="apSigla" value="${esc(a.sigla)}" maxlength="4"></div><div class="df"><label for="apNome">Nome do sistema</label><input class="inp" id="apNome" value="${esc(a.nome)}" maxlength="24"></div></div><div style="margin-top:10px"><label class="muted" style="font-size:13px">Cor do selo M&amp;P</label>${opt("logo",[["verde","Verde M&P (igual ao ícone do app)",`<i class="ap-sw" style="background:${AP_VERDE_MP}"></i>`],["destaque","Na cor de destaque",`<i class="ap-sw" style="background:${apCores(a).l.accent}"></i>`]])}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Aparece no alto do menu. Ex.: “Painel M&amp;P”, “MPM&amp;N”, “Central M&amp;P”.</p></section>
+    <section class="pg-sec"><div class="pf-bh"><h3>Nome e sigla</h3></div><div class="cb-form"><div class="df"><label for="apSigla">Sigla (até 4 letras)</label><input class="inp" id="apSigla" value="${esc(a.sigla)}" maxlength="4"></div><div class="df"><label for="apNome">Nome do sistema</label><input class="inp" id="apNome" value="${esc(a.nome)}" maxlength="24"></div></div><div style="margin-top:10px"><label class="muted" style="font-size:13px">Cor do selo M&amp;P</label>${opt("logo",[["cinza","Cinza claro (novo padrão)",`<i class="ap-sw" style="background:#b7c3cc"></i>`],["verde","Verde M&P (igual ao ícone do app)",`<i class="ap-sw" style="background:${AP_VERDE_MP}"></i>`],["destaque","Na cor de destaque",`<i class="ap-sw" style="background:${apCores(a).l.accent}"></i>`]])}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Aparece no alto do menu. Ex.: “Painel M&amp;P”, “MPM&amp;N”, “Central M&amp;P”.</p></section>
   </div>
   <section class="pg-sec"><div class="pf-bh"><h3>Prévia dos elementos</h3></div><p class="muted" style="font-size:13px;margin:0 0 10px">Só para conferir, não faz nada ao clicar: é como ficam, com a sua escolha, os botões, etiquetas, campo de texto, indicadores do Painel de gestão e uma linha de lista (como em Pessoas ou Atendimentos).</p>
     <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn primary">Botão principal</button><button class="btn">Botão comum</button><span class="tag">etiqueta</span><span class="pz-pill">prazo</span><input class="inp" style="max-width:200px" placeholder="Campo de texto" aria-label="Campo de exemplo"></div>
@@ -4815,12 +4818,12 @@ function smSem(){ if(!ui.smSem) ui.smSem=smRefPadrao(); return ui.smSem; }
 function smRec(sem){ return smAll().find(r=>r.sem===(sem||smSem())) || null; }
 function smItem(id){ for(const r of smAll()){ const it=(r.itens||[]).find(x=>x.id===id); if(it) return {r,it}; } return null; }
 function smNovoRec(sem){ const r={id:uid(), sem, criadoEm:Date.now(), criadoPor:ui.me||"?", planejadaEm:0, foco:["","",""], itens:[], revisao:null}; smAll().push(r); return r; }
-function smNorm(r){ r.foco=Array.isArray(r.foco)?r.foco:["","",""]; while(r.foco.length<3) r.foco.push(""); r.itens=Array.isArray(r.itens)?r.itens:[]; r.itens.forEach(it=>{ if(!SM_BLOCOS[it.bloco]) it.bloco="agenda"; if(!SM_DONOS.includes(it.dono)) it.dono="Gabriel"; if(!["aberto","feito","adiado","cancelado"].includes(it.status)) it.status="aberto"; it.dia=/^\d{4}-\d{2}-\d{2}$/.test(it.dia||"")?it.dia:""; }); return r; }
+function smNorm(r){ r.foco=Array.isArray(r.foco)?r.foco:["","",""]; while(r.foco.length<3) r.foco.push(""); r.itens=Array.isArray(r.itens)?r.itens:[]; r.itens.forEach(it=>{ if(!SM_BLOCOS[it.bloco]) it.bloco="agenda"; if(!SM_DONOS.includes(it.dono)) it.dono="Gabriel"; if(!["aberto","feito","adiado","cancelado"].includes(it.status)) it.status="aberto"; it.dia=/^\d{4}-\d{2}-\d{2}$/.test(it.dia||"")?it.dia:""; it.fatal=/^\d{4}-\d{2}-\d{2}$/.test(it.fatal||"")?it.fatal:""; if(!["","baixa","media","alta"].includes(it.prio||"")) it.prio=""; it.prio=it.prio||""; }); return r; }
 /* Sincroniza com as tarefas: tarefa concluída marca o item; item marcado conclui a tarefa. */
 function smSync(r){ (r.itens||[]).forEach(it=>{ if(!it.tarefaId) return; const t=tfAll().find(x=>x.id===it.tarefaId); if(!t) return; if(t.done && it.status==="aberto"){ it.status="feito"; it.feitoEm=t.doneEm||Date.now(); } }); }
 function smTarefa(r, it){
   if(it.tarefaId && tfAll().some(t=>t.id===it.tarefaId)) return null;
-  const t={id:uid(), t:Date.now(), quem:ui.me||"?", txt:it.texto, area:"05", resp:it.dono, dataComp:it.dia||"", data:"", pessoa:"", caso:"", status:"pendente", done:false, obs:"Plano da semana de "+smRotulo(r.sem)+" · "+(SM_BLOCOS[it.bloco]||SM_BLOCOS.agenda).n+(it.obs?"\n"+it.obs:"")};
+  const t={id:uid(), t:Date.now(), quem:ui.me||"?", txt:it.texto, area:"05", resp:it.dono, dataComp:it.dia||"", data:it.fatal||"", prio:it.prio||"", pessoa:"", caso:"", status:"pendente", done:false, obs:"Plano da semana de "+smRotulo(r.sem)+" · "+(SM_BLOCOS[it.bloco]||SM_BLOCOS.agenda).n+(it.obs?"\n"+it.obs:"")};
   tfAll().push(t); it.tarefaId=t.id; return t;
 }
 function smAutoPrazos(sem){
@@ -4834,7 +4837,7 @@ function smAutoPrazos(sem){
 function smJaPlanejado(r, k, id){ return (r.itens||[]).some(it=>it.ref===k+":"+id); }
 function smLiItem(it, r){
   const feito=it.status==="feito", adiado=it.status==="adiado"||it.status==="cancelado";
-  return `<div class="sm-it${feito?" done":""}${adiado?" off":""}" data-smid="${it.id}"><input type="checkbox" data-act="smFeito" data-id="${it.id}" ${feito?"checked":""} ${adiado?"disabled":""} aria-label="Concluir"><span class="sm-tx" data-act="smEditar" data-id="${it.id}"><b>${esc(it.texto)}</b><small>${it.dia?smDiaRot(it.dia)+(it.hora?" "+it.hora:"")+" · ":""}${esc((SM_BLOCOS[it.bloco]||{}).n||"")}${it.origem?" · "+esc(it.origem):""}${it.tarefaId?" · tarefa criada":""}</small></span>${respInic(it.dono)}</div>`;
+  return `<div class="sm-it${feito?" done":""}${adiado?" off":""}" data-smid="${it.id}"><input type="checkbox" data-act="smFeito" data-id="${it.id}" ${feito?"checked":""} ${adiado?"disabled":""} aria-label="Concluir"><span class="sm-tx" data-act="smEditar" data-id="${it.id}"><b>${typeof agPrioDot==="function"?agPrioDot(it.prio):""}${esc(it.texto)}</b><small>${it.fatal?`<span class="ag-fatal${!feito&&diasAte(it.fatal)<=2?" perto":""}">fatal ${esc(fmtIso(it.fatal))}</span> · `:""}${it.dia?smDiaRot(it.dia)+(it.hora?" "+it.hora:"")+" · ":""}${esc((SM_BLOCOS[it.bloco]||{}).n||"")}${it.origem?" · "+esc(it.origem):""}${it.tarefaId?" · tarefa criada":""}</small></span>${respInic(it.dono)}</div>`;
 }
 function smLiMini(it){ const feito=it.status==="feito"; return `<div class="sm-mini${feito?" done":""}" data-act="smEditar" data-id="${it.id}" title="${esc((SM_BLOCOS[it.bloco]||{}).n||"")}"><span>${it.hora?esc(it.hora)+" ":""}${esc(it.texto)}</span>${respInic(it.dono)}</div>`; }
 function smPautaChips(k, r){ const P=smProc().pautas[k]||[]; if(!P.length) return ""; return `<div class="sm-pautas"><small class="muted">Pauta fixa:</small>${P.map(p=>{ const ja=(r&&r.itens||[]).some(it=>it.pauta===p.id); return `<button class="sm-chip${ja?" on":""}" data-act="smPautaAdd" data-k="${k}" data-id="${p.id}" ${ja?"disabled":""} title="${ja?"já está no plano":"adicionar ao plano"}">${ja?"✓ ":"+ "}${esc(p.texto)}</button>`; }).join("")}</div>`; }
@@ -4885,7 +4888,7 @@ function viewSemana(){
   }
   const foco=`<section class="pg-sec sm-sec"><div class="pf-bh"><h3>Foco da semana</h3><span class="muted" style="font-size:12.5px">as 3 coisas que, feitas, fazem a semana valer</span></div><div class="sm-foco">${[0,1,2].map(i=>`<label><span>${i+1}</span><input class="inp" data-smfoco="${i}" value="${esc(r.foco[i]||"")}" placeholder="${["Ex.: fechar o contrato da holding","Ex.: publicar a v5 do Mapa","Ex.: zerar retornos atrasados"][i]}"></label>`).join("")}</div></section>`;
   const rev = fech ? `<section class="pg-sec sm-sec sm-rev"><div class="pf-bh"><h3>Revisão da semana</h3></div><div class="pg-2"><div><b>Funcionou</b><p>${esc(r.revisao.bom||"—")}</p></div><div><b>Travou</b><p>${esc(r.revisao.travou||"—")}</p></div></div>${(r.revisao.licoes||[]).length?`<b>Lições</b><ul class="sm-ul">${r.revisao.licoes.map(l=>`<li>${esc(l.texto)}${l.virouRegra?' <span class="tag ok">virou regra</span>':""}</li>`).join("")}</ul>`:""}${r.revisao.numeros?`<details class="more"><summary>Números da semana</summary><pre class="sm-pre">${esc(r.revisao.numeros)}</pre></details>`:""}</section>` : "";
-  return head+foco+smGrade(r)+`<div class="pg-2">${smBloco("prazos",r)}${smBloco("agenda",r)}</div><div class="pg-2">${smBloco("projeto",r)}${smBloco("whats",r)}</div>${smBloco("equipe",r)}${smPorPessoa(r)}${rev}${smProcHtml()}`;
+  return head+foco+smGrade(r)+`<div class="pg-2">${smBloco("prazos",r)}${smBloco("agenda",r)}</div><div class="pg-2">${smBloco("projeto",r)}${smBloco("whats",r)}</div>${smBloco("equipe",r)}${typeof agMetasHtml==="function"?agMetasHtml(r):""}${smPorPessoa(r)}${rev}${smProcHtml()}`;
 }
 function smItemModal(it, pre){
   const r=smRec(); if(!r) return; const novo=!it; it = it || Object.assign({texto:"", bloco:"agenda", dono:"Gabriel", dia:"", hora:"", obs:""}, pre||{});
@@ -4896,6 +4899,8 @@ function smItemModal(it, pre){
     <div class="df"><label>Quem faz</label><select class="inp" id="smDn">${SM_DONOS.map(d=>`<option ${it.dono===d?"selected":""}>${d}</option>`).join("")}</select></div>
     <div class="df"><label>Dia</label><select class="inp" id="smDi"><option value="">Sem dia fixo</option>${dias.map(d=>`<option value="${d}" ${it.dia===d?"selected":""}>${smDiaRot(d)}</option>`).join("")}</select></div>
     <div class="df"><label>Hora (opcional)</label><input class="inp" type="time" id="smHr" value="${esc(it.hora||"")}"></div>
+    <div class="df"><label>Data fatal (se houver)</label><input class="inp" type="date" id="smFt" value="${esc(it.fatal||"")}"></div>
+    <div class="df"><label>Prioridade</label><select class="inp" id="smPr">${[["","Normal"],["alta","Alta"],["media","Média"],["baixa","Baixa"]].map(([k,n])=>`<option value="${k}" ${(it.prio||"")===k?"selected":""}>${n}</option>`).join("")}</select></div>
     <div class="df cb-span"><label>Detalhe (sem dados sensíveis do cliente)</label><textarea class="inp" id="smOb" style="min-height:56px">${esc(it.obs||"")}</textarea></div>
     <div class="cb-span"><label class="sm-ck"><input type="checkbox" id="smCt" ${it.tarefaId?"checked disabled":""}> Criar tarefa para quem faz (aparece em Tarefas e no Meu dia da pessoa)</label></div>
   </div>`,
@@ -4904,8 +4909,8 @@ function smItemModal(it, pre){
    {label:"Voltar"},{label:novo?"Adicionar":"Salvar", cls:"primary", fn:()=>{
     const v=$("#smTx").value.trim(); if(!v){ $("#smTx").focus(); return false; }
     snap(); if(novo){ it=Object.assign({id:uid(), t:Date.now(), quem:ui.me||"?", status:"aberto", tarefaId:"", origem:"", ref:it.ref||"", pauta:it.pauta||""}, it); r.itens.push(it); }
-    Object.assign(it,{texto:v, bloco:$("#smBl").value, dono:$("#smDn").value, dia:$("#smDi").value, hora:$("#smHr").value, obs:$("#smOb").value.trim()});
-    const tf=tfAll().find(x=>x.id===it.tarefaId); if(tf){ tf.txt=v; tf.resp=it.dono; tf.dataComp=it.dia||""; }
+    Object.assign(it,{texto:v, bloco:$("#smBl").value, dono:$("#smDn").value, dia:$("#smDi").value, hora:$("#smHr").value, fatal:$("#smFt").value, prio:$("#smPr").value, obs:$("#smOb").value.trim()});
+    const tf=tfAll().find(x=>x.id===it.tarefaId); if(tf){ tf.txt=v; tf.resp=it.dono; tf.dataComp=it.dia||""; tf.data=it.fatal||""; tf.prio=it.prio||""; }
     else if($("#smCt").checked){ smTarefa(r,it); }
     logA((novo?"planejou na semana: ":"ajustou no plano da semana: ")+v+" ("+it.dono+")"); save(); render(); }}], true);
   setTimeout(()=>{ const t=$("#smTx"); if(t) t.focus(); },40);
@@ -4926,7 +4931,7 @@ function smPlanejarModal(){
 }
 function smFecharModal(){
   const r=smRec(); if(!r) return; const ab=r.itens.filter(i=>i.status==="aberto"), fe=r.itens.filter(i=>i.status==="feito");
-  const num=(typeof resumoSemana==="function"?resumoSemana():"")+"\nPlano: "+fe.length+" feitos · "+ab.length+" abertos · "+r.itens.filter(i=>i.status==="cancelado").length+" cancelados"+(r.foco.some(Boolean)?"\nFoco: "+r.foco.filter(Boolean).join(" | "):"");
+  const num=(typeof resumoSemana==="function"?resumoSemana():"")+"\nPlano: "+fe.length+" feitos · "+ab.length+" abertos · "+r.itens.filter(i=>i.status==="cancelado").length+" cancelados"+(r.foco.some(Boolean)?"\nFoco: "+r.foco.filter(Boolean).join(" | "):"")+(typeof agMetasTexto==="function"?agMetasTexto(r):"");
   modal("Fechar a semana de "+smRotulo(r.sem), `<div class="cb-form">
     <div class="df cb-span"><label>Números</label><pre class="sm-pre">${esc(num)}</pre></div>
     <div class="df"><label>O que funcionou</label><textarea class="inp" id="smRb" style="min-height:70px" placeholder="Ex.: bloco de decisão evitou interrupções"></textarea></div>
@@ -5037,6 +5042,350 @@ function smRender(){
  document.head.appendChild(st); })();
 const smRenderBase = render;
 render = function(){ smRenderBase(); smRender(); };
+/* ================= AGENDA E EXECUÇÃO (v5): o modelo do Juridiq adaptado ao M&P ================= */
+/* Fase A: duas datas, calendário Dia/Semana/Mês, filtros, prioridade e idade. Fase B: recorrentes, modelos, quem fez, metas e revisão de pendências antigas. */
+/* Itens da Ellen: ordem A-Z, aniversários com mensagem, funil sem Retorno/Consulta, link de reunião. */
+const AG_PRIO = {alta:{n:"Alta", o:0}, media:{n:"Média", o:1}, "":{n:"Normal", o:2}, baixa:{n:"Baixa", o:3}};
+const AG_TIPOS = [["ev","Compromissos"],["tf","Tarefas"],["pz","Prazos"],["lm","Lembretes"],["cb","Cobranças"],["adm","Administrativo"],["sala","Sala"],["aniv","Aniversários"]];
+const AG_PESSOAS = ["Gabriel","Alan","Evaldo","Ellen"];
+const AG_DSEM = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const AG_KEY = "mp-agenda-prefs";
+const AG_ANIV_PADRAO = "Olá, {primeiroNome}! Hoje é o seu dia, e toda a equipe do M&P deseja um feliz aniversário, com muita saúde e muitas conquistas. Um grande abraço!";
+
+function agCmpNome(a,b){ return String(a||"").localeCompare(String(b||""),"pt-BR",{sensitivity:"base"}); }
+function agPrioDot(p){ return p && AG_PRIO[p] ? `<i class="ag-pd ag-p-${p}" title="Prioridade ${AG_PRIO[p].n}"></i>` : ""; }
+function agIdade(t){ const ref=t && t.t; if(!ref) return null; return Math.max(0, Math.floor((Date.now()-ref)/864e5)); }
+function agUrl(u){ u=String(u||"").trim(); return /^https?:\/\/\S+$/i.test(u) ? u : ""; }
+function agDataHora(ms){ if(!ms) return ""; const d=new Date(ms); return pad2(d.getDate())+"/"+pad2(d.getMonth()+1)+" "+pad2(d.getHours())+":"+pad2(d.getMinutes()); }
+function agSoma(iso, n){ const d=lmIsoDate(iso); d.setDate(d.getDate()+n); return isoDia(d); }
+function agFeriados(){ const F=Array.isArray(S.feriados)?S.feriados:[]; return F.map(f=>typeof f==="string"?f:(f&&f.data)||"").filter(Boolean); }
+function agUtil(iso){ const w=lmIsoDate(iso).getDay(); return w!==0 && w!==6 && !agFeriados().includes(iso); }
+function agUteis(iso, n){ let d=iso; let k=0; while(k<n){ d=agSoma(d,1); if(agUtil(d)) k++; } return d; }
+function agTfOrdem(a,b){ return (AG_PRIO[a.prio||""]||AG_PRIO[""]).o-(AG_PRIO[b.prio||""]||AG_PRIO[""]).o || (a.data||a.dataComp||"9").localeCompare(b.data||b.dataComp||"9") || (a.dataComp||"9").localeCompare(b.dataComp||"9"); }
+
+/* ---------- preferências do calendário (só neste aparelho) ---------- */
+function agPrefs(){ if(ui.agP) return ui.agP; let p={}; try{ p=JSON.parse(localStorage.getItem(AG_KEY)||"{}")||{}; }catch(e){ p={}; } ui.agP=Object.assign({modo:"mes", pessoa:"", tipos:{}, ocultaConc:true, fds:true}, p); if(!ui.agP.tipos||typeof ui.agP.tipos!=="object") ui.agP.tipos={}; return ui.agP; }
+function agPrefsSalvar(){ try{ localStorage.setItem(AG_KEY, JSON.stringify(ui.agP||{})); }catch(e){} }
+
+/* ---------- Ellen: listas de pessoas sempre em ordem alfabética ---------- */
+function psOpts(sel){ return `<option value="">—</option>`+psAll().slice().sort((a,b)=>agCmpNome(a.nome,b.nome)).map(p=>`<option value="${p.id}" ${sel===p.id?"selected":""}>${esc(p.nome)}</option>`).join(""); }
+
+/* ---------- tarefas arquivadas saem das listas (continuam no banco) ---------- */
+function tfLista(){ return tfAll().filter(t=>!t.arq).map(tfN); }
+
+/* ---------- Ellen: aniversários com mensagem pronta ---------- */
+function agAnivModelo(){ return (S.msgModelos && S.msgModelos.aniversario) || AG_ANIV_PADRAO; }
+function agPrimeiro(n){ return String(n||"").trim().split(/\s+/)[0] || ""; }
+function agAnivTexto(p){ return agAnivModelo().replace(/\{primeiroNome\}/g, agPrimeiro(p.nome)).replace(/\{nome\}/g, p.nome||""); }
+function agAnivProx(dias){ const L=[]; const h=isoDia(); for(let i=0;i<=dias;i++){ const iso=agSoma(h,i); const md=iso.slice(5); psAll().filter(p=>p.nasc && String(p.nasc).slice(5)===md).sort((a,b)=>agCmpNome(a.nome,b.nome)).forEach(p=>L.push({p, iso, em:i})); } return L; }
+function agWa(tel){ let n=String(tel||"").replace(/\D/g,""); if(!n) return ""; if(n.length<=11) n="55"+n; return n; }
+function agAnivHtml(){
+  const L=agAnivProx(7);
+  const lista = L.length ? L.map(x=>`<div class="ag-aniv"><span class="ag-aniv-n" data-act="psAbrir" data-id="${x.p.id}"><b>${esc(x.p.nome)}</b> <span class="muted">${x.em===0?"faz aniversário hoje":x.em===1?"amanhã":AG_DSEM[lmIsoDate(x.iso).getDay()]+" "+esc(fmtIso(x.iso))}</span></span><span class="grow"></span><button class="btn sm" data-act="agAnivCopiar" data-id="${x.p.id}">Copiar parabéns</button><button class="btn sm" data-act="agAnivWa" data-id="${x.p.id}" title="${x.p.tel?"Abre a conversa com o número da ficha":"Sem telefone na ficha: abre o WhatsApp para escolher o contato"}">WhatsApp</button></div>`).join("") : `<p class="muted pf-v">Nenhum aniversário hoje nem nos próximos 7 dias.</p>`;
+  return lista+`<button class="lnk" data-act="agAnivModelo" style="margin-top:6px">Editar a mensagem de parabéns</button>`;
+}
+
+/* ---------- Ellen: tirar do funil as colunas Retorno e Consulta (o controle fica na agenda) ---------- */
+function agMigrarFunil(){
+  if(S.agFunilV5 || !souMasterReal()) return false;
+  const F=funil(); const alvo=F.filter(c=>/^\s*\d*\s*\.?\s*(retorno|consulta)/i.test(c.nome||""));
+  if(!alvo.length){ S.agFunilV5=1; return true; }
+  const usada=c=>csAll().some(k=>(k.coluna||F[0].id)===c.id);
+  const vazias=alvo.filter(c=>!usada(c)), cheias=alvo.filter(usada);
+  if(vazias.length){ S.funil=F.filter(c=>!vazias.includes(c)); logA("tirou do funil as colunas "+vazias.map(c=>"“"+c.nome+"”").join(" e ")+" (o controle passa a ser pela agenda)"); }
+  if(cheias.length){ if(!ui.agFunilAviso){ ui.agFunilAviso=1; setTimeout(()=>toast("A coluna “"+cheias[0].nome+"” ainda tem casos. Mova os cartões e apague a coluna em Atendimentos › Colunas."),400); } return vazias.length>0; }
+  S.agFunilV5=1; return true;
+}
+
+/* ---------- Fase B: tarefas recorrentes ---------- */
+function agRecAll(){ if(!Array.isArray(S.recorrentes)) S.recorrentes=[]; return S.recorrentes; }
+function agRecRotulo(r){ return r.freq==="uteis" ? "todo dia útil" : r.freq==="mensal" ? "todo dia "+r.dia+" do mês" : "toda "+["domingo","segunda","terça","quarta","quinta","sexta","sábado"][r.dow||0]; }
+function agRecVence(r, iso){ const d=lmIsoDate(iso); if(r.freq==="uteis") return agUtil(iso); if(r.freq==="mensal"){ const ult=new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); return d.getDate()===Math.min(+r.dia||1, ult); } return d.getDay()===(+r.dow||0); }
+function agRecGerar(){
+  const h=isoDia(); let n=0;
+  agRecAll().filter(r=>r.ativo!==false && r.txt).forEach(r=>{
+    const hz = r.freq==="uteis" ? 0 : 6;
+    for(let i=0;i<=hz;i++){ const iso=agSoma(h,i); if(r.desde && iso<r.desde) continue; if(!agRecVence(r, iso)) continue;
+      if(tfAll().some(t=>t.recId===r.id && t.recIso===iso)) continue;
+      tfAll().push({id:uid(), t:Date.now(), quem:"recorrente", txt:r.txt, area:r.area||"", resp:r.resp||"Gabriel", prio:r.prio||"", dataComp:iso, data:"", pessoa:"", caso:"", status:"pendente", done:false, obs:"Gerada automaticamente: "+agRecRotulo(r)+".", recId:r.id, recIso:iso}); n++; }
+  });
+  if(n) logA("o sistema criou "+n+" tarefa(s) recorrente(s)");
+  return n;
+}
+const AG_REC_SUGESTOES = [
+  {txt:"Resumo da semana: o que fiz, o que travou e sugestões", resp:"Ellen", freq:"semanal", dow:5, dia:1, area:"", prio:""},
+  {txt:"Régua de cobrança: conferir parcelas vencidas e enviar as mensagens", resp:"Ellen", freq:"mensal", dow:1, dia:5, area:"", prio:"media"},
+  {txt:"Conferir intimações no Juridiq e lançar os prazos no Mapa", resp:"Ellen", freq:"uteis", dow:1, dia:1, area:"", prio:"alta"}
+];
+function agRecList(){
+  const L=agRecAll(); const sug=AG_REC_SUGESTOES.filter(s=>!L.some(r=>r.txt===s.txt));
+  modal("Tarefas recorrentes", `<p class="muted" style="margin:0 0 10px">O sistema cria a tarefa sozinho, com o responsável e a data de fazer. Semanais e mensais aparecem com até 7 dias de antecedência; as de todo dia útil, no próprio dia.</p>
+    ${L.length?L.map(r=>`<div class="ag-rl${r.ativo===false?" off":""}"><div class="ag-rl-t"><b>${agPrioDot(r.prio)}${esc(r.txt)}</b><small>${esc(agRecRotulo(r))} · ${esc(r.resp||"")}${r.ativo===false?" · pausada":""}</small></div><button class="btn sm" data-act="agRecPausa" data-id="${r.id}">${r.ativo===false?"Retomar":"Pausar"}</button><button class="btn sm" data-act="agRecEdit" data-id="${r.id}">Editar</button></div>`).join(""):`<p class="muted">Nenhuma recorrente ainda.</p>`}
+    ${sug.length?`<div class="ag-sug"><b>Sugestões</b>${sug.map((s,i)=>`<div class="ag-rl"><div class="ag-rl-t"><b>${esc(s.txt)}</b><small>${esc(agRecRotulo(s))} · ${esc(s.resp)}</small></div><button class="btn sm" data-act="agRecSug" data-i="${AG_REC_SUGESTOES.indexOf(s)}">Adicionar</button></div>`).join("")}</div>`:""}`,
+    [{label:"Fechar"},{label:"Nova recorrente", cls:"primary", fn:()=>{ setTimeout(()=>agRecModal(null),0); }}], true);
+}
+function agRecModal(r){
+  const novo=!r; r=r||{txt:"", resp:ui.me||"Gabriel", freq:"semanal", dow:1, dia:1, area:"", prio:"", ativo:true};
+  modal(novo?"Nova tarefa recorrente":"Tarefa recorrente", `<div class="cb-form">
+    <div class="df cb-span"><label>Tarefa</label><input class="inp" id="agRTx" value="${esc(r.txt)}" placeholder="Ex.: Conferir a agenda da sala da semana"></div>
+    <div class="df"><label>Responsável</label><select class="inp" id="agRRe">${TF_RESP.map(x=>`<option ${r.resp===x?"selected":""}>${x}</option>`).join("")}</select></div>
+    <div class="df"><label>Repetir</label><select class="inp" id="agRFq"><option value="uteis" ${r.freq==="uteis"?"selected":""}>Todo dia útil</option><option value="semanal" ${r.freq==="semanal"?"selected":""}>Toda semana</option><option value="mensal" ${r.freq==="mensal"?"selected":""}>Todo mês</option></select></div>
+    <div class="df"><label>Dia da semana (se semanal)</label><select class="inp" id="agRDw">${["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"].map((n,i)=>`<option value="${i}" ${(+r.dow)===i?"selected":""}>${n}</option>`).join("")}</select></div>
+    <div class="df"><label>Dia do mês (se mensal)</label><input class="inp" type="number" min="1" max="31" id="agRDm" value="${esc(String(r.dia||1))}"></div>
+    <div class="df"><label>Prioridade</label><select class="inp" id="agRPr">${[["","Normal"],["alta","Alta"],["media","Média"],["baixa","Baixa"]].map(([k,n])=>`<option value="${k}" ${(r.prio||"")===k?"selected":""}>${n}</option>`).join("")}</select></div>
+    <div class="df"><label>Área</label><select class="inp" id="agRAr"><option value="">—</option>${Object.entries(TF_AREAS).map(([k,v])=>`<option value="${k}" ${r.area===k?"selected":""}>${k} · ${esc(v)}</option>`).join("")}</select></div>
+  </div>`,
+  [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ snap(); S.recorrentes=agRecAll().filter(x=>x.id!==r.id); logA("apagou a recorrente “"+r.txt+"”"); save(); render(); toast("Recorrente apagada. As tarefas já criadas continuam.",()=>{ undo(); render(); }); }}]),
+   {label:"Cancelar"},{label:novo?"Criar":"Salvar", cls:"primary", fn:()=>{
+    const v=$("#agRTx").value.trim(); if(!v){ $("#agRTx").focus(); return false; }
+    snap(); if(novo){ r=Object.assign({id:uid(), t:Date.now(), quem:ui.me||"?", desde:isoDia(), ativo:true}, r); agRecAll().push(r); }
+    Object.assign(r,{txt:v, resp:$("#agRRe").value, freq:$("#agRFq").value, dow:+$("#agRDw").value, dia:Math.max(1,Math.min(31,+$("#agRDm").value||1)), prio:$("#agRPr").value, area:$("#agRAr").value});
+    logA((novo?"criou":"editou")+" a recorrente “"+v+"” ("+agRecRotulo(r)+")"); const n=agRecGerar(); save(); render(); toast(n?"Recorrente salva. "+n+" tarefa(s) já criada(s).":"Recorrente salva."); }}], true);
+}
+
+/* ---------- Fase B: modelos de tarefa (pacotes com responsável e prazo em dias úteis) ---------- */
+const AG_MOD_SEED = [{nome:"Consulta → Estudo de viabilidade", desc:"Data base = dia em que os documentos ficaram completos (ou o dia da consulta).", itens:[
+  {txt:"Enviar a lista de documentos pelo WhatsApp", resp:"Ellen", uteis:0, prio:"alta"},
+  {txt:"Mensagem ao cliente: recebemos, retorno até a data combinada", resp:"Ellen", uteis:0, prio:""},
+  {txt:"Cobrar documentos que não chegaram", resp:"Ellen", uteis:2, prio:""},
+  {txt:"Análise de viabilidade", resp:"Alan", uteis:5, prio:"alta"},
+  {txt:"Reunião de retorno: apresentar o estudo de viabilidade", resp:"Gabriel", uteis:7, prio:"alta"}]}];
+function agModAll(){ if(!Array.isArray(S.tfModelos)){ S.tfModelos=AG_MOD_SEED.map(m=>Object.assign({id:uid(), t:Date.now()}, JSON.parse(JSON.stringify(m)))); } return S.tfModelos; }
+function agModTexto(m){ return (m.itens||[]).map(i=>[i.txt, i.resp, i.uteis, AG_PRIO[i.prio||""]?AG_PRIO[i.prio||""].n:"Normal"].join(" | ")).join("\n"); }
+function agModParse(txt){ const pr={alta:"alta","média":"media",media:"media",baixa:"baixa",normal:""}; return String(txt||"").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{ const p=l.split("|").map(s=>s.trim()); const resp=TF_RESP.find(x=>x.toLowerCase()===(p[1]||"").toLowerCase())||"Gabriel"; return {txt:p[0], resp, uteis:Math.max(0,parseInt(p[2],10)||0), prio:pr[(p[3]||"").toLowerCase()]||""}; }).filter(i=>i.txt); }
+function agModList(){
+  const L=agModAll();
+  modal("Modelos de tarefa", `<p class="muted" style="margin:0 0 10px">Um modelo cria várias tarefas de uma vez, cada uma com responsável e data contada em dias úteis a partir da data base.</p>
+    ${L.length?L.map(m=>`<div class="ag-rl"><div class="ag-rl-t"><b>${esc(m.nome)}</b><small>${(m.itens||[]).length} tarefa(s)${m.desc?" · "+esc(m.desc):""}</small></div><button class="btn sm primary" data-act="agModAplicar" data-id="${m.id}">Usar</button><button class="btn sm" data-act="agModEdit" data-id="${m.id}">Editar</button></div>`).join(""):`<p class="muted">Nenhum modelo.</p>`}`,
+    [{label:"Fechar"},{label:"Novo modelo", cls:"primary", fn:()=>{ setTimeout(()=>agModEdit(null),0); }}], true);
+}
+function agModEdit(m){
+  const novo=!m; m=m||{nome:"", desc:"", itens:[]};
+  modal(novo?"Novo modelo":"Modelo", `<div class="cb-form">
+    <div class="df cb-span"><label>Nome</label><input class="inp" id="agMNm" value="${esc(m.nome)}" placeholder="Ex.: Contrato: briefing → minuta → revisão"></div>
+    <div class="df cb-span"><label>Quando usar (opcional)</label><input class="inp" id="agMDs" value="${esc(m.desc||"")}"></div>
+    <div class="df cb-span"><label>Tarefas, uma por linha: tarefa | responsável | dias úteis | prioridade</label><textarea class="inp" id="agMIt" style="min-height:150px;font-family:inherit">${esc(agModTexto(m))}</textarea></div>
+    <p class="muted cb-span" style="font-size:12.5px;margin:0">Exemplo: <code>Minuta do contrato | Alan | 3 | Alta</code>. Responsáveis: ${TF_RESP.join(", ")}. Dias úteis: 0 = na própria data base.</p>
+  </div>`,
+  [...(novo?[]:[{label:"Excluir", cls:"danger", fn:()=>{ snap(); S.tfModelos=agModAll().filter(x=>x.id!==m.id); save(); render(); toast("Modelo apagado.",()=>{ undo(); render(); }); }}]),
+   {label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{
+    const nm=$("#agMNm").value.trim(); const it=agModParse($("#agMIt").value); if(!nm){ $("#agMNm").focus(); return false; } if(!it.length){ toast("Escreva ao menos uma tarefa."); return false; }
+    snap(); if(novo){ m=Object.assign({id:uid(), t:Date.now()}, m); agModAll().push(m); } Object.assign(m,{nome:nm, desc:$("#agMDs").value.trim(), itens:it}); logA((novo?"criou":"editou")+" o modelo de tarefas “"+nm+"”"); save(); render(); setTimeout(agModList,0); }}], true);
+}
+function agModAplicar(m){
+  const prev=()=>{ const b=($("#agMBase")||{}).value||isoDia(); const box=$("#agMPrev"); if(box) box.innerHTML=(m.itens||[]).map(i=>`<li><b>${esc(fmtIso(agUteis(b,i.uteis)))}</b> · ${esc(i.txt)} <span class="muted">(${esc(i.resp)})</span></li>`).join(""); };
+  modal("Usar o modelo “"+m.nome+"”", `<div class="cb-form">
+    <div class="df"><label>Data base</label><input class="inp" type="date" id="agMBase" value="${isoDia()}"></div>
+    <div class="df"><label>Pessoa (cliente)</label><select class="inp" id="agMPes">${psOpts("")}</select></div>
+    <div class="df cb-span"><label>Caso (opcional)</label><select class="inp" id="agMCaso">${csOpts("")}</select></div>
+    <div class="cb-span"><b style="font-size:13px">Tarefas que serão criadas</b><ul class="sm-ul" id="agMPrev"></ul></div>
+  </div>`,
+  [{label:"Cancelar"},{label:"Criar "+(m.itens||[]).length+" tarefa(s)", cls:"primary", fn:()=>{
+    const b=$("#agMBase").value||isoDia(); const pes=$("#agMPes").value, caso=$("#agMCaso").value; snap();
+    (m.itens||[]).forEach(i=>tfAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:i.txt, area:"", resp:i.resp, prio:i.prio||"", dataComp:agUteis(b,i.uteis), data:"", pessoa:pes, caso, status:"pendente", done:false, obs:"Modelo “"+m.nome+"” · data base "+fmtIsoAno(b), modeloId:m.id}));
+    logA("usou o modelo “"+m.nome+"” ("+(m.itens||[]).length+" tarefas"+(pes?" para "+psNome(pes):"")+")"); save(); render(); toast((m.itens||[]).length+" tarefa(s) criada(s) com as datas em dias úteis."); }}], true);
+  setTimeout(()=>{ prev(); const i=$("#agMBase"); if(i) i.addEventListener("input", prev); },30);
+}
+
+/* ---------- Fase B: revisar pendências antigas (concluir, reagendar ou arquivar) ---------- */
+function agAntigas(){ return tfLista().filter(t=>!t.done && ((agIdade(t)||0)>30 || (t.data && diasAte(t.data)<-7) || (!t.data && t.dataComp && diasAte(t.dataComp)<-7))).sort((a,b)=>(a.t||0)-(b.t||0)); }
+function agRevisar(){
+  const L=agAntigas(); ui.agRev=ui.agRev||{feitos:0, pulos:[]};
+  const fila=L.filter(t=>!ui.agRev.pulos.includes(t.id)); const t=fila[0];
+  if(!t){ const n=ui.agRev.feitos; ui.agRev=null; closeModal(); render(); toast(n?"Revisão concluída: "+n+" tarefa(s) resolvida(s).":"Nada mais para revisar agora."); return; }
+  const id=agIdade(t); const sug=agUteis(isoDia(),5);
+  const fim=()=>{ ui.agRev.feitos++; save(); setTimeout(agRevisar,0); };
+  modal("Revisar pendências antigas · faltam "+fila.length, `<div class="ag-rev"><b style="font-size:15px">${agPrioDot(t.prio)}${esc(t.txt)}</b>
+    <p class="muted" style="margin:6px 0">Responsável: <b>${esc(t.resp||"—")}</b> · criada por ${esc(t.quem||"?")} há ${id===null?"?":id} dia(s)${t.dataComp?" · fazer: "+esc(fmtIsoAno(t.dataComp)):""}${t.data?" · fatal: "+esc(fmtIsoAno(t.data)):""}${t.pessoa?" · "+esc(psNome(t.pessoa)):""}</p>
+    ${t.obs?`<p style="margin:0 0 8px;font-size:13px;white-space:pre-wrap">${esc(t.obs)}</p>`:""}
+    <div class="df"><label>Reagendar para (data de fazer)</label><input class="inp" type="date" id="agRvD" value="${sug}"></div>
+    <p class="muted" style="font-size:12.5px;margin:6px 0 0">Arquivar tira a tarefa das listas sem apagar. Dá para restaurar em Tarefas › Arquivadas.</p></div>`,
+  [{label:"Parar"},{label:"Pular", fn:()=>{ ui.agRev.pulos.push(t.id); setTimeout(agRevisar,0); }},
+   {label:"Arquivar", fn:()=>{ snap(); t.arq=true; t.arqEm=Date.now(); t.arqBy=ui.me||"?"; logA("arquivou a tarefa antiga “"+t.txt+"”"); fim(); }},
+   {label:"Reagendar", fn:()=>{ const d=$("#agRvD").value; if(!d){ toast("Escolha a data."); return false; } snap(); t.dataComp=d; t.t=Date.now(); logA("reagendou a tarefa “"+t.txt+"” para "+fmtIso(d)); fim(); }},
+   {label:"Concluir", cls:"primary", fn:()=>{ snap(); tfN(t); t.status="concluida"; t.done=true; t.doneEm=Date.now(); t.doneBy=ui.me||"?"; logA("concluiu a tarefa “"+t.txt+"” na revisão"); fim(); }}], true);
+}
+function agArquivadas(){
+  const L=tfAll().filter(t=>t.arq).sort((a,b)=>(b.arqEm||0)-(a.arqEm||0));
+  modal("Tarefas arquivadas ("+L.length+")", L.length?L.slice(0,80).map(t=>`<div class="ag-rl"><div class="ag-rl-t"><b>${esc(t.txt)}</b><small>${esc(t.resp||"")} · arquivada por ${esc(t.arqBy||"?")} em ${esc(agDataHora(t.arqEm))}</small></div><button class="btn sm" data-act="agDesarq" data-id="${t.id}">Restaurar</button></div>`).join(""):`<p class="muted">Nada arquivado.</p>`, [{label:"Fechar"}], true);
+}
+function agTfBotoes(){
+  const n=agAntigas().length, na=tfAll().filter(t=>t.arq).length;
+  return `<button class="btn" data-act="agRecList" title="Tarefas que se criam sozinhas">↻ Recorrentes</button><button class="btn" data-act="agModList" title="Pacotes de tarefas com prazo em dias úteis">Modelos</button>${n?`<button class="btn" data-act="agRevisar" title="Abertas há mais de 30 dias ou com data vencida há mais de 7">Revisar antigas <span class="ag-n">${n}</span></button>`:""}${na?`<button class="btn" data-act="agArquivadas">Arquivadas</button>`:""}`;
+}
+
+/* ---------- Fase A: cartões de tarefa com prioridade, idade e quem concluiu ---------- */
+function tfLi2(t){
+  tfN(t); const df=t.data?diasAte(t.data):null; const id=agIdade(t);
+  return `<div class="tf-li2${t.done?" done":""}"><input type="checkbox" data-act="tfDone2" data-id="${t.id}" ${t.done?"checked":""} aria-label="Concluir">
+    <span class="tf-t" data-act="tfEdit2" data-id="${t.id}">${agPrioDot(t.prio)}${esc(t.txt)}${t.pessoa?`<small class="muted"> · ${esc(psNome(t.pessoa))}</small>`:""}${t.done&&t.doneBy?`<small class="ag-feito"> ✓ ${esc(t.doneBy)} ${esc(agDataHora(t.doneEm))}</small>`:""}${!t.done&&id!==null&&id>7?`<small class="ag-idade late"> · aberta há ${id}d</small>`:""}</span>
+    ${respInic(t.resp)}<span class="tf-d${!t.done&&df!==null&&df<0?" late":""}">${t.data?esc(fmtIso(t.data)):t.dataComp?`<span class="muted">${esc(fmtIso(t.dataComp))}</span>`:""}</span></div>`;
+}
+function tfCard(t){
+  const df=t.data?diasAte(t.data):null; const late=!t.done&&df!==null&&df<0; const id=agIdade(t); const parado=!t.done&&id!==null&&id>7;
+  return `<div class="kb-card${t.prio==="alta"&&!t.done?" ag-alta":""}" draggable="true" data-drag="tf" data-id="${t.id}" data-act="tfEdit2"><b>${agPrioDot(t.prio)}${esc(t.txt)}</b>${t.pessoa?`<span class="kb-p">${esc(psNome(t.pessoa))}</span>`:""}
+    <div class="kb-dates">${t.dataComp?`<span title="Data de fazer">${esc(fmtIsoAno(t.dataComp))}</span><span class="muted">→</span>`:""}${t.data?`<span class="${late?"late":""}" title="Data fatal">${esc(fmtIsoAno(t.data))}</span>`:`<span class="muted">sem data fatal</span>`}</div>
+    <div class="kb-f">${t.area?`<span class="etq">${esc(t.area)}</span>`:""}${late?`<span class="etq u">${esc(diasTxt(df))}</span>`:""}${t.recId?`<span class="etq" title="Criada por uma recorrente">↻</span>`:""}${t.done&&t.doneBy?`<span class="ag-feito" title="Concluída em ${esc(agDataHora(t.doneEm))}">✓ ${esc(t.doneBy)} ${esc(agDataHora(t.doneEm))}</span>`:""}<span class="grow"></span>${!t.done&&id!==null?`<span class="kb-d${parado?" late":""}" title="Aberta há ${id} dia(s)">${id}d</span>`:""}${respInic(t.resp)}</div></div>`;
+}
+
+/* ---------- Fase A: itens do calendário (fazer × fatal, concluídas, aniversários, link) ---------- */
+function calItens(iso, opt){
+  opt=opt||{}; const it=[];
+  evAll().filter(e=>e.data===iso).forEach(e=>it.push({k:"ev", id:e.id, h:e.hora||"", t:e.titulo, sub:(EV_TIPOS[e.tipo]||"")+(e.pessoa?" · "+psNome(e.pessoa):"")+(e.local?" · "+e.local:"")+(e.pasta?" · 📁 pasta":""), r:e.resp, link:agUrl(e.link)}));
+  tfLista().filter(t=>(opt.conc||!t.done) && (t.data===iso || t.dataComp===iso)).forEach(t=>{
+    const fat=t.data===iso; let sub=fat?"Data fatal":"Fazer";
+    if(!fat && t.data){ const d=diasAte(t.data); sub+=" · fatal "+fmtIso(t.data)+(d<0?" (vencida)":d===0?" (hoje)":d===1?" (amanhã)":" (em "+d+" dias)"); }
+    if(t.done) sub="Concluída"+(t.doneBy?" por "+t.doneBy:"")+(t.doneEm?" "+agDataHora(t.doneEm):"");
+    it.push({k:"tf", id:t.id, h:"", t:t.txt, sub, r:t.resp, fatal:fat&&!t.done, prio:t.prio||"", done:!!t.done}); });
+  pzAll().filter(p=>(opt.conc||!p.done) && p.data===iso).forEach(p=>it.push({k:"pz", id:p.id, h:"", t:p.caso, sub:p.done?"Prazo cumprido"+(p.doneBy?" por "+p.doneBy:""):"Prazo fatal", r:p.resp, fatal:!p.done, done:!!p.done}));
+  if(typeof lmAll==="function") lmAll().filter(l=>lmDue(l,iso) && !lmFeito(l,iso) && (l.para==="Todos"||l.para===ui.me||isApprover())).forEach(l=>it.push({k:"lm", id:l.id, h:l.hora||"", t:l.titulo, sub:"Lembrete", r:l.para, rec:l.repetir!=="nao"}));
+  if(typeof cbAll==="function" && cbPode()) cbAll().forEach(c=>cbParcelas(c).filter(p=>!p.pago && p.venc===iso).forEach(p=>it.push({k:"cb", id:c.id, h:"", t:"Parcela "+p.n+" · "+c.devedor, sub:"Cobrança · "+brl(p.valor), r:c.resp})));
+  if(typeof admCal==="function") admCal(iso).forEach(x=>it.push(x));
+  if(typeof salaCal==="function") salaCal(iso).forEach(x=>it.push(x));
+  psAll().filter(p=>p.nasc && String(p.nasc).slice(5)===iso.slice(5)).forEach(p=>it.push({k:"aniv", id:p.id, h:"", t:"🎂 "+p.nome, sub:"Aniversário", r:""}));
+  return it.sort((a,b)=>(a.h||"99").localeCompare(b.h||"99"));
+}
+function calLi(x){
+  const act={ev:"evAbrir", tf:"tfEdit2", pz:"pzEdit", lm:"calLm", cb:"cbVer", adm:"admAbrir", sala:"salaAbrir", aniv:"psAbrir"}[x.k];
+  return `<div class="cal-it k-${x.k}${x.done?" ag-done":""}" data-act="${act}" data-id="${x.id}"><span class="cal-h">${esc(x.h||"")}</span><span class="cal-t"><b>${agPrioDot(x.prio)}${esc(x.t)}</b><small>${esc(x.sub)}</small></span>${x.link?`<button class="btn sm ag-entrar" data-act="agLink" data-url="${esc(x.link)}" title="Abrir o link da reunião">Entrar</button>`:""}${x.r?respInic(x.r):""}</div>`;
+}
+function agFiltra(L){ const P=agPrefs(); return L.filter(x=>P.tipos[x.k]!==false && (!P.pessoa || x.k==="aniv" || x.r===P.pessoa || x.r==="Todos" || (x.r==="Sócios" && P.pessoa!=="Ellen"))); }
+function agDoDia(iso){ return agFiltra(calItens(iso,{conc:!agPrefs().ocultaConc})); }
+function agAct(x){ return {ev:"evAbrir", tf:"tfEdit2", pz:"pzEdit", lm:"calLm", cb:"cbVer", adm:"admAbrir", sala:"salaAbrir", aniv:"psAbrir"}[x.k]; }
+function agChip(x){ return `<div class="ag-ch k-${x.k}${x.done?" ag-done":""}${x.fatal?" ag-fat":""}" data-act="${agAct(x)}" data-id="${x.id}" title="${esc(x.t+" · "+x.sub)}">${x.h?`<b>${esc(x.h)}</b> `:""}${agPrioDot(x.prio)}${esc(x.t)}</div>`; }
+
+/* ---------- Fase A: calendário com Dia, Semana e Mês + filtros ---------- */
+function agSemanaDe(iso){ const d=lmIsoDate(iso); d.setDate(d.getDate()-d.getDay()); const L=[]; for(let i=0;i<7;i++){ const x=new Date(d); x.setDate(d.getDate()+i); L.push(isoDia(x)); } return L; }
+function agFiltrosHtml(){
+  const P=agPrefs();
+  return `<div class="ag-fil"><select class="inp" id="agPessoa" style="width:auto"><option value="">Todas as pessoas</option>${AG_PESSOAS.map(p=>`<option ${P.pessoa===p?"selected":""}>${p}</option>`).join("")}</select>
+    <div class="ag-tipos">${AG_TIPOS.map(([k,n])=>`<button class="ag-tp k-${k}${P.tipos[k]===false?" off":""}" data-act="agTipo" data-k="${k}" title="${P.tipos[k]===false?"Mostrar":"Esconder"} ${n.toLowerCase()}">${n}</button>`).join("")}</div>
+    <label class="check"><input type="checkbox" data-act="agConc" ${P.ocultaConc?"checked":""}> Ocultar concluídas</label>
+    <label class="check"><input type="checkbox" data-act="agFds" ${P.fds?"checked":""}> Fins de semana</label></div>`;
+}
+function agGradeHoras(dias){
+  const P=agPrefs(), h=isoDia(), agora=new Date(), hh=agora.getHours(), mm=agora.getMinutes();
+  const porDia={}; dias.forEach(d=>{ porDia[d]=agDoDia(d); });
+  const col=`52px repeat(${dias.length},minmax(0,1fr))`;
+  const topo=`<div class="ag-gr ag-gh" style="grid-template-columns:${col}"><span></span>${dias.map(d=>{ const x=lmIsoDate(d); return `<button class="ag-dh${d===h?" hj":""}${d===ui.cal.sel?" sel":""}" data-act="agDia" data-d="${d}"><span>${AG_DSEM[x.getDay()]}</span><b>${x.getDate()}</b></button>`; }).join("")}</div>`;
+  const inteiro=`<div class="ag-gr ag-int" style="grid-template-columns:${col}"><span class="ag-hl">dia todo</span>${dias.map(d=>`<div class="ag-cel">${porDia[d].filter(x=>!x.h).map(agChip).join("")}</div>`).join("")}</div>`;
+  const horas=[]; for(let H=7;H<=20;H++) horas.push(H);
+  const hora=x=>{ const n=parseInt(String(x.h).slice(0,2),10); return isNaN(n)?7:Math.max(7,Math.min(20,n)); };
+  const linhas=horas.map(H=>`<div class="ag-gr ag-hr" style="grid-template-columns:${col}"><span class="ag-hl">${pad2(H)}:00</span>${dias.map(d=>`<div class="ag-cel${d===h&&H===hh?" ag-now":""}"${d===h&&H===hh?` style="--m:${Math.round(mm/60*100)}%"`:""}>${porDia[d].filter(x=>x.h && hora(x)===H).map(agChip).join("")}</div>`).join("")}</div>`).join("");
+  return `<div class="ag-grade">${topo}${inteiro}${linhas}</div>`;
+}
+function viewCalendario(){
+  const P=agPrefs(); const modo=["dia","semana","mes"].includes(P.modo)?P.modo:"mes"; const h=isoDia();
+  if(!ui.cal.sel) ui.cal.sel=h; const sel=ui.cal.sel;
+  let rot="", corpo="";
+  if(modo==="mes"){
+    const ref=lmIsoDate(ui.cal.ref); const y=ref.getFullYear(), m=ref.getMonth();
+    const ini=new Date(y,m,1); const off=ini.getDay(); const dias=new Date(y,m+1,0).getDate();
+    const cells=[]; for(let i=0;i<off;i++) cells.push(null); for(let d=1;d<=dias;d++) cells.push(isoDia(new Date(y,m,d))); while(cells.length%7) cells.push(null);
+    const vis=(c,i)=>P.fds || (i%7!==0 && i%7!==6);
+    const mes=ref.toLocaleDateString("pt-BR",{month:"long", year:"numeric"}); rot=mes.charAt(0).toUpperCase()+mes.slice(1);
+    const wd=AG_DSEM.filter((_,i)=>P.fds||(i!==0&&i!==6)); const nc=wd.length;
+    corpo=`<div class="cal-g cal-wd" style="grid-template-columns:repeat(${nc},1fr)">${wd.map(d=>`<span>${d}</span>`).join("")}</div>
+      <div class="cal-g" style="grid-template-columns:repeat(${nc},1fr)">${cells.map((c,i)=>{ if(!vis(c,i)) return ""; if(!c) return `<span class="cal-c out"></span>`; const it=agDoDia(c).filter(x=>!x.rec); const fat=it.some(x=>x.fatal);
+        return `<button class="cal-c${c===h?" hj":""}${c===sel?" sel":""}" data-act="calDia" data-d="${c}"><span class="cal-n">${+c.slice(8)}</span>${it.slice(0,4).map(x=>`<span class="cal-p k-${x.k}${x.done?" ag-done":""}">${x.h?esc(x.h)+" ":""}${esc(x.t)}</span>`).join("")}${it.length>4?`<span class="cal-more">+${it.length-4} mais</span>`:""}${fat?`<i class="cal-fat"></i>`:""}</button>`; }).join("")}</div>`;
+  } else if(modo==="semana"){
+    const dias=agSemanaDe(sel).filter(d=>{ const w=lmIsoDate(d).getDay(); return P.fds || (w!==0 && w!==6); });
+    rot=fmtIso(dias[0])+" a "+fmtIsoAno(dias[dias.length-1]);
+    corpo=agGradeHoras(dias);
+  } else {
+    const x=lmIsoDate(sel); rot=x.toLocaleDateString("pt-BR",{weekday:"long", day:"numeric", month:"long", year:"numeric"}); rot=rot.charAt(0).toUpperCase()+rot.slice(1);
+    corpo=agGradeHoras([sel]);
+  }
+  const its=agDoDia(sel);
+  const nav=`<div class="cal-nav ag-nav"><button class="btn sm" data-act="agNav" data-d="-1" title="Anterior">‹</button><b>${esc(rot)}</b><button class="btn sm" data-act="agNav" data-d="1" title="Próximo">›</button><button class="btn sm" data-act="agHoje">Hoje</button><span class="grow"></span><div class="seg">${[["dia","Dia"],["semana","Semana"],["mes","Mês"]].map(([k,n])=>`<button class="${modo===k?"on":""}" data-act="agModo" data-v="${k}">${n}</button>`).join("")}</div></div>`;
+  const lado=`<aside class="cal-side"><h3>${esc(lmIsoDate(sel).toLocaleDateString("pt-BR",{weekday:"long", day:"numeric", month:"long"}))}</h3>${its.length?its.map(calLi).join(""):`<p class="muted">Nada neste dia${P.pessoa?" para "+esc(P.pessoa):""}.</p>`}<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-act="evNovo" data-d="${sel}">+ Compromisso</button><button class="btn sm" data-act="agTfDia" data-d="${sel}">+ Tarefa</button>${modo!=="dia"?`<button class="btn sm" data-act="agModo" data-v="dia">Abrir o dia</button>`:""}</div>
+      <div class="cal-leg"><span class="k-ev">Compromisso</span><span class="k-tf">Tarefa</span><span class="k-pz">Prazo</span><span class="k-lm">Lembrete</span><span class="k-cb">Cobrança</span><span class="k-adm">Administrativo</span><span class="k-sala">Sala</span><span class="k-aniv">Aniversário</span></div></aside>`;
+  return `<div class="phead"><div><div class="crumb">Gestão › Calendário</div><h1>Calendário</h1><p>Compromissos, tarefas (fazer e fatal), prazos, lembretes, cobranças, sala e aniversários num só lugar.</p></div><button class="btn primary" data-act="evNovo" data-d="${sel}">${ic("plus")} Novo compromisso</button></div>
+    ${nav}${agFiltrosHtml()}<div class="cal-wrap${modo==="semana"?" ag-full":""}"><section class="cal">${corpo}</section>${modo==="semana"?"":lado}</div>`;
+}
+
+/* ---------- Fase B: metas e números por pessoa na Semana ---------- */
+function agMetas(){ if(!S.metas||typeof S.metas!=="object") S.metas={}; if(!S.metas.semana||typeof S.metas.semana!=="object") S.metas.semana={}; return S.metas; }
+function agNumeros(r){
+  const ini=lmIsoDate(r.sem).getTime(), fim=ini+7*864e5, h=isoDia();
+  return AG_PESSOAS.map(p=>{
+    const pl=(r.itens||[]).filter(i=>i.dono===p && (i.status==="aberto"||i.status==="feito")); const plF=pl.filter(i=>i.status==="feito").length;
+    const conc=tfAll().filter(t=>!t.arq && t.done && t.doneEm>=ini && t.doneEm<fim && t.resp===p).length;
+    const atr=tfLista().filter(t=>!t.done && t.data && t.data<h && t.resp===p).length;
+    const par=tfLista().filter(t=>!t.done && t.resp===p && (agIdade(t)||0)>7).length;
+    const meta=+((agMetas().semana||{})[p])||0;
+    return {p, pl:pl.length, plF, conc, atr, par, meta};
+  }).filter(x=>x.pl||x.conc||x.atr||x.par||x.meta);
+}
+function agMetasHtml(r){
+  const L=agNumeros(r);
+  return `<section class="pg-sec sm-sec"><div class="pf-bh"><h3>Números da semana por pessoa</h3><button class="lnk" data-act="agMetasEditar">Metas</button></div>${L.length?`<div class="ag-mt"><div class="ag-mt-h"><span>Pessoa</span><span>Plano feito</span><span>Tarefas concluídas</span><span>Atrasadas</span><span>Paradas +7d</span></div>${L.map(x=>{ const pc=x.pl?Math.round(x.plF/x.pl*100):null; const mp=x.meta?Math.min(100,Math.round(x.conc/x.meta*100)):null;
+    return `<div class="ag-mt-l"><b>${esc(x.p)}</b><span>${x.pl?`${x.plF}/${x.pl} <small class="muted">${pc}%</small><i class="ag-bar"><i style="width:${pc}%"></i></i>`:`<span class="muted">—</span>`}</span><span>${x.conc}${x.meta?` <small class="muted">de ${x.meta}</small><i class="ag-bar${mp>=100?" ok":""}"><i style="width:${mp}%"></i></i>`:""}</span><span class="${x.atr?"ag-ruim":""}">${x.atr}</span><span class="${x.par?"ag-alerta":""}">${x.par}</span></div>`; }).join("")}</div>`:`<p class="muted">Sem números ainda. Delegue itens e marque tarefas como concluídas.</p>`}<p class="muted" style="font-size:12px;margin:6px 0 0">Concluídas = tarefas da pessoa concluídas nesta semana. Atrasadas e paradas = situação de agora.</p></section>`;
+}
+function agMetasTexto(r){ const L=agNumeros(r); if(!L.length) return ""; return "\nPor pessoa: "+L.map(x=>x.p+" "+x.plF+"/"+x.pl+" do plano, "+x.conc+" concluída(s)"+(x.meta?" de meta "+x.meta:"")+(x.atr?", "+x.atr+" atrasada(s)":"")).join(" · "); }
+function agMetasEditar(){
+  const M=agMetas().semana;
+  modal("Metas de tarefas concluídas por semana", `<p class="muted" style="margin:0 0 10px">Opcional. Serve de referência no fechamento de sexta. Deixe em branco para não usar.</p><div class="cb-form">${AG_PESSOAS.map(p=>`<div class="df"><label>${p}</label><input class="inp" type="number" min="0" id="agMt-${p}" value="${esc(String(M[p]||""))}"></div>`).join("")}</div>`,
+  [{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{ snap(); AG_PESSOAS.forEach(p=>{ const v=parseInt($("#agMt-"+p).value,10); if(v>0) M[p]=v; else delete M[p]; }); logA("ajustou as metas semanais"); save(); render(); }}]);
+}
+
+/* ---------- ações ---------- */
+Object.assign(PACT, {
+  agModo:el=>{ const P=agPrefs(); P.modo=el.dataset.v; if(!ui.cal.sel) ui.cal.sel=isoDia(); ui.cal.ref=ui.cal.sel; agPrefsSalvar(); render(); },
+  agNav:el=>{ const P=agPrefs(); const n=+el.dataset.d; if(P.modo==="semana"){ ui.cal.sel=agSoma(ui.cal.sel||isoDia(), 7*n); ui.cal.ref=ui.cal.sel; } else if(P.modo==="dia"){ let d=agSoma(ui.cal.sel||isoDia(), n); if(!P.fds){ while([0,6].includes(lmIsoDate(d).getDay())) d=agSoma(d,n); } ui.cal.sel=d; ui.cal.ref=d; } else { const d=lmIsoDate(ui.cal.ref); d.setMonth(d.getMonth()+n); d.setDate(1); ui.cal.ref=isoDia(d); } render(); },
+  agHoje:()=>{ ui.cal.sel=isoDia(); ui.cal.ref=ui.cal.sel; render(); },
+  agDia:el=>{ ui.cal.sel=el.dataset.d; ui.cal.ref=el.dataset.d; const P=agPrefs(); P.modo="dia"; agPrefsSalvar(); render(); },
+  agTipo:el=>{ const P=agPrefs(); const k=el.dataset.k; P.tipos[k]=P.tipos[k]===false; agPrefsSalvar(); render(); },
+  agConc:()=>{ const P=agPrefs(); P.ocultaConc=!P.ocultaConc; agPrefsSalvar(); render(); },
+  agFds:()=>{ const P=agPrefs(); P.fds=!P.fds; agPrefsSalvar(); render(); },
+  agLink:el=>{ const u=agUrl(el.dataset.url); if(u) window.open(u, "_blank", "noopener"); },
+  agTfDia:el=>{ closeModal(); tfModal2(null, {dataComp:el.dataset.d||isoDia()}); },
+  agAnivCopiar:el=>{ const p=psGet(el.dataset.id); if(!p) return; copyText(agAnivTexto(p), "Mensagem de parabéns copiada para "+agPrimeiro(p.nome)+"."); },
+  agAnivWa:el=>{ const p=psGet(el.dataset.id); if(!p) return; const n=agWa(p.tel); window.open("https://wa.me/"+(n||"")+"?text="+encodeURIComponent(agAnivTexto(p)), "_blank", "noopener"); logA("abriu o WhatsApp para dar parabéns a "+agPrimeiro(p.nome)); },
+  agAnivModelo:()=>{ modal("Mensagem de parabéns", `<div class="df"><label>Texto (use {primeiroNome} ou {nome})</label><textarea class="inp" id="agAnT" style="min-height:110px">${esc(agAnivModelo())}</textarea></div><p class="muted" style="font-size:12.5px;margin:6px 0 0">O envio automático todo dia às 9h depende da integração com o WhatsApp (Make + Z-API) e fica para a próxima etapa.</p>`,
+    [{label:"Voltar ao padrão", fn:()=>{ snap(); if(S.msgModelos) delete S.msgModelos.aniversario; save(); render(); }},{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{ const v=$("#agAnT").value.trim(); if(!v) return false; snap(); if(!S.msgModelos||typeof S.msgModelos!=="object") S.msgModelos={}; S.msgModelos.aniversario=v; logA("editou a mensagem de parabéns"); save(); render(); }}]); },
+  agRecList:()=>agRecList(), agModList:()=>agModList(), agRevisar:()=>{ ui.agRev=null; agRevisar(); }, agArquivadas:()=>agArquivadas(), agMetasEditar:()=>agMetasEditar(),
+  agRecPausa:el=>{ const r=agRecAll().find(x=>x.id===el.dataset.id); if(!r) return; snap(); r.ativo=r.ativo===false; save(); agRecList(); },
+  agRecEdit:el=>{ const r=agRecAll().find(x=>x.id===el.dataset.id); if(r) agRecModal(r); },
+  agRecSug:el=>{ const s=AG_REC_SUGESTOES[+el.dataset.i]; if(!s) return; snap(); agRecAll().push(Object.assign({id:uid(), t:Date.now(), quem:ui.me||"?", desde:isoDia(), ativo:true}, JSON.parse(JSON.stringify(s)))); logA("criou a recorrente “"+s.txt+"”"); agRecGerar(); save(); render(); agRecList(); },
+  agModAplicar:el=>{ const m=agModAll().find(x=>x.id===el.dataset.id); if(m) agModAplicar(m); },
+  agModEdit:el=>{ const m=agModAll().find(x=>x.id===el.dataset.id); if(m) agModEdit(m); },
+  agDesarq:el=>{ const t=tfAll().find(x=>x.id===el.dataset.id); if(!t) return; snap(); delete t.arq; t.t=Date.now(); logA("restaurou a tarefa “"+t.txt+"”"); save(); render(); agArquivadas(); }
+});
+document.addEventListener("change", e=>{ const t=e.target; if(!t) return; if(t.id==="agPessoa"){ const P=agPrefs(); P.pessoa=t.value; agPrefsSalvar(); render(); } });
+
+/* ---------- antes de desenhar: funil e recorrentes (só depois de carregar do servidor) ---------- */
+function agPre(){
+  if(!ui.me || !S || !Array.isArray(S.flows) || ui.verComo) return;
+  if(typeof HAS_GS!=="undefined" && HAS_GS && !(srv && srv.base)) return;
+  const agora=Date.now(); if(ui.agPreT && agora-ui.agPreT<120000) return; ui.agPreT=agora;
+  let mudou=false;
+  try{ if(agMigrarFunil()) mudou=true; if(agRecGerar()>0) mudou=true; }catch(e){ console.warn("agPre", e); }
+  if(mudou) save();
+}
+(function(){ const st=document.createElement("style"); st.textContent = ""
+ + ".ag-pd{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex:none}.ag-p-alta{background:var(--danger)}.ag-p-media{background:var(--warn,#c7912a)}.ag-p-baixa{background:var(--ok,#2e8b57)}"
+ + ".kb-card.ag-alta{border-left:3px solid var(--danger)}.ag-feito{font-size:11.5px;color:var(--ok,#2e8b57);font-weight:600}.ag-idade{font-size:11.5px;color:var(--muted)}.ag-idade.late{color:var(--warn,#c7912a)}"
+ + ".ag-fatal{color:var(--muted)}.ag-fatal.perto{color:var(--danger);font-weight:700}"
+ + ".ag-done{opacity:.6}.ag-done b,.cal-p.ag-done{text-decoration:line-through}"
+ + ".cal-it{grid-template-columns:44px minmax(0,1fr) auto auto}.ag-entrar{padding:2px 8px;font-size:12px}.k-aniv{--k:#c2477a}"
+ + ".ag-nav{flex-wrap:wrap}.ag-fil{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0 0 10px}.ag-tipos{display:flex;flex-wrap:wrap;gap:4px}"
+ + ".ag-tp{border:1px solid var(--line);background:color-mix(in srgb,var(--k) 12%,var(--surface));color:var(--k);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer}.ag-tp.off{background:var(--surface);color:var(--muted);text-decoration:line-through;opacity:.7}"
+ + ".cal-wrap.ag-full{grid-template-columns:minmax(0,1fr)}"
+ + ".ag-grade{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}.ag-gr{display:grid;border-top:1px solid var(--line)}.ag-gr:first-child{border-top:0}"
+ + ".ag-gh{background:var(--surface-2)}.ag-dh{border:0;background:none;padding:6px 2px;display:flex;flex-direction:column;align-items:center;cursor:pointer;color:var(--fg)}.ag-dh span{font-size:11.5px;color:var(--muted)}.ag-dh b{font-size:17px}.ag-dh.hj b{background:var(--accent);color:var(--accent-fg);border-radius:50%;width:30px;height:30px;display:grid;place-items:center}.ag-dh.sel{box-shadow:inset 0 -2px 0 var(--accent)}"
+ + ".ag-hl{font-size:11px;color:var(--muted);padding:4px 6px;text-align:right}.ag-cel{border-left:1px solid var(--line);min-height:38px;padding:2px 3px;position:relative;display:flex;flex-direction:column;gap:2px;min-width:0}.ag-int .ag-cel{background:var(--surface-2);min-height:30px}"
+ + ".ag-cel.ag-now:before{content:'';position:absolute;left:0;right:0;top:var(--m,0);border-top:2px solid var(--danger);z-index:1}"
+ + ".ag-ch{font-size:11.5px;border-radius:5px;padding:2px 5px;background:color-mix(in srgb,var(--k) 14%,transparent);color:var(--fg);border-left:3px solid var(--k);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ag-ch.ag-fat{border-left-color:var(--danger);font-weight:600}"
+ + ".ag-aniv{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line)}.ag-aniv-n{cursor:pointer}"
+ + ".ag-rl{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}.ag-rl.off{opacity:.55}.ag-rl-t{flex:1;min-width:0;display:flex;flex-direction:column}.ag-rl-t small{color:var(--muted);font-size:12px}.ag-sug{margin-top:12px;padding:8px 10px;background:var(--surface-2);border-radius:10px}"
+ + ".ag-n{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--warn,#c7912a);color:#fff;font-size:11px;padding:0 5px;margin-left:4px}"
+ + ".ag-mt{display:grid;gap:0;font-size:13px}.ag-mt-h,.ag-mt-l{display:grid;grid-template-columns:1.1fr 1.3fr 1.3fr .8fr .8fr;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}.ag-mt-h{color:var(--muted);font-size:11.5px;border-top:0}"
+ + ".ag-bar{display:block;height:5px;background:var(--surface-3,#e5e5e5);border-radius:3px;margin-top:3px;overflow:hidden}.ag-bar>i{display:block;height:100%;background:var(--accent)}.ag-bar.ok>i{background:var(--ok,#2e8b57)}.ag-ruim{color:var(--danger);font-weight:700}.ag-alerta{color:var(--warn,#c7912a);font-weight:700}"
+ + "@media (max-width:760px){.ag-grade{overflow-x:auto}.ag-gr{min-width:560px}.ag-mt-h,.ag-mt-l{grid-template-columns:1fr 1fr 1fr .6fr .6fr;font-size:12px}}";
+ document.head.appendChild(st); })();
+const agRenderBase = render;
+render = function(){ agPre(); agRenderBase(); };
 /* ================= RODADA 3 (15/10, noite): funil sem arrastar para o lado; post-it solto pela tela toda ================= */
 /* 1) A área de conteúdo passa a usar a largura toda; cada bloco continua limitado a 1240px, menos o funil (kanban) e a camada de post-its. */
 document.head.insertAdjacentHTML("beforeend", "<style id=\"r3Style\">"
