@@ -5391,11 +5391,11 @@ render = function(){ agPre(); agRenderBase(); };
 /* Cada coluna do funil ganha esteira (A ou B), dono e, quando houver, portão (itens a marcar). */
 /* Só front, sem SQL. Usa o mesmo S.funil e S.casos. O master ativa uma vez; dá para desfazer logo depois. */
 /* Regra de sigilo: no cartão só primeiro nome ou inicial; CPF, valores e transcrição ficam no Jurichat e no Dropbox. */
-const ES_VER = "v6.1 enxuta · 26/10/2026";
+const ES_VER = "v6.2 · 26/10/2026";
 const ES_PADRAO = [
-  {k:"AG", esteira:"A", nome:"1. Agendar", dono:"Ellen", portao:["Sinal de R$ 100,00 pago"], dica:"Chegou pelo WhatsApp ou no escritório: agendar e cobrar o sinal. Antes da consulta: nome, CPF (no Jurichat), breve relato e documentos."},
+  {k:"AG", esteira:"A", nome:"1. Agendar", dono:"Ellen", portao:["Sinal de R$ 100,00 recebido no Pix"], dica:"Chegou pelo WhatsApp ou no escritório: agendar e mandar a chave Pix ou o link do Asaas. O horário só fica confirmado com o Pix do sinal recebido. Antes da consulta: nome, CPF (no Jurichat), breve relato e documentos."},
   {k:"CONS", esteira:"A", nome:"2. Consulta", dono:"Gabriel", portao:["Consulta feita e saldo pago"], dica:"Gravar no iPad e mandar a gravação para a Ellen. Retorno em até 7 dias úteis depois dos documentos."},
-  {k:"DOC", esteira:"A", nome:"3. Documentos", dono:"Ellen", d0:true, portao:["Pasta pronta (documentos essenciais recebidos)"], dica:"Transcrição e resumo na pasta, pedido e cobrança dos documentos. Pasta pronta conta os prazos sozinha."},
+  {k:"DOC", esteira:"A", nome:"3. Documentos", dono:"Ellen", d0:true, portao:["Pasta pronta (documentos essenciais recebidos)"], dica:"Mover a transcrição de _ENTRADA_ATENDIMENTOS para 00_Atendimentos na pasta do cliente, registrar o atendimento (resumo + link) e cobrar os documentos. Pasta pronta conta os prazos sozinha."},
   {k:"VIAB", esteira:"A", nome:"4. Viabilidade", dono:"Gabriel", portao:[], dica:"Estudo jurídico ou de projeto do Grupo M&P. Prazo: 5 dias úteis da pasta pronta."},
   {k:"RET", esteira:"A", nome:"5. Retorno", dono:"Ellen · Gabriel", portao:[], dica:"A Ellen agenda; o Gabriel apresenta. Viável: proposta abatendo os R$ 250,00. Não viável: parecer por escrito."},
   {k:"CONTR", esteira:"A", nome:"6. Contratação", dono:"Ellen", trava:true, passa:true, portao:["Honorários iniciais pagos","Procuração assinada","Contrato assinado"], dica:"Diligências, pagamentos, documentos que faltam e kit. Só passa ao jurídico com os três itens."},
@@ -5546,6 +5546,25 @@ function esDocsTexto(c){
   return t+"\n\nPode enviar por aqui mesmo. Qualquer dúvida, estou à disposição.";
 }
 
+/* ---------- Histórico de atendimento: registro no caso, aparece na ficha do cliente ---------- */
+const ES_REG_TIPOS = ["Consulta","Retorno","Ligação","WhatsApp","Reunião"];
+/* Padrão de pastas do cliente ganha 00_Atendimentos (transcrições de consultas e retornos). */
+if(typeof PASTAS_PADRAO!=="undefined" && Array.isArray(PASTAS_PADRAO) && !PASTAS_PADRAO.includes("00_Atendimentos")) PASTAS_PADRAO.unshift("00_Atendimentos");
+function esRegs(c){ return (c.registros||[]).filter(r=>r.resumo); }
+function esPastaDe(c){ const p=c.pessoa?psGet(c.pessoa):null; const L=(p&&Array.isArray(p.pastas))?p.pastas:[]; return c.pastaUrl || (L[0]&&L[0].url) || ""; }
+function esRegLi(r, c){ return `<div class="es-ri"><div class="es-ri-h"><b>${esc(r.tipo||"Atendimento")}</b><span class="muted">${esc(r.data?fmtIsoAno(r.data):fmtT(r.t))} · ${esc(r.quem||"")}${c?" · "+esc(c.titulo):""}</span>${r.link?`<a class="lnk" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir íntegra</a>`:""}</div><div class="es-ri-t">${esc(r.resumo)}</div></div>`; }
+function esFicha(){
+  const old=$("#esFicha"); if(old) old.remove();
+  if(ui.view!=="pessoa") return;
+  const aba=ui.psAba||"geral"; if(aba!=="geral" && aba!=="historico") return;
+  const p=psGet(ui.psId); if(!p) return;
+  const cs=csAll().filter(c=>c.pessoa===p.id);
+  const L=cs.flatMap(c=>esRegs(c).map(r=>({r, c}))).sort((a,b)=>(b.r.data||"").localeCompare(a.r.data||"") || (b.r.t||0)-(a.r.t||0));
+  if(!L.length) return;
+  const tabs=$("#content .tabs"); if(!tabs) return;
+  tabs.insertAdjacentHTML("afterend", `<section class="pf-b es-ficha" id="esFicha"><div class="pf-bh"><h3>Atendimentos registrados</h3></div>${L.slice(0, aba==="geral"?3:50).map(x=>esRegLi(x.r, x.c)).join("")}${aba==="geral"&&L.length>3?`<button class="lnk" data-act="psAba" data-v="historico">Ver os ${L.length}</button>`:""}</section>`);
+}
+
 /* ---------- Bloco da esteira dentro do caso ---------- */
 function esSecHTML(c){
   const col=esColDe(c), P=col.portao||[], ok=esChk(c, col), prox=esProx(col), B=esCols("B");
@@ -5566,8 +5585,13 @@ function esSecHTML(c){
     ${c.d0?`<p class="es-d0">Pasta pronta em <b>${esc(fmtIso(c.d0))}</b> · viabilidade até <b>${esc(fmtIso(c.viabAte))}</b> · retorno até <b>${esc(fmtIso(c.retornoAte))}</b></p>`:""}
     ${c.jur?`<p class="es-d0">Passou ao jurídico em <b>${esc(fmtT(c.jur.t))}</b> (${esc(c.jur.quem)}).</p>`:""}
     ${acoes?`<div class="es-acoes">${acoes}</div>`:""}
-    <div class="df"><label>Pasta do cliente (link do Dropbox)</label><div class="row" style="gap:6px"><input class="inp" id="esPasta" data-id="${c.id}" value="${esc(c.pastaUrl||"")}" placeholder="https://www.dropbox.com/…" style="flex:1">${c.pastaUrl?`<a class="btn sm" href="${esc(c.pastaUrl)}" target="_blank" rel="noopener">Abrir</a>`:""}</div></div>
-    <div class="df"><label>Resumo do caso <span class="muted">(sem CPF, valores, senhas ou dados de saúde; a transcrição fica na pasta)</span></label><textarea class="inp" id="esResumo" data-id="${c.id}" style="min-height:64px">${esc(c.resumo||"")}</textarea></div>
+    <div class="df"><label>Pasta do cliente (link do Dropbox · vai para Pastas e documentos da ficha)</label><div class="row" style="gap:6px"><input class="inp" id="esPasta" data-id="${c.id}" value="${esc(esPastaDe(c))}" placeholder="https://www.dropbox.com/…" style="flex:1">${esPastaDe(c)?`<a class="btn sm" href="${esc(esPastaDe(c))}" target="_blank" rel="noopener">Abrir</a>`:""}</div></div>
+    <div class="es-reg"><h4 style="margin:0">Histórico de atendimento <span class="muted es-h4d">· vai para a ficha do cliente</span></h4>
+      ${esRegs(c).length?esRegs(c).slice().reverse().map(r=>esRegLi(r, c)).join(""):`<p class="muted" style="margin:0;font-size:13px">Nenhum atendimento registrado ainda.</p>`}
+      <div class="es-regform"><select class="inp" id="esRegTipo" style="width:auto">${ES_REG_TIPOS.map(t=>`<option>${t}</option>`).join("")}</select><input class="inp" id="esRegData" type="date" value="${isoDia()}" style="width:auto"><input class="inp" id="esRegLink" placeholder="Link do arquivo em 00_Atendimentos (ex.: 2026-10-23 Consulta Ricardo K)" style="flex:1;min-width:180px"></div>
+      <textarea class="inp" id="esRegResumo" placeholder="Resumo do atendimento: o que o cliente quer, o que foi combinado. Sem CPF, valores ou senhas — a íntegra fica no link." style="min-height:64px"></textarea>
+      <div><button class="btn sm primary" data-es="regAdd" data-id="${c.id}">Registrar atendimento</button></div>
+    </div>
     <div class="es-docs"><div class="row" style="gap:8px;align-items:center"><h4 style="margin:0">Documentos pedidos ao cliente</h4><span class="muted">${D.length?(D.length-fal)+" de "+D.length+" recebidos":""}</span><span class="grow"></span>${fal?`<button class="btn sm" data-es="docCopiar" data-id="${c.id}">Copiar pedido para o WhatsApp</button>`:""}</div>
       ${D.map((d,i)=>`<div class="es-doc${d.ok?" ok":""}"><label class="check" style="flex:1"><input type="checkbox" data-es="doc" data-id="${c.id}" data-i="${i}" ${d.ok?"checked":""}> ${esc(d.txt)}</label><span class="es-tag${d.ess?" ess":""}">${d.ess?"essencial":"complementar"}</span><button class="lnk" data-es="docDel" data-id="${c.id}" data-i="${i}" title="Tirar da lista">×</button></div>`).join("")}
       <div class="row es-docadd" style="gap:6px"><input class="inp" id="esDocNovo" placeholder="Novo documento (ex.: matrícula atualizada)" style="flex:1"><select class="inp" id="esDocEss" style="width:auto"><option value="1">essencial</option><option value="0">complementar</option></select><button class="btn sm" data-es="docAdd" data-id="${c.id}">Incluir</button></div>
@@ -5589,7 +5613,7 @@ function esModelo(){
   const agora=Date.now(), hoje=isoDia();
   const c={id:uid(), t:agora, quem:ui.me||"?", titulo:"Imóvel: segurança jurídica para vender (modelo)", pessoa:"", rotulo:"Ricardo K.", coluna:A5.id, resp:"Ellen", area:"Imobiliário", etiquetas:["Documentos"], origem:"modelo", exemplo:true, movidoEm:agora,
     resumo:"Imóvel comprado por contrato particular, com financiamento bancário ainda no nome do vendedor. Quer segurança jurídica para vender. Viabilidade após os documentos essenciais.",
-    registros:[{id:uid(), t:agora, quem:"Gabriel", txt:"Consulta gravada no iPad; transcrição enviada à Ellen para a pasta do cliente."}],
+    registros:[{id:uid(), t:agora, quem:"Ellen", tipo:"Consulta", data:hoje, txt:"Consulta: imóvel comprado por contrato particular, financiamento bancário ainda no nome do vendedor.", resumo:"Imóvel comprado por contrato particular, com financiamento bancário ainda no nome do vendedor. Quer segurança jurídica para vender. Combinado: enviar os documentos essenciais; retorno em até 7 dias úteis depois deles.", link:""}],
     chk:{}, docsLista:[
       {txt:"Exportação da conversa de WhatsApp com o vendedor", ess:true, ok:false},
       {txt:"Contrato particular de compra (contrato de gaveta)", ess:true, ok:false},
@@ -5663,13 +5687,19 @@ document.addEventListener("click", e=>{
   else if(a==="ir" && c) esMover(c, b.dataset.col);
   else if(a==="docAdd" && c){ const i=$("#esDocNovo"); const t=(i&&i.value||"").trim(); if(!t){ if(i) i.focus(); return; } if(esSensivel(t)){ toast("Parece ter CPF ou senha. Isso fica no Jurichat ou no Dropbox."); return; } snap(); esDocs(c).push({txt:t, ess:($("#esDocEss")||{}).value!=="0", ok:false}); logA("incluiu o documento “"+t+"” no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); const n=$("#esDocNovo"); if(n) n.focus(); }
   else if(a==="docDel" && c){ const i=+b.dataset.i; const d=esDocs(c)[i]; if(!d) return; snap(); esDocs(c).splice(i, 1); save(); render(); esRefresh(c); toast("Documento tirado da lista.", ()=>{ undo(); render(); const cc=csGet(c.id); if(cc && $("#esSec")) esRefresh(cc); }); }
+  else if(a==="regAdd" && c){ const res=(($("#esRegResumo")||{}).value||"").trim(); const link=(($("#esRegLink")||{}).value||"").trim(); const tipo=($("#esRegTipo")||{}).value||"Atendimento"; const data=($("#esRegData")||{}).value||isoDia();
+    if(!res){ const r=$("#esRegResumo"); if(r) r.focus(); toast("Escreva o resumo do atendimento."); return; }
+    if(esSensivel(res)){ toast("O resumo parece ter CPF ou senha. Tire do texto: a íntegra fica no link do Dropbox."); return; }
+    if(link && !/^https?:\/\//i.test(link)){ toast("Cole o link completo da transcrição (começa com https://)."); return; }
+    snap(); (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:tipo+": "+res, tipo, data, resumo:res, link});
+    logA("registrou atendimento ("+tipo+") no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); toast("Atendimento registrado no histórico do cliente."); }
   else if(a==="docCopiar" && c){ const t=esDocsTexto(c); if(t) copyText(t, "Pedido copiado. Cole no WhatsApp do cliente."); }
 });
 document.addEventListener("change", e=>{
   const t=e.target; if(!t) return;
   if(t.dataset && t.dataset.es==="ck"){ const c=csGet(t.dataset.id); if(!c) return; const col=esColDe(c); const item=(col.portao||[])[+t.dataset.i]; if(item) esMarcar(c, col, item, t.checked); return; }
   if(t.dataset && t.dataset.es==="doc"){ const c=csGet(t.dataset.id); if(!c) return; const d=esDocs(c)[+t.dataset.i]; if(!d) return; snap(); d.ok=t.checked; logA((t.checked?"recebeu":"desmarcou")+" o documento “"+d.txt+"” no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); return; }
-  if(t.id==="esPasta"){ const c=csGet(t.dataset.id); if(!c) return; const v=t.value.trim(); if(v && !/^https?:\/\//i.test(v)){ toast("Cole o link completo da pasta (começa com https://)."); return; } snap(); c.pastaUrl=v; logA("ligou a pasta do cliente ao caso “"+c.titulo+"”"); save(); render(); esRefresh(c); return; }
+  if(t.id==="esPasta"){ const c=csGet(t.dataset.id); if(!c) return; const v=t.value.trim(); if(v && !/^https?:\/\//i.test(v)){ toast("Cole o link completo da pasta (começa com https://)."); return; } snap(); c.pastaUrl=v; const pp=c.pessoa?psGet(c.pessoa):null; if(pp && v){ if(!Array.isArray(pp.pastas)) pp.pastas=[]; if(!pp.pastas.some(x=>x.url===v)) pp.pastas.unshift({id:uid(), url:v, tipo:(typeof pastaTipo==="function"?pastaTipo(v):"Link"), nome:"Pasta do cliente"}); } logA("ligou a pasta do cliente ao caso “"+c.titulo+"”"); save(); render(); esRefresh(c); return; }
   if(t.id==="esResumo"){ const c=csGet(t.dataset.id); if(!c) return; const v=t.value.trim(); if(esSensivel(v)){ toast("O resumo parece ter CPF ou senha. Tire do texto: isso fica no Jurichat ou no Dropbox."); return; } snap(); c.resumo=v; logA("atualizou o resumo do caso “"+c.titulo+"”"); save(); render(); return; }
 });
 document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="esDocNovo"){ e.preventDefault(); const b=$("[data-es='docAdd']"); if(b) b.click(); } });
@@ -5688,8 +5718,13 @@ document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.ta
  + ".es-docs{margin-top:12px;display:flex;flex-direction:column;gap:2px}.es-doc{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}.es-doc.ok label{color:var(--muted);text-decoration:line-through}"
  + ".es-tag{font-size:10.5px;border-radius:5px;padding:0 6px;color:var(--muted);border:1px solid var(--line)}.es-tag.ess{color:var(--accent);border-color:var(--accent)}.es-docadd{margin-top:6px}"
  + ".es-ul{margin:4px 0 8px;padding-left:20px}.es-ver{font-size:11px;margin-top:10px}"
+ + ".es-reg{margin-top:12px;display:flex;flex-direction:column;gap:6px}.es-regform{display:flex;gap:6px;flex-wrap:wrap}"
+ + ".es-ri{border-top:1px solid var(--line);padding:7px 0;display:flex;flex-direction:column;gap:2px}.es-ri-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13px}.es-ri-t{font-size:14px;white-space:pre-wrap}"
+ + ".es-ficha{margin:12px 0}"
  + "@media (max-width:640px){.es-tab{flex:1 1 100%}}";
  document.head.appendChild(st); })();
+const esRenderBase = render;
+render = function(){ esRenderBase(); try{ esFicha(); }catch(e){ console.warn("esFicha", e); } };
 /* ================= RODADA 3 (15/10, noite): funil sem arrastar para o lado; post-it solto pela tela toda ================= */
 /* 1) A área de conteúdo passa a usar a largura toda; cada bloco continua limitado a 1240px, menos o funil (kanban) e a camada de post-its. */
 document.head.insertAdjacentHTML("beforeend", "<style id=\"r3Style\">"
@@ -6624,12 +6659,15 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v6.1 · 26/10/2026";
+const MN_VER = "Mapa v6.2 · 26/10/2026";
 const MN_PADRAO = {"Principal":true};
+/* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
+const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true};
 function mnEstado(){
   if(ui.mn) return ui.mn;
+  if(!ui.papel) return Object.assign({}, MN_PADRAO);
   let o=null; try{ o=JSON.parse(localStorage.getItem(MN_KEY)||"null"); }catch(e){ o=null; }
-  ui.mn = (o && typeof o==="object") ? o : Object.assign({}, MN_PADRAO);
+  ui.mn = (o && typeof o==="object") ? o : Object.assign({}, ui.papel==="equipe" ? MN_PADRAO_EQUIPE : MN_PADRAO);
   return ui.mn;
 }
 function mnGrava(){ try{ localStorage.setItem(MN_KEY, JSON.stringify(ui.mn||{})); }catch(e){} }
