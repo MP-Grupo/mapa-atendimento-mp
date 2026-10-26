@@ -5386,6 +5386,310 @@ function agPre(){
  document.head.appendChild(st); })();
 const agRenderBase = render;
 render = function(){ agPre(); agRenderBase(); };
+/* ================= ESTEIRAS (v6.1 enxuta, 26/10/2026): Atendimento (Gabriel + Ellen) e Jurídico (Alan) ================= */
+/* Versão enxuta: poucas marcações, só as que disparam prazo/tarefa ou travam um erro caro (contratação). */
+/* Cada coluna do funil ganha esteira (A ou B), dono e, quando houver, portão (itens a marcar). */
+/* Só front, sem SQL. Usa o mesmo S.funil e S.casos. O master ativa uma vez; dá para desfazer logo depois. */
+/* Regra de sigilo: no cartão só primeiro nome ou inicial; CPF, valores e transcrição ficam no Jurichat e no Dropbox. */
+const ES_VER = "v6.1 enxuta · 26/10/2026";
+const ES_PADRAO = [
+  {k:"AG", esteira:"A", nome:"1. Agendar", dono:"Ellen", portao:["Sinal de R$ 100,00 pago"], dica:"Chegou pelo WhatsApp ou no escritório: agendar e cobrar o sinal. Antes da consulta: nome, CPF (no Jurichat), breve relato e documentos."},
+  {k:"CONS", esteira:"A", nome:"2. Consulta", dono:"Gabriel", portao:["Consulta feita e saldo pago"], dica:"Gravar no iPad e mandar a gravação para a Ellen. Retorno em até 7 dias úteis depois dos documentos."},
+  {k:"DOC", esteira:"A", nome:"3. Documentos", dono:"Ellen", d0:true, portao:["Pasta pronta (documentos essenciais recebidos)"], dica:"Transcrição e resumo na pasta, pedido e cobrança dos documentos. Pasta pronta conta os prazos sozinha."},
+  {k:"VIAB", esteira:"A", nome:"4. Viabilidade", dono:"Gabriel", portao:[], dica:"Estudo jurídico ou de projeto do Grupo M&P. Prazo: 5 dias úteis da pasta pronta."},
+  {k:"RET", esteira:"A", nome:"5. Retorno", dono:"Ellen · Gabriel", portao:[], dica:"A Ellen agenda; o Gabriel apresenta. Viável: proposta abatendo os R$ 250,00. Não viável: parecer por escrito."},
+  {k:"CONTR", esteira:"A", nome:"6. Contratação", dono:"Ellen", trava:true, passa:true, portao:["Honorários iniciais pagos","Procuração assinada","Contrato assinado"], dica:"Diligências, pagamentos, documentos que faltam e kit. Só passa ao jurídico com os três itens."},
+  {k:"NC", esteira:"A", nome:"Não contratou", dono:"Ellen", fim:true, portao:[], dica:"Histórico na pasta do cliente para follow-up futuro."},
+  {k:"B1", esteira:"B", nome:"Em produção", dono:"Alan", portao:[], dica:"Kit recebido. Prazos desta esteira ainda serão definidos."},
+  {k:"B2", esteira:"B", nome:"Protocolado", dono:"Alan", portao:[], dica:"Número do processo no cartão. Nunca senha nem código do eProc."},
+  {k:"B3", esteira:"B", nome:"Concluído", dono:"Alan", fim:true, portao:[], dica:""}
+];
+const ES_ABAS = [["A","Atendimento","Gabriel + Ellen"],["B","Jurídico","Alan"]];
+ui.es = {aba:(function(){ try{ return localStorage.getItem("mapa-es-aba")||"A"; }catch(e){ return "A"; } })()};
+
+/* ---------- Ajudantes ---------- */
+function esAtivo(){ return !!S.esteiraV6 && funil().some(f=>f.esteira); }
+function esCols(e){ return funil().filter(f=>(f.esteira||"A")===e); }
+function esColDe(c){ const F=funil(); return F.find(f=>f.id===c.coluna) || F[0]; }
+function esChk(c, col){ if(!c.chk || typeof c.chk!=="object") c.chk={}; return Array.isArray(c.chk[col.id]) ? c.chk[col.id] : []; }
+function esFalta(c, col){ const ok=esChk(c, col); return (col.portao||[]).filter(i=>!ok.includes(i)); }
+function esUtil(iso){ if(typeof agUtil==="function") return agUtil(iso); const w=lmIsoDate(iso).getDay(); return w!==0 && w!==6; }
+function esSomaUteis(iso, n){ let d=iso, k=0, g=0; while(k<n && g<400){ d=agSoma(d, 1); g++; if(esUtil(d)) k++; } return d; }
+function esNome(c){ return c.pessoa ? psNome(c.pessoa) : (c.rotulo||""); }
+function esPrimeiro(c){ return String(esNome(c)||"").trim().split(/\s+/)[0] || ""; }
+function esSensivel(t){ return /senha/i.test(t||"") || /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/.test(t||""); }
+function esProx(col){ const L=esCols(col.esteira||"A"); const i=L.indexOf(col); return i>=0 && i<L.length-1 ? L[i+1] : null; }
+function esK(k){ return funil().find(f=>f.k===k) || null; }
+function csFim(c){ const F=funil(); if(!F.length) return false; const col=F.find(f=>f.id===c.coluna); if(col && col.fim) return true; return c.coluna===F[F.length-1].id; }
+
+/* ---------- Ativar (master, uma vez) ---------- */
+function esMapaVelho(n){
+  n=String(n||"").toLowerCase();
+  if(/consult/.test(n)) return "CONS";
+  if(/follow|document/.test(n)) return "DOC";
+  if(/kit|produ/.test(n)) return "B1";
+  if(/protoc/.test(n)) return "B2";
+  if(/conclu/.test(n)) return "B3";
+  return "AG";
+}
+function esAtivar(){
+  if(!souMasterReal() || esAtivo()) return;
+  const velho=funil().slice(), F0=velho[0];
+  snap();
+  const novo=ES_PADRAO.map(p=>Object.assign({id:uid()}, JSON.parse(JSON.stringify(p))));
+  const porK={}; novo.forEach(f=>{ porK[f.k]=f.id; });
+  csAll().forEach(c=>{ const o=velho.find(f=>f.id===(c.coluna||(F0&&F0.id))); c.coluna=porK[esMapaVelho(o?o.nome:"")]; if(!c.movidoEm) c.movidoEm=c.t||Date.now(); });
+  S.funil=novo; S.esteiraV6=1; S.agFunilV5=1;
+  logA("ativou as esteiras Atendimento (Gabriel + Ellen) e Jurídico (Alan)");
+  save(); ui.es.aba="A"; render();
+  toast("Esteiras ativadas.", ()=>{ undo(); render(); });
+}
+
+/* ---------- Tela ---------- */
+function esCard(c, ativo){
+  const col=esColDe(c);
+  const d=Math.floor((Date.now()-(c.movidoEm||c.t||0))/864e5);
+  const P=ativo ? (col.portao||[]) : [];
+  const ok=P.length-esFalta(c, col).length;
+  const nome=esNome(c);
+  const donos=ativo ? String(col.dono||"").split(/\s*·\s*/).filter(Boolean) : (c.resp?[c.resp]:[]);
+  const hoje=isoDia();
+  const pz=[];
+  if(ativo && c.d0 && !col.fim){
+    if(col.k==="DOC"||col.k==="VIAB") pz.push(`<span class="es-pz${c.viabAte<hoje?" late":""}" title="Viabilidade: D0 + 5 dias úteis">viab. ${esc(fmtIso(c.viabAte))}</span>`);
+    if(col.k==="DOC"||col.k==="VIAB"||col.k==="RET") pz.push(`<span class="es-pz${c.retornoAte<hoje?" late":""}" title="Retorno: D0 + 7 dias úteis">retorno ${esc(fmtIso(c.retornoAte))}</span>`);
+  }
+  return `<div class="kb-card es-card" draggable="true" data-drag="cs" data-id="${c.id}" data-act="csAbrir">
+    <b>${esc(c.titulo)}</b>${nome?`<span class="kb-p">${esc(nome)}</span>`:""}
+    ${pz.length?`<div class="es-pzs">${pz.join("")}</div>`:""}
+    <div class="kb-f">${(c.etiquetas||[]).map(e=>`<span class="etq${e==="Urgente"?" u":""}">${esc(e)}</span>`).join("")}${c.exemplo?`<span class="etq es-ex">modelo</span>`:""}${c.pastaUrl?`<span class="es-pasta" title="Tem pasta do cliente">pasta</span>`:""}<span class="grow"></span>${P.length?`<span class="es-pt${ok===P.length?" ok":""}" title="Itens da etapa feitos">${ok}/${P.length}</span>`:""}${donos.map(r=>respInic(r)).join("")}<span class="kb-d${d>=7&&!csFim(c)?" late":""}" title="tempo na coluna">${d}d</span></div></div>`;
+}
+function viewCasos(){
+  const ativo=esAtivo();
+  const aba=ativo ? (ui.es.aba==="B"?"B":"A") : "";
+  const F=ativo ? esCols(aba) : funil();
+  const F0=funil()[0];
+  const ids=new Set(F.map(f=>f.id));
+  const q=(ui.cs.busca||"").toLowerCase();
+  const L=csAll().filter(c=>{
+    const cid=c.coluna||F0.id; if(!ids.has(cid)) return false;
+    if(q && ![c.titulo, esNome(c), (c.etiquetas||[]).join(" ")].join(" ").toLowerCase().includes(q)) return false;
+    if(ui.cs.resp){ const cl=funil().find(f=>f.id===cid)||{}; if(c.resp!==ui.cs.resp && !String(cl.dono||"").includes(ui.cs.resp)) return false; }
+    return true; });
+  const conta=e=>{ const s=new Set(esCols(e).filter(f=>!f.fim).map(f=>f.id)); return csAll().filter(c=>s.has(c.coluna)).length; };
+  const temModelo=csAll().some(c=>c.exemplo);
+  const banner = (!ativo && souMasterReal()) ? `<div class="es-banner"><div><b>Novas esteiras</b><p class="muted">Atendimento (Gabriel + Ellen), da chegada ao kit pronto, e Jurídico (Alan), a partir da passagem do kit. Os casos atuais vão para a etapa equivalente: Triagem → Agendar; Follow-up → Documentos; Kit e Em produção → Jurídico.</p></div><button class="btn primary" data-es="ativar">Ativar esteiras</button></div>` : "";
+  const abas = ativo ? `<div class="es-tabs">${ES_ABAS.map(([k,n,s])=>`<button class="es-tab${aba===k?" on":""}" data-es="aba" data-v="${k}"><b>${n}</b><span>${s} · ${conta(k)} ativo(s)</span></button>`).join("")}<span class="grow"></span>${(typeof AP_TESTE!=="undefined" && AP_TESTE && !temModelo)?`<button class="btn sm" data-es="modelo" title="Cria um caso de exemplo em Documentos (só no teste), com a lista de documentos e as tarefas da Ellen">Criar caso-modelo</button>`:""}</div>` : "";
+  const sub = !ativo ? "O funil do escritório. Arraste o cartão para a coluna seguinte; o tempo parado aparece no canto." : aba==="A" ? "Da chegada do cliente à contratação. Arraste o cartão quando a etapa terminar." : "A partir do kit recebido. O jurídico protocola e controla o caso.";
+  return `<div class="phead"><div><div class="crumb">Gestão › Atendimentos e casos</div><h1>Atendimentos e casos</h1><p>${sub}</p></div><div class="row" style="gap:8px">${isApprover()?`<button class="btn" data-act="csColunas">Colunas</button>`:""}<button class="btn primary" data-act="csNovo"${ativo?` data-col="${F[0]?F[0].id:""}"`:""}>${ic("plus")} Novo caso</button></div></div>
+    ${banner}${abas}
+    <div class="tb"><input class="inp" id="csBusca" placeholder="Buscar caso, pessoa ou etiqueta" value="${esc(ui.cs.busca)}"><select class="inp" id="csResp" style="width:auto"><option value="">Todos os responsáveis</option>${TF_RESP.map(r=>`<option ${ui.cs.resp===r?"selected":""}>${r}</option>`).join("")}</select></div>
+    <div class="kb">${F.map(col=>{ const it=L.filter(c=>(c.coluna||F0.id)===col.id).sort((a,b)=>(b.etiquetas||[]).includes("Urgente")-(a.etiquetas||[]).includes("Urgente")||(a.movidoEm||a.t)-(b.movidoEm||b.t));
+      return `<section class="kb-col${col.trava?" es-trava-col":""}" data-drop="cs" data-col="${col.id}"><header title="${esc(col.dica||"")}"><span class="es-ch">${esc(col.nome)}${ativo&&col.dono?`<small class="es-dono">${esc(col.dono)}</small>`:""}</span><span class="count">${it.length}</span><button class="lnk" data-act="csNovo" data-col="${col.id}" title="Novo caso nesta coluna">+</button></header><div class="kb-list">${it.map(c=>esCard(c, ativo)).join("")}</div></section>`; }).join("")}</div>
+    ${ativo?`<p class="muted es-ver">Esteiras ${esc(ES_VER)}</p>`:""}`;
+}
+
+/* ---------- Mover com portão e trava ---------- */
+function esMover(c, destId){
+  c=csGet(c.id)||c;
+  const F=funil(); const de=esColDe(c), para=F.find(f=>f.id===destId); if(!para || para.id===de.id) return;
+  const iDe=F.indexOf(de), iPara=F.indexOf(para);
+  const frente=iPara>iDe;
+  if(frente){
+    const travada=para.fim ? null : F.slice(iDe, iPara).find(col=>col.trava && (col.esteira||"A")===(de.esteira||"A") && esFalta(c, col).length);
+    if(travada){ toast("“"+travada.nome+"” só passa com: "+esFalta(c, travada).join(", ")+"."); csModalEs(c); return; }
+  }
+  snap();
+  c.coluna=para.id; c.movidoEm=Date.now();
+  if((de.esteira||"A")==="A" && para.esteira==="B") esPassouJur(c, de);
+  logA("moveu o caso “"+c.titulo+"” para "+para.nome);
+  save(); render();
+  if($("#esSec")) esRefresh(c);
+}
+function esPassouJur(c, de){
+  c.jur={t:Date.now(), quem:ui.me||"?", de:de.nome};
+  tfAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", area:c.area||"", txt:"Kit recebido: conferir e iniciar — "+c.titulo, resp:"Alan", data:"", dataComp:isoDia(), done:false, status:"pendente", obs:"Gerada na passagem ao jurídico.", pessoa:c.pessoa||"", caso:c.id, prio:"", origem:"esteira"});
+  logA("passou o caso “"+c.titulo+"” ao jurídico");
+}
+
+/* ---------- Portão: marcar itens; pasta pronta (D0) gera prazos e tarefas ---------- */
+function esMarcar(c, col, item, on){
+  c=csGet(c.id)||c;
+  snap();
+  const L=esChk(c, col).filter(x=>x!==item); if(on) L.push(item); c.chk[col.id]=L;
+  if(col.d0){ const tudo=!esFalta(c, col).length; if(tudo && !c.d0) esD0(c); else if(!tudo && c.d0) esD0Limpar(c); }
+  logA((on?"marcou":"desmarcou")+" “"+item+"” no caso “"+c.titulo+"”");
+  save(); render(); esRefresh(c);
+}
+function esD0(c){
+  const d0=isoDia(); c.d0=d0; c.viabAte=esSomaUteis(d0, 5); c.retornoAte=esSomaUteis(d0, 7);
+  const base={t:Date.now(), quem:ui.me||"?", area:c.area||"", done:false, status:"pendente", pessoa:c.pessoa||"", caso:c.id, prio:"", origem:"esteira-d0"};
+  tfAll().push(Object.assign({id:uid(), txt:"Rodar viabilidade: "+c.titulo, resp:"Gabriel", dataComp:c.viabAte, data:c.viabAte, obs:"Pasta pronta em "+fmtIso(d0)+". Prazo: D0 + 5 dias úteis."}, base));
+  tfAll().push(Object.assign({id:uid(), txt:"Agendar o retorno com o cliente: "+c.titulo, resp:"Ellen", dataComp:c.viabAte, data:c.retornoAte, obs:"Retorno até "+fmtIso(c.retornoAte)+" (D0 + 7 dias úteis)."}, base));
+  logA("pasta pronta no caso “"+c.titulo+"”: viabilidade até "+fmtIso(c.viabAte)+", retorno até "+fmtIso(c.retornoAte));
+  toast("Pasta pronta. Viabilidade até "+fmtIso(c.viabAte)+"; retorno até "+fmtIso(c.retornoAte)+".");
+}
+function esD0Limpar(c){
+  S.tarefas=tfAll().filter(t=>!(t.origem==="esteira-d0" && t.caso===c.id && !t.done));
+  delete c.d0; delete c.viabAte; delete c.retornoAte;
+}
+
+/* ---------- Documentos pedidos ao cliente ---------- */
+function esDocs(c){ if(!Array.isArray(c.docsLista)) c.docsLista=[]; return c.docsLista; }
+function esDocsTexto(c){
+  const f=esDocs(c).filter(d=>!d.ok); if(!f.length) return "";
+  const nome=esPrimeiro(c);
+  const ess=f.filter(d=>d.ess), comp=f.filter(d=>!d.ess);
+  let t="Olá"+(nome?", "+nome:"")+"! Para seguirmos com o seu caso, precisamos destes documentos:";
+  if(ess.length) t+="\n\nPrincipais (com eles já começamos o estudo):\n"+ess.map(d=>"• "+d.txt).join("\n");
+  if(comp.length) t+="\n\nComplementares (podem vir depois):\n"+comp.map(d=>"• "+d.txt).join("\n");
+  return t+"\n\nPode enviar por aqui mesmo. Qualquer dúvida, estou à disposição.";
+}
+
+/* ---------- Bloco da esteira dentro do caso ---------- */
+function esSecHTML(c){
+  const col=esColDe(c), P=col.portao||[], ok=esChk(c, col), prox=esProx(col), B=esCols("B");
+  const D=esDocs(c), fal=D.filter(d=>!d.ok).length;
+  let acoes="";
+  if(col.k==="RET"){
+    const nv=esK("NC"), vi=esK("CONTR");
+    acoes=(vi?`<button class="btn sm primary" data-es="ir" data-id="${c.id}" data-col="${vi.id}">Viável e aceitou → Contratação</button>`:"")+(nv?`<button class="btn sm" data-es="ir" data-id="${c.id}" data-col="${nv.id}">Não viável ou recusou → Não contratou</button>`:"");
+  } else if(col.passa && B.length){
+    acoes=`<button class="btn sm primary" data-es="ir" data-id="${c.id}" data-col="${B[0].id}">Passar ao jurídico</button>`;
+  } else if(prox && !col.fim){
+    acoes=`<button class="btn sm" data-es="ir" data-id="${c.id}" data-col="${prox.id}">Avançar para ${esc(prox.nome)}</button>`;
+  }
+  return `<div class="cb-sec es-sec" id="esSec"><h4>Etapa: ${esc(col.nome)} <span class="muted es-h4d">· ${esc(col.dono||"")}</span></h4>
+    ${col.dica?`<p class="muted es-dica">${esc(col.dica)}</p>`:""}
+    ${P.length?P.map((it,i)=>`<label class="check es-ck"><input type="checkbox" data-es="ck" data-id="${c.id}" data-i="${i}" ${ok.includes(it)?"checked":""}> ${esc(it)}</label>`).join(""):`<p class="muted" style="margin:0">Sem itens obrigatórios nesta etapa.</p>`}
+    ${col.trava?`<p class="es-trava">Trava: só passa ao jurídico com os três itens marcados.</p>`:""}
+    ${c.d0?`<p class="es-d0">Pasta pronta em <b>${esc(fmtIso(c.d0))}</b> · viabilidade até <b>${esc(fmtIso(c.viabAte))}</b> · retorno até <b>${esc(fmtIso(c.retornoAte))}</b></p>`:""}
+    ${c.jur?`<p class="es-d0">Passou ao jurídico em <b>${esc(fmtT(c.jur.t))}</b> (${esc(c.jur.quem)}).</p>`:""}
+    ${acoes?`<div class="es-acoes">${acoes}</div>`:""}
+    <div class="df"><label>Pasta do cliente (link do Dropbox)</label><div class="row" style="gap:6px"><input class="inp" id="esPasta" data-id="${c.id}" value="${esc(c.pastaUrl||"")}" placeholder="https://www.dropbox.com/…" style="flex:1">${c.pastaUrl?`<a class="btn sm" href="${esc(c.pastaUrl)}" target="_blank" rel="noopener">Abrir</a>`:""}</div></div>
+    <div class="df"><label>Resumo do caso <span class="muted">(sem CPF, valores, senhas ou dados de saúde; a transcrição fica na pasta)</span></label><textarea class="inp" id="esResumo" data-id="${c.id}" style="min-height:64px">${esc(c.resumo||"")}</textarea></div>
+    <div class="es-docs"><div class="row" style="gap:8px;align-items:center"><h4 style="margin:0">Documentos pedidos ao cliente</h4><span class="muted">${D.length?(D.length-fal)+" de "+D.length+" recebidos":""}</span><span class="grow"></span>${fal?`<button class="btn sm" data-es="docCopiar" data-id="${c.id}">Copiar pedido para o WhatsApp</button>`:""}</div>
+      ${D.map((d,i)=>`<div class="es-doc${d.ok?" ok":""}"><label class="check" style="flex:1"><input type="checkbox" data-es="doc" data-id="${c.id}" data-i="${i}" ${d.ok?"checked":""}> ${esc(d.txt)}</label><span class="es-tag${d.ess?" ess":""}">${d.ess?"essencial":"complementar"}</span><button class="lnk" data-es="docDel" data-id="${c.id}" data-i="${i}" title="Tirar da lista">×</button></div>`).join("")}
+      <div class="row es-docadd" style="gap:6px"><input class="inp" id="esDocNovo" placeholder="Novo documento (ex.: matrícula atualizada)" style="flex:1"><select class="inp" id="esDocEss" style="width:auto"><option value="1">essencial</option><option value="0">complementar</option></select><button class="btn sm" data-es="docAdd" data-id="${c.id}">Incluir</button></div>
+    </div></div>`;
+}
+function esRefresh(c){ const s=$("#esSec"); if(!s || !c) return; const f=csGet(c.id)||c; s.outerHTML=esSecHTML(f); }
+function csModalEs(c){
+  c=csGet(c.id)||c;
+  closeModal(); csModal(c);
+  if(!esAtivo()) return;
+  const f=$("#modalRoot .modal .cb-form"); if(f) f.insertAdjacentHTML("afterend", esSecHTML(c));
+}
+
+/* ---------- Caso-modelo (exemplo em andamento, só iniciais) ---------- */
+function esModelo(){
+  const A5=esK("DOC"); if(!A5) return;
+  if(csAll().some(c=>c.exemplo)){ toast("O caso-modelo já existe."); return; }
+  snap();
+  const agora=Date.now(), hoje=isoDia();
+  const c={id:uid(), t:agora, quem:ui.me||"?", titulo:"Imóvel: segurança jurídica para vender (modelo)", pessoa:"", rotulo:"Ricardo K.", coluna:A5.id, resp:"Ellen", area:"Imobiliário", etiquetas:["Documentos"], origem:"modelo", exemplo:true, movidoEm:agora,
+    resumo:"Imóvel comprado por contrato particular, com financiamento bancário ainda no nome do vendedor. Quer segurança jurídica para vender. Viabilidade após os documentos essenciais.",
+    registros:[{id:uid(), t:agora, quem:"Gabriel", txt:"Consulta gravada no iPad; transcrição enviada à Ellen para a pasta do cliente."}],
+    chk:{}, docsLista:[
+      {txt:"Exportação da conversa de WhatsApp com o vendedor", ess:true, ok:false},
+      {txt:"Contrato particular de compra (contrato de gaveta)", ess:true, ok:false},
+      {txt:"Contrato de financiamento do banco", ess:true, ok:false},
+      {txt:"Matrícula atualizada do imóvel", ess:true, ok:false},
+      {txt:"Comprovantes das transferências ao vendedor", ess:true, ok:false},
+      {txt:"Extrato consolidado da dívida no banco", ess:false, ok:false},
+      {txt:"IPTU: guias e comprovante de quitação", ess:false, ok:false},
+      {txt:"Negativa ou laudo do banco sobre o financiamento", ess:false, ok:false}]};
+    csAll().push(c);
+  const base={t:agora, quem:ui.me||"?", area:"Imobiliário", done:false, status:"pendente", pessoa:"", caso:c.id, prio:"", origem:"modelo", data:""};
+  tfAll().push(Object.assign({id:uid(), txt:"Cobrar documentos essenciais: "+c.titulo, resp:"Ellen", dataComp:esSomaUteis(hoje, 2), obs:"Caso-modelo. Copiar o pedido no caso e mandar pelo WhatsApp."}, base));
+  logA("criou o caso-modelo “"+c.titulo+"”");
+  save(); ui.es.aba="A"; render();
+  toast("Caso-modelo criado em Documentos.", ()=>{ undo(); render(); });
+}
+
+/* ---------- Colunas por esteira (nome | dono | itens; separados por ponto e vírgula) ---------- */
+function esLinhas(e){ return esCols(e).map(f=>[f.nome, f.dono||"", (f.portao||[]).join("; ")].join(" | ")).join("\n"); }
+function esLer(txt, e, velhas, usados){
+  return String(txt||"").split("\n").map(x=>x.trim()).filter(Boolean).map((l,i)=>{
+    const p=l.split("|").map(s=>(s||"").trim());
+    let ant=velhas.find(f=>f.nome===p[0] && !usados.has(f.id)) || velhas[i] || {};
+    if(ant.id && usados.has(ant.id)) ant={};
+    const id=ant.id||uid(); usados.add(id);
+    return Object.assign({}, ant, {id, esteira:e, nome:p[0], dono:p[1]||"", portao:(p[2]||"").split(";").map(s=>s.trim()).filter(Boolean)});
+  });
+}
+function csColunasModal(){
+  const F=funil();
+  if(!esAtivo()){
+    modal("Colunas do funil", `<p class="muted" style="margin:0 0 6px">Uma coluna por linha, na ordem. A última é a de concluídos. Para renomear, edite o texto; casos de colunas apagadas vão para a primeira.</p><textarea class="inp" id="csCols" style="min-height:220px">${esc(F.map(f=>f.nome).join("\n"))}</textarea>`,
+      [{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{ const nomes=$("#csCols").value.split("\n").map(x=>x.trim()).filter(Boolean); if(!nomes.length) return false;
+        snap(); const novo=nomes.map((n,i)=>({id:(F[i]&&F[i].nome===n)?F[i].id:((F.find(f=>f.nome===n)||{}).id||uid()), nome:n}));
+        const ids=new Set(novo.map(f=>f.id)); csAll().forEach(c=>{ if(!ids.has(c.coluna)) c.coluna=novo[0].id; }); S.funil=novo; logA("alterou as colunas do funil"); save(); render(); }}]);
+    return;
+  }
+  modal("Colunas das esteiras", `<p class="muted" style="margin:0 0 6px">Uma coluna por linha, na ordem: <code>Nome | Dono | item; item</code>. Os itens são o que precisa estar feito para o caso avançar. Casos de colunas apagadas vão para a primeira coluna da mesma esteira.</p>
+    <div class="df"><label>Atendimento (Gabriel + Ellen)</label><textarea class="inp" id="esColA" style="min-height:220px">${esc(esLinhas("A"))}</textarea></div>
+    <div class="df"><label>Jurídico (Alan)</label><textarea class="inp" id="esColB" style="min-height:120px">${esc(esLinhas("B"))}</textarea></div>`,
+    [{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{
+      const usados=new Set();
+      const A=esLer($("#esColA").value, "A", esCols("A"), usados), B=esLer($("#esColB").value, "B", esCols("B"), usados);
+      if(!A.length || !B.length){ toast("Cada esteira precisa de pelo menos uma coluna."); return false; }
+      snap();
+      const ids=new Set(A.concat(B).map(f=>f.id));
+      csAll().forEach(c=>{ if(ids.has(c.coluna)) return; const old=F.find(f=>f.id===c.coluna); c.coluna=(old && old.esteira==="B") ? B[0].id : A[0].id; });
+      S.funil=A.concat(B); logA("alterou as colunas das esteiras"); save(); render(); }}], true);
+}
+
+/* ---------- Ações e eventos ---------- */
+Object.assign(PACT, {
+  csAbrir:el=>{ const c=csGet(el.dataset.id); if(c) csModalEs(c); },
+  csRegistrar:el=>{ const c=csGet(el.dataset.id); const i=$("#csReg"); if(!c||!i||!i.value.trim()) return; snap(); (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:i.value.trim()}); logA("registrou no caso “"+c.titulo+"”"); save(); render(); csModalEs(c); }
+});
+document.addEventListener("drop", e=>{
+  const colEl=e.target && e.target.closest ? e.target.closest("[data-drop='cs']") : null; if(!colEl || !esAtivo()) return;
+  const par=(e.dataTransfer.getData("text/plain")||"").split(":"); if(par[0]!=="cs") return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  $$(".kb-col.over").forEach(x=>x.classList.remove("over"));
+  const c=csGet(par[1]); if(c) esMover(c, colEl.dataset.col);
+}, true);
+document.addEventListener("click", e=>{
+  const b=e.target && e.target.closest ? e.target.closest("[data-es]") : null; if(!b) return;
+  const a=b.dataset.es; if(a==="ck" || a==="doc") return;
+  e.preventDefault();
+  const c=b.dataset.id ? csGet(b.dataset.id) : null;
+  if(a==="aba"){ ui.es.aba=b.dataset.v; try{ localStorage.setItem("mapa-es-aba", ui.es.aba); }catch(x){} render(); }
+  else if(a==="ativar") esAtivar();
+  else if(a==="modelo") esModelo();
+  else if(a==="ir" && c) esMover(c, b.dataset.col);
+  else if(a==="docAdd" && c){ const i=$("#esDocNovo"); const t=(i&&i.value||"").trim(); if(!t){ if(i) i.focus(); return; } if(esSensivel(t)){ toast("Parece ter CPF ou senha. Isso fica no Jurichat ou no Dropbox."); return; } snap(); esDocs(c).push({txt:t, ess:($("#esDocEss")||{}).value!=="0", ok:false}); logA("incluiu o documento “"+t+"” no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); const n=$("#esDocNovo"); if(n) n.focus(); }
+  else if(a==="docDel" && c){ const i=+b.dataset.i; const d=esDocs(c)[i]; if(!d) return; snap(); esDocs(c).splice(i, 1); save(); render(); esRefresh(c); toast("Documento tirado da lista.", ()=>{ undo(); render(); const cc=csGet(c.id); if(cc && $("#esSec")) esRefresh(cc); }); }
+  else if(a==="docCopiar" && c){ const t=esDocsTexto(c); if(t) copyText(t, "Pedido copiado. Cole no WhatsApp do cliente."); }
+});
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t) return;
+  if(t.dataset && t.dataset.es==="ck"){ const c=csGet(t.dataset.id); if(!c) return; const col=esColDe(c); const item=(col.portao||[])[+t.dataset.i]; if(item) esMarcar(c, col, item, t.checked); return; }
+  if(t.dataset && t.dataset.es==="doc"){ const c=csGet(t.dataset.id); if(!c) return; const d=esDocs(c)[+t.dataset.i]; if(!d) return; snap(); d.ok=t.checked; logA((t.checked?"recebeu":"desmarcou")+" o documento “"+d.txt+"” no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); return; }
+  if(t.id==="esPasta"){ const c=csGet(t.dataset.id); if(!c) return; const v=t.value.trim(); if(v && !/^https?:\/\//i.test(v)){ toast("Cole o link completo da pasta (começa com https://)."); return; } snap(); c.pastaUrl=v; logA("ligou a pasta do cliente ao caso “"+c.titulo+"”"); save(); render(); esRefresh(c); return; }
+  if(t.id==="esResumo"){ const c=csGet(t.dataset.id); if(!c) return; const v=t.value.trim(); if(esSensivel(v)){ toast("O resumo parece ter CPF ou senha. Tire do texto: isso fica no Jurichat ou no Dropbox."); return; } snap(); c.resumo=v; logA("atualizou o resumo do caso “"+c.titulo+"”"); save(); render(); return; }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="esDocNovo"){ e.preventDefault(); const b=$("[data-es='docAdd']"); if(b) b.click(); } });
+(function(){ const st=document.createElement("style"); st.textContent = ".es-banner{display:flex;gap:14px;align-items:center;flex-wrap:wrap;border:1px solid var(--accent);border-radius:12px;padding:12px 14px;margin:0 0 14px;background:var(--surface)}.es-banner>div{flex:1;min-width:240px}.es-banner p{margin:4px 0 0;font-size:13px}"
+ + ".es-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px}"
+ + ".es-tab{flex:0 1 260px;text-align:left;border:1px solid var(--line);background:var(--surface);color:inherit;border-radius:12px;padding:9px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit}"
+ + ".es-tab b{font-size:14px}.es-tab span{font-size:12px;color:var(--muted)}.es-tab.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}"
+ + ".es-ch{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}.es-dono{font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)}"
+ + ".es-trava-col{box-shadow:inset 0 3px 0 var(--danger)}"
+ + ".es-pzs{display:flex;gap:6px;flex-wrap:wrap}.es-pz{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 6px}.es-pz.late{color:var(--danger);border-color:var(--danger);font-weight:700}"
+ + ".es-pt{font-size:11px;font-weight:700;color:var(--muted);border-radius:6px;padding:0 5px;background:var(--surface-2)}.es-pt.ok{color:var(--ok,#2e8b57)}"
+ + ".es-ex{border-style:dashed}.es-pasta{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:0 5px}"
+ + ".es-sec h4{margin:0 0 4px}.es-h4d{font-weight:500}.es-dica{margin:0 0 6px;font-size:13px}.es-ck{padding:3px 0}"
+ + ".es-trava{color:var(--danger);font-size:12.5px;font-weight:600;margin:6px 0 0}.es-d0{font-size:13px;margin:6px 0 0}"
+ + ".es-acoes{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}.es-sec .df{margin-top:8px}"
+ + ".es-docs{margin-top:12px;display:flex;flex-direction:column;gap:2px}.es-doc{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}.es-doc.ok label{color:var(--muted);text-decoration:line-through}"
+ + ".es-tag{font-size:10.5px;border-radius:5px;padding:0 6px;color:var(--muted);border:1px solid var(--line)}.es-tag.ess{color:var(--accent);border-color:var(--accent)}.es-docadd{margin-top:6px}"
+ + ".es-ul{margin:4px 0 8px;padding-left:20px}.es-ver{font-size:11px;margin-top:10px}"
+ + "@media (max-width:640px){.es-tab{flex:1 1 100%}}";
+ document.head.appendChild(st); })();
 /* ================= RODADA 3 (15/10, noite): funil sem arrastar para o lado; post-it solto pela tela toda ================= */
 /* 1) A área de conteúdo passa a usar a largura toda; cada bloco continua limitado a 1240px, menos o funil (kanban) e a camada de post-its. */
 document.head.insertAdjacentHTML("beforeend", "<style id=\"r3Style\">"
@@ -5887,6 +6191,496 @@ $("#fileIn").addEventListener("change", e=>{
 });
 window.addEventListener("beforeunload", ()=>{ clearTimeout(saveT); persist(); });
 
+/* ================= ANOTAR M&P (v5.1, 21/10/2026): janelinha de anotações que vira tarefa na ficha do cliente ================= */
+/* Modo mini: index.html?modo=anotar abre só a nota amarela. Cada linha "Cliente: o que fazer #dono prazo" vira tarefa ligada à pessoa. */
+/* Usa o mesmo login, o mesmo save() e a mesma mescla do sistema. Nada de SQL novo. */
+const AN_VER = "v5.1 · 21/10/2026";
+const AN_MINI = (function(){ try{ return new URLSearchParams(location.search).get("modo")==="anotar"; }catch(e){ return false; } })();
+const AN_DIAS = {dom:0, domingo:0, seg:1, segunda:1, ter:2, terca:2, qua:3, quarta:3, qui:4, quinta:4, sex:5, sexta:5, sab:6, sabado:6};
+const AN_RESP = {gabriel:"Gabriel", alan:"Alan", evaldo:"Evaldo", ellen:"Ellen", socios:"Sócios", socio:"Sócios"};
+const AN_MIN = ["e","de","da","do","das","dos","di","du"];
+ui.an = {aba:"minhas", modo:"nota", sel:{}, aviso:"", desfazer:null, lista:[], criarFicha:true, donoPadrao:"", triId:"", built:"", msgT:null};
+
+function anNorm(t){ return String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim(); }
+function anTitulo(t){
+  const s=String(t||"").trim().replace(/\s+/g," ");
+  if(s!==s.toUpperCase() && s!==s.toLowerCase()) return s;
+  return s.toLowerCase().split(" ").map((w,i)=>(i>0 && AN_MIN.includes(w)) ? w : w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
+}
+function anSensivel(t){ return /senha/i.test(t) || /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/.test(t); }
+function anEu(){ return ui.me || "Gabriel"; }
+function anHojeIso(){ return isoDia(); }
+function anIsoDe(d){ return isoDia(d); }
+function anDataDiaMes(dd, mm, aa){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  let ano = aa ? (String(aa).length===2 ? 2000+Number(aa) : Number(aa)) : hoje.getFullYear();
+  let d=new Date(ano, Number(mm)-1, Number(dd));
+  if(isNaN(d) || d.getMonth()!==Number(mm)-1) return "";
+  if(!aa && (hoje-d)/864e5>30) d=new Date(ano+1, Number(mm)-1, Number(dd));
+  return anIsoDe(d);
+}
+function anProxDia(wd){ const d=new Date(); d.setHours(0,0,0,0); const diff=(wd-d.getDay()+7)%7; d.setDate(d.getDate()+diff); return anIsoDe(d); }
+function anMaisDias(n){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+n); return anIsoDe(d); }
+
+/* ---------- Leitura de uma linha ---------- */
+function anParse(txt, semCliente, bruto){
+  const o={cliente:"", texto:"", resp:"", data:"", hora:"", urg:false};
+  let rest=String(txt||"").trim();
+  if(!semCliente){
+    const m=rest.match(/^\s*([^:#!\d][^:#!]{0,58}[^:#!\d\s]|[^:#!\d\s])\s*:\s*(.*)$/);
+    if(m){ o.cliente=m[1].trim(); rest=m[2]; }
+  }
+  if(/!/.test(rest)){ o.urg=true; rest=rest.replace(/!+/g," "); }
+  rest=rest.replace(/(^|\s)#([A-Za-zÀ-ÿ]+)/g, (all, pre, nome)=>{ const r=AN_RESP[anNorm(nome)]; if(r){ o.resp=r; return pre; } return all; });
+  if(!bruto) rest=rest.replace(/(^|\s)(\d{1,2})(?:h(\d{2})?|:(\d{2}))(?=\s|$|[.,;])/i, (all, pre, h, m1, m2)=>{ const hh=Number(h); const mm=Number(m1||m2||0); if(hh>23||mm>59) return all; o.hora=pad2(hh)+":"+pad2(mm); return pre; });
+  rest=rest.replace(/(^|\s)(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?=\s|$|[.,;])/, (all, pre, d, m, a)=>{ if(bruto && !a) return all; const iso=anDataDiaMes(d, m, a); if(!iso) return all; o.data=iso; return pre; });
+  let toks=rest.trim().split(/\s+/).filter(Boolean);
+  let mudou=true;
+  while(!bruto && mudou && toks.length){
+    mudou=false;
+    const ult=anNorm(toks[toks.length-1]).replace(/[.,;]$/,"");
+    if(!o.data && ult==="hoje"){ o.data=anHojeIso(); toks.pop(); mudou=true; continue; }
+    if(!o.data && ult==="amanha"){ o.data=anMaisDias(1); toks.pop(); mudou=true; continue; }
+    if(!o.data && AN_DIAS[ult]!==undefined){ o.data=anProxDia(AN_DIAS[ult]); toks.pop(); mudou=true; continue; }
+    if(!o.data && toks.length>=3 && ult.startsWith("dia") && /^\d{1,3}$/.test(toks[toks.length-2]) && anNorm(toks[toks.length-3])==="em"){ o.data=anMaisDias(Number(toks[toks.length-2])); toks.splice(-3); mudou=true; continue; }
+  }
+  o.texto=toks.join(" ").replace(/^[\s\-–—:]+|[\s\-–—:]+$/g,"").trim();
+  if(!o.texto) o.texto=String(txt||"").replace(/^[^:]*:/,"").trim() || String(txt||"").trim();
+  return o;
+}
+
+/* ---------- Busca de cliente ---------- */
+function anBusca(q){
+  const k=anNorm(q); if(!k) return [];
+  const toks=k.split(" ");
+  const nota=nome=>{ const n=anNorm(nome); if(!n) return 0; if(n===k) return 3; if(n.startsWith(k)) return 2; const w=n.split(" "); return toks.every(t=>w.some(x=>x.startsWith(t))) ? 1 : 0; };
+  const out=[], vistos=new Set();
+  psAll().forEach(p=>{ const s=nota(p.nome); if(s){ out.push({id:p.id, nome:p.nome, s}); vistos.add(anNorm(p.nome)); } });
+  (S.atendimentos||[]).forEach(a=>{ if(a.pessoa && psGet(a.pessoa)) return; const n=anNorm(a.nome); if(!n || vistos.has(n)) return; const s=nota(a.nome); if(s){ out.push({id:"", at:a.id, nome:a.nome, s}); vistos.add(n); } });
+  return out.sort((a,b)=>(b.s-a.s) || a.nome.localeCompare(b.nome,"pt-BR")).slice(0,6);
+}
+function anEscolha(cliente){
+  const k=anNorm(cliente); if(!k) return null;
+  if(ui.an.sel[k]) return ui.an.sel[k];
+  const c=anBusca(cliente);
+  if(!c.length) return {novo:true, nome:anTitulo(cliente)};
+  return c[0];
+}
+function anCriarPessoa(nome, atId){
+  const p={id:uid(), t:Date.now(), quem:anEu(), nome:anTitulo(nome), papel:"Cliente", tipo:"PF", tel:"", email:"", cidade:"", origem:"Anotar", interesse:false, doc:"", nasc:"", end:"", fixado:"", obs:"", rg:"", estadoCivil:"", profissao:"", nacionalidade:"", fantasia:"", ie:"", respNome:"", respDoc:"", cep:"", tel2:""};
+  psAll().push(p);
+  if(atId){ const a=(S.atendimentos||[]).find(x=>x.id===atId); if(a && !a.pessoa) a.pessoa=p.id; }
+  logA("cadastrou a pessoa "+p.nome+" pela janelinha Anotar");
+  return p;
+}
+function anPessoaDe(esc0){
+  if(!esc0) return null;
+  if(esc0.id) return psGet(esc0.id) || null;
+  if(esc0.semFicha) return null;
+  if(esc0.novo || esc0.at){ const ja=psAll().find(p=>anNorm(p.nome)===anNorm(esc0.nome)); return ja || anCriarPessoa(esc0.nome, esc0.at); }
+  return null;
+}
+
+/* ---------- Gravar ---------- */
+function anCriar(o, pessoa, quemFaz){
+  const resp=o.resp || quemFaz || anEu();
+  const nome=pessoa ? pessoa.nome : "";
+  if(o.hora){
+    const e={id:uid(), t:Date.now(), quem:anEu(), titulo:o.texto, tipo:"outro", resp, data:o.data||anHojeIso(), hora:o.hora, pessoa:pessoa?pessoa.id:"", local:"", link:"", pasta:"", obs:"via Anotar"};
+    evAll().push(e);
+    logA("agendou “"+o.texto+"”"+(nome?" com "+nome:"")+" em "+fmtIso(e.data)+" "+e.hora+" (Anotar)");
+    return {tipo:"ev", item:e};
+  }
+  const t={id:uid(), t:Date.now(), quem:anEu(), area:"", txt:o.texto, resp, data:"", dataComp:o.data||"", done:false, status:"pendente", obs:"via Anotar", pessoa:pessoa?pessoa.id:"", caso:"", prio:o.urg?"alta":"", origem:"anotar", triar:!pessoa};
+  tfAll().push(t);
+  logA("anotou"+(nome?" para "+nome:"")+": “"+o.texto+"”"+(resp!==anEu()?" (faz: "+resp+")":""));
+  return {tipo:"tf", item:t};
+}
+function anSalvarLinha(){
+  const inp=$("#anIn"); if(!inp) return;
+  const raw=(inp.value||"").trim(); if(!raw) return;
+  if(anSensivel(raw) && ui.an.aviso!==raw){ ui.an.aviso=raw; anMsg("Parece ter senha ou CPF. Isso fica no Juridiq ou no gerenciador de senhas. Aperte Enter de novo para gravar mesmo assim.", "warn"); return; }
+  const o=anParse(raw);
+  snap();
+  const pessoa=o.cliente ? anPessoaDe(anEscolha(o.cliente)) : null;
+  const r=anCriar(o, pessoa, "");
+  save(); render();
+  inp.value=""; ui.an.aviso=""; ui.an.sel={}; anPrevia();
+  const quando = r.tipo==="ev" ? fmtIso(r.item.data)+" "+r.item.hora : (r.item.dataComp ? fmtIso(r.item.dataComp) : "");
+  anMsg((r.tipo==="ev"?"Compromisso":"Tarefa")+" gravad"+(r.tipo==="ev"?"o":"a")+(pessoa?" na ficha de "+pessoa.nome:" em Para triar")+" · "+r.item.resp+(quando?" · "+quando:""), "ok");
+  inp.focus();
+}
+function anConcluir(id){
+  const t=tfAll().find(x=>x.id===id); if(!t) return;
+  snap();
+  const antes={done:t.done, status:t.status, doneEm:t.doneEm, doneBy:t.doneBy};
+  t.done=true; t.status="concluida"; t.doneEm=Date.now(); t.doneBy=anEu();
+  const p=t.pessoa?psGet(t.pessoa):null;
+  logA("concluiu “"+t.txt+"”"+(p?" de "+p.nome:""));
+  save(); render();
+  ui.an.desfazer={id, antes};
+  anMsg("Concluída: "+t.txt, "ok", true);
+}
+function anDesfazer(){
+  const d=ui.an.desfazer; if(!d) return;
+  const t=tfAll().find(x=>x.id===d.id); if(!t) return;
+  snap(); Object.assign(t, d.antes); ui.an.desfazer=null; save(); render(); anMsg("Desfeito.", "ok");
+}
+function anTriarSalvar(id){
+  const t=tfAll().find(x=>x.id===id); if(!t) return;
+  const nomeCli=(($("#anTriCli")||{}).value||"").trim();
+  const resp=(($("#anTriResp")||{}).value||anEu());
+  const data=(($("#anTriData")||{}).value||"");
+  snap();
+  let p=null;
+  if(nomeCli){ const ex=psAll().find(x=>anNorm(x.nome)===anNorm(nomeCli)); p=ex || anCriarPessoa(nomeCli, ""); }
+  t.pessoa=p?p.id:""; t.resp=resp; t.dataComp=data; t.triar=!p;
+  logA("triou “"+t.txt+"”"+(p?" para "+p.nome:"")+" · faz: "+resp);
+  ui.an.triId="";
+  save(); render(); anMsg(p?"Foi para a ficha de "+p.nome+".":"Dono e data salvos; continua sem cliente.", "ok");
+}
+
+/* ---------- Colar lista (zerar caderno e bloco de notas) ---------- */
+function anLerLista(txt){
+  const out=[]; let bloco=null;
+  const head=/^\s*(\d{1,3})\s*[-.)–—]\s*(.+)$/;
+  String(txt||"").split(/\r?\n/).forEach(l=>{
+    const linha=l.replace(/\s+$/,""); if(!linha.trim()) return;
+    const h=linha.match(head);
+    if(h){
+      let resto=h[2].trim(), extra="";
+      const par=resto.match(/\(([^)]*)\)/g); if(par){ extra=par.join(" "); resto=resto.replace(/\([^)]*\)/g," ").replace(/\s+/g," ").trim(); }
+      let nome=resto, acao="";
+      const ic=resto.indexOf(":"); const id=resto.search(/\s[-–—]\s/);
+      if(ic>0 && (id<0 || ic<id)){ nome=resto.slice(0,ic); acao=resto.slice(ic+1); }
+      else if(id>0){ nome=resto.slice(0,id); acao=resto.slice(id).replace(/^\s*[-–—]\s*/,""); }
+      nome=nome.replace(/[\s\-–—:]+$/,"").trim(); acao=acao.trim();
+      const palavras=nome.split(/\s+/).filter(Boolean).length;
+      const marcaSem = /^sem cliente$/i.test(nome.trim());
+      const semCli = marcaSem || palavras>5 || !nome;
+      bloco={num:h[1], nome: marcaSem ? "" : nome, semCliente:semCli, itens:[], extra:""};
+      out.push(bloco);
+      if(semCli){ bloco.itens.push(((marcaSem ? acao : resto)+(extra?" "+extra:"")).trim()); return; }
+      if(acao) bloco.itens.push((acao+(extra?" "+extra:"")).trim());
+      else bloco.extra=extra;
+      return;
+    }
+    const sub=linha.replace(/^\s*[-*•↳→>]+\s*/,"").trim(); if(!sub) return;
+    if(!bloco){ if(/:\s*$/.test(sub) || /^pend[eê]ncias?\b/i.test(sub)) return; out.push({num:"", nome:"", semCliente:true, itens:[sub], solto:true}); return; }
+    bloco.itens.push(sub);
+  });
+  const linhas=[];
+  out.forEach(b=>{
+    const itens=b.itens.length ? b.itens.slice() : ["Ver pendências"+(b.nome?" de "+anTitulo(b.nome):"")];
+    if(b.extra) itens[0]=(itens[0]+" "+b.extra).trim();
+    const cand = (!b.semCliente && b.nome) ? anBusca(b.nome) : [];
+    itens.forEach(texto=>{
+      const sens=anSensivel(texto) || anSensivel(b.nome);
+      const cliente = b.semCliente ? {semFicha:true, nome:""} : (cand.length ? cand[0] : {novo:true, nome:anTitulo(b.nome)});
+      linhas.push({id:uid(), num:b.num, nomeOrig:b.nome, cliente, texto, sens, jaFiz:sens, resp:""});
+    });
+  });
+  return linhas;
+}
+function anImportar(){
+  const L=ui.an.lista.filter(x=>!x.jaFiz);
+  if(!L.length){ anMsg("Nada marcado para importar.", "warn"); return; }
+  snap();
+  const criadas={}; let nT=0, nE=0, nF=0;
+  L.forEach(x=>{
+    let p=null;
+    if(x.cliente.id) p=psGet(x.cliente.id);
+    else if(!x.cliente.semFicha && ui.an.criarFicha){
+      const k=anNorm(x.cliente.nome);
+      p=criadas[k] || psAll().find(q=>anNorm(q.nome)===k) || null;
+      if(!p){ p=anCriarPessoa(x.cliente.nome, x.cliente.at||""); nF++; }
+      criadas[k]=p;
+    }
+    const o=anParse(x.texto, true, true);
+    const r=anCriar(o, p, x.resp || ui.an.donoPadrao || anEu());
+    if(r.tipo==="ev") nE++; else nT++;
+  });
+  logA("importou uma lista pela janelinha Anotar: "+nT+" tarefa(s), "+nE+" compromisso(s), "+nF+" ficha(s) nova(s)");
+  save(); ui.an.lista=[]; ui.an.modo="nota"; ui.an.built=""; render();
+  anMsg("Importado: "+nT+" tarefa(s)"+(nE?", "+nE+" compromisso(s)":"")+(nF?", "+nF+" ficha(s) nova(s)":"")+".", "ok");
+}
+
+/* ---------- Listas ---------- */
+function anData(t){ return t.dataComp || t.data || ""; }
+function anMinhas(){
+  const eu=anEu();
+  return tfLista().filter(t=>!t.done && !t.arq && !t.triar && (t.resp===eu || (t.resp==="Sócios" && isApprover() && eu!=="Ellen")))
+    .sort((a,b)=>{ const da=anData(a)||"9999", db=anData(b)||"9999"; if(da!==db) return da.localeCompare(db); if((a.prio==="alta")!==(b.prio==="alta")) return a.prio==="alta"?-1:1; return (b.t||0)-(a.t||0); });
+}
+function anTriar(){ const eu=anEu(); return tfLista().filter(t=>!t.done && !t.arq && t.triar && (t.quem===eu || t.resp===eu)).sort((a,b)=>(b.t||0)-(a.t||0)); }
+function anQuando(t){
+  const d=anData(t); if(!d) return "";
+  const h=anHojeIso();
+  if(d<h) return `<span class="an-late">atrasada · ${esc(fmtIso(d))}</span>`;
+  if(d===h) return `<span class="an-hoje">hoje</span>`;
+  return esc(fmtIso(d));
+}
+function anItemHTML(t, triando){
+  const p=t.pessoa?psGet(t.pessoa):null;
+  const meta=[esc(t.resp||""), anQuando(t), t.prio==="alta"?`<span class="an-urg">urgente</span>`:""].filter(Boolean).join(" · ");
+  const velho = triando && (Date.now()-(t.t||0))>48*36e5;
+  let h=`<div class="an-it${velho?" an-velho":""}" data-id="${t.id}"><button class="an-ck" data-an="ok" data-id="${t.id}" aria-label="Concluir"></button><div class="an-tx"><div>${p?`<b>${esc(p.nome)}</b> · `:""}${esc(t.txt)}</div><small>${meta}</small></div>${triando?`<button class="an-mini-b" data-an="tri" data-id="${t.id}">Triar</button>`:""}</div>`;
+  if(triando && ui.an.triId===t.id){
+    h+=`<div class="an-tri"><input id="anTriCli" list="anPesList" placeholder="Cliente (nome)" autocomplete="off"><select id="anTriResp">${TF_RESP.map(r=>`<option ${r===(t.resp||anEu())?"selected":""}>${esc(r)}</option>`).join("")}</select><input id="anTriData" type="date" value="${esc(anData(t))}"><button class="an-mini-b an-pri" data-an="triOk" data-id="${t.id}">Salvar</button></div>`;
+  }
+  return h;
+}
+
+/* ---------- Tela da janelinha ---------- */
+function anMsg(txt, tipo, comDesfazer){
+  const m=$("#anMsg"); if(!m) return;
+  m.className="an-msg "+(tipo||"");
+  m.innerHTML=esc(txt)+(comDesfazer?` <button class="an-lnk" data-an="desfazer">Desfazer</button>`:"");
+  clearTimeout(ui.an.msgT); ui.an.msgT=setTimeout(()=>{ const x=$("#anMsg"); if(x){ x.textContent=""; x.className="an-msg"; } ui.an.desfazer=null; }, comDesfazer?7000:5000);
+}
+function anPrevia(){
+  const inp=$("#anIn"), pv=$("#anPrev"), ch=$("#anChips"); if(!inp||!pv||!ch) return;
+  const raw=(inp.value||"").trim();
+  if(!raw){ pv.textContent="Ex.: Marciano: mandar orçamento #ellen amanhã !"; pv.className="an-prev muted"; ch.innerHTML=""; return; }
+  const o=anParse(raw);
+  let cli="sem cliente → Para triar", chips="";
+  if(o.cliente){
+    const k=anNorm(o.cliente), cand=anBusca(o.cliente), sel=anEscolha(o.cliente);
+    cli = sel.semFicha ? "sem cliente → Para triar" : sel.novo ? "ficha nova: "+sel.nome : sel.nome+(sel.at?" (ficha nova a partir do atendimento)":"");
+    const ops=cand.map(c=>({k:c.id||("at:"+c.at), rot:c.nome, v:c}));
+    ops.push({k:"novo", rot:"+ Ficha nova: "+anTitulo(o.cliente), v:{novo:true, nome:anTitulo(o.cliente)}});
+    ops.push({k:"sem", rot:"Sem cliente", v:{semFicha:true, nome:""}});
+    const atual = sel.semFicha ? "sem" : sel.novo ? "novo" : (sel.id||("at:"+sel.at));
+    if(cand.length!==1 || cand[0].s<3) chips=ops.map(x=>`<button class="an-chip ${x.k===atual?"on":""}" data-an="chip" data-k="${esc(x.k)}">${esc(x.rot)}</button>`).join("");
+    ui.an.ops={k, ops};
+  }
+  const partes=[cli, o.hora?"compromisso "+fmtIso(o.data||anHojeIso())+" "+o.hora:(o.data?"para "+fmtIso(o.data):""), "faz: "+(o.resp||anEu()), o.urg?"urgente":""].filter(Boolean);
+  pv.textContent="→ "+partes.join(" · ");
+  pv.className="an-prev";
+  ch.innerHTML=chips;
+}
+function anAjudaHTML(){
+  const url=location.origin+location.pathname+"?modo=anotar";
+  return `<div class="an-help"><b>Como escrever</b>
+    <p><code>Cliente: o que fazer #dono prazo !</code></p>
+    <p>Dono: #gabriel #alan #evaldo #ellen #socios (sem nada = você).<br>Prazo: hoje, amanhã, seg…dom, 28/10, em 3 dias. Com hora (14h, 14:30) vira compromisso. ! = urgente.<br>Sem "Cliente:" vai para Para triar.</p>
+    <b>Deixar sempre aberta (Windows)</b>
+    <p>1. Atalho na área de trabalho com o destino:<br><code>chrome.exe --app="${esc(url)}" --window-size=340,620</code><br>2. Copie o atalho para a pasta Inicializar (Win+R › shell:startup): abre ao ligar o PC.<br>3. Sempre por cima: PowerToys › Sempre visível (Win+Ctrl+T).</p>
+    <p class="muted">Senha e CPF não vão aqui: Juridiq ou gerenciador de senhas.</p>
+    <button class="an-mini-b" data-an="ajudaFechar">Fechar</button></div>`;
+}
+function anBuild(){
+  const box=$("#anMini"); if(!box) return;
+  const modo=ui.an.modo;
+  if(modo==="lista"){
+    box.innerHTML=`<div class="an-top"><b>Colar lista</b><span class="an-sp"></span><button class="an-mini-b" data-an="voltar">Voltar</button></div>
+      <div class="an-body">
+        <p class="an-small">Cole o caderno ou o bloco de notas. "12 - NOME" vira cliente; as linhas de baixo viram tarefas dele.</p>
+        <textarea id="anLista" rows="7" placeholder="1 - LUCAS B&#10;ACOMPANHAR PROCESSO&#10;VERIFICAR EXTRATOS FISCAIS&#10;2 - MARCIANO: MANDAR ORÇAMENTO"></textarea>
+        <div class="an-row"><button class="an-mini-b an-pri" data-an="ler">Ler a lista</button>
+        <label class="an-small"><input type="checkbox" id="anCriarFicha" ${ui.an.criarFicha?"checked":""}> criar ficha para nomes novos</label></div>
+        <div class="an-row an-small">Dono padrão <select id="anDonoPad">${TF_RESP.map(r=>`<option ${r===(ui.an.donoPadrao||anEu())?"selected":""}>${esc(r)}</option>`).join("")}</select></div>
+        <div id="anPrevLista"></div>
+        <div id="anMsg" class="an-msg"></div>
+      </div>`;
+    ui.an.built="lista"; anListaRender(); return;
+  }
+  box.innerHTML=`<div class="an-top"><b>Anotar M&amp;P</b><span class="an-quem" id="anQuem"></span><span class="an-sp"></span>
+      <button class="an-mini-b" data-an="colar" title="Colar uma lista do caderno ou bloco de notas">Colar lista</button>
+      <button class="an-mini-b" data-an="mapa" title="Abrir o Mapa">Mapa ↗</button>
+      <button class="an-mini-b" data-an="ajuda" aria-label="Ajuda">?</button></div>
+    <div class="an-body">
+      <input id="anIn" class="an-in" autocomplete="off" placeholder="Cliente: o que fazer #dono prazo">
+      <div id="anPrev" class="an-prev muted"></div>
+      <div id="anChips" class="an-chips"></div>
+      <div id="anMsg" class="an-msg"></div>
+      <div id="anAjudaBox"></div>
+      <div class="an-tabs" id="anTabs"></div>
+      <div id="anLst" class="an-lst"></div>
+      <datalist id="anPesList"></datalist>
+      <div class="an-foot muted">Mapa ${esc(AN_VER)}</div>
+    </div>`;
+  ui.an.built="nota";
+  const inp=$("#anIn");
+  inp.addEventListener("input", ()=>{ ui.an.aviso=""; anPrevia(); });
+  inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); anSalvarLinha(); } else if(e.key==="Escape"){ inp.value=""; anPrevia(); } });
+  anPrevia();
+  setTimeout(()=>{ const i=$("#anIn"); if(i) i.focus(); }, 60);
+}
+function anListaRender(){
+  const box=$("#anPrevLista"); if(!box) return;
+  const L=ui.an.lista;
+  if(!L.length){ box.innerHTML=""; return; }
+  const n=L.filter(x=>!x.jaFiz).length;
+  box.innerHTML=`<div class="an-row"><b class="an-small">${L.length} linha(s) · ${n} para importar</b><span class="an-sp"></span><button class="an-mini-b an-pri" data-an="importar">Importar ${n}</button></div>
+    <div class="an-plist">${L.map(x=>{
+      const c=x.cliente; const cli = c.semFicha ? `<span class="an-tag">sem cliente</span>` : c.id ? `<span class="an-tag ok">${esc(c.nome)}</span>` : `<span class="an-tag novo">nova: ${esc(c.nome)}</span>`;
+      return `<div class="an-pl ${x.jaFiz?"off":""}"><label class="an-small"><input type="checkbox" data-an="jafiz" data-id="${x.id}" ${x.jaFiz?"checked":""}> já fiz</label>
+        <div class="an-tx"><div>${x.num?`<span class="muted">${esc(x.num)}.</span> `:""}${cli} ${esc(x.texto)}</div>${x.sens?`<small class="an-late">tem senha ou CPF: não importar</small>`:""}</div>
+        ${(c.semFicha && !x.nomeOrig) ? "" : `<button class="an-lnk" data-an="semcli" data-id="${x.id}">${c.semFicha?"usar cliente":"sem cliente"}</button>`}</div>`; }).join("")}</div>`;
+}
+function anListaNota(){
+  const tabs=$("#anTabs"), lst=$("#anLst"), dl=$("#anPesList"), q=$("#anQuem"); if(!tabs||!lst) return;
+  if(q) q.textContent=anEu();
+  const M=anMinhas(), T=anTriar();
+  if(ui.an.aba==="triar" && !T.length) ui.an.aba="minhas";
+  tabs.innerHTML=`<button class="${ui.an.aba==="minhas"?"on":""}" data-an="aba" data-v="minhas">Minhas abertas (${M.length})</button><button class="${ui.an.aba==="triar"?"on":""} ${T.length?"an-tem":""}" data-an="aba" data-v="triar">Para triar (${T.length})</button>`;
+  const ativo=document.activeElement; const triFoco = ativo && /^anTri/.test(ativo.id||"");
+  if(triFoco) return;
+  if(ui.an.aba==="triar"){ lst.innerHTML=T.slice(0,30).map(t=>anItemHTML(t, true)).join("") || `<p class="an-small muted">Nada para triar.</p>`; }
+  else { const mx=12; lst.innerHTML=(M.slice(0,mx).map(t=>anItemHTML(t, false)).join("") || `<p class="an-small muted">Nada aberto para você. Bom trabalho.</p>`)+(M.length>mx?`<button class="an-lnk" data-an="mapaTarefas">+ ${M.length-mx} no Mapa</button>`:""); }
+  if(dl) dl.innerHTML=psAll().slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")).map(p=>`<option value="${esc(p.nome)}">`).join("");
+}
+function anMiniRender(){
+  document.body.classList.add("an-modo");
+  let box=$("#anMini");
+  if(!box){ document.body.insertAdjacentHTML("beforeend", `<div id="anMini" class="an-mini"></div>`); box=$("#anMini"); ui.an.built=""; }
+  const pronto = !!ui.perfil && ["master","socio","equipe"].includes(ui.papel);
+  box.style.display = pronto ? "" : "none";
+  if(!pronto) return;
+  if(srv.state==="loading"){ if(ui.an.built!=="carregando"){ box.innerHTML=`<div class="an-top"><b>Anotar M&amp;P</b></div><div class="an-body"><p class="an-small muted">Carregando…</p></div>`; ui.an.built="carregando"; } return; }
+  if(ui.an.built!==ui.an.modo) anBuild();
+  if(ui.an.modo==="nota") anListaNota();
+}
+
+/* ---------- Cliques da janelinha ---------- */
+document.addEventListener("click", e=>{
+  const b=e.target && e.target.closest ? e.target.closest("[data-an]") : null; if(!b) return;
+  const a=b.dataset.an, id=b.dataset.id;
+  if(a==="jafiz") return;
+  e.preventDefault();
+  if(a==="ok") anConcluir(id);
+  else if(a==="desfazer") anDesfazer();
+  else if(a==="aba"){ ui.an.aba=b.dataset.v; anListaNota(); }
+  else if(a==="tri"){ ui.an.triId = ui.an.triId===id ? "" : id; anListaNota(); setTimeout(()=>{ const c=$("#anTriCli"); if(c) c.focus(); }, 30); }
+  else if(a==="triOk") anTriarSalvar(id);
+  else if(a==="chip"){ const op=(ui.an.ops&&ui.an.ops.ops||[]).find(x=>x.k===b.dataset.k); if(op){ ui.an.sel[ui.an.ops.k]=op.v; anPrevia(); const i=$("#anIn"); if(i) i.focus(); } }
+  else if(a==="colar"){ ui.an.modo="lista"; ui.an.lista=[]; anBuild(); }
+  else if(a==="voltar"){ ui.an.modo="nota"; anBuild(); anListaNota(); }
+  else if(a==="ler"){ const t=($("#anLista")||{}).value||""; ui.an.criarFicha=!!($("#anCriarFicha")||{}).checked; ui.an.donoPadrao=($("#anDonoPad")||{}).value||anEu(); ui.an.lista=anLerLista(t); anListaRender(); if(!ui.an.lista.length) anMsg("Não achei linhas na lista.", "warn"); }
+  else if(a==="semcli"){ const x=ui.an.lista.find(y=>y.id===id); if(x){ if(x.cliente.semFicha){ if(x.nomeOrig){ const c=anBusca(x.nomeOrig); x.cliente = c.length ? c[0] : {novo:true, nome:anTitulo(x.nomeOrig)}; } } else x.cliente={semFicha:true, nome:""}; anListaRender(); } }
+  else if(a==="importar"){ ui.an.criarFicha=!!($("#anCriarFicha")||{}).checked; ui.an.donoPadrao=($("#anDonoPad")||{}).value||anEu(); anImportar(); }
+  else if(a==="mapa" || a==="mapaTarefas"){ window.open(location.origin+location.pathname, "mapaMP"); }
+  else if(a==="ajuda"){ const h=$("#anAjudaBox"); if(h) h.innerHTML = h.innerHTML ? "" : anAjudaHTML(); }
+  else if(a==="ajudaFechar"){ const h=$("#anAjudaBox"); if(h) h.innerHTML=""; }
+  else if(a==="abrirJanela") anAbrirJanela();
+});
+document.addEventListener("change", e=>{
+  const b=e.target; if(!b || !b.dataset || b.dataset.an!=="jafiz") return;
+  const x=ui.an.lista.find(y=>y.id===b.dataset.id); if(x){ x.jaFiz=b.checked; anListaRender(); }
+});
+
+/* ---------- No Mapa normal: botão que abre a janelinha + selo de versão ---------- */
+function anAbrirJanela(){
+  const url=location.origin+location.pathname+"?modo=anotar";
+  const w=window.open(url, "anotarMP", "popup=yes,width=340,height=620");
+  if(!w) toast("O navegador bloqueou a janela. Permita pop-ups para este site ou use o atalho da Ajuda da janelinha.");
+}
+function anNormalRender(){
+  const rail=$(".rail");
+  if(rail && !$("#nav-anotar")){
+    const ref=$("#nav-semana") || $("#nav-hoje");
+    const html=`<button class="nav" data-an="abrirJanela" id="nav-anotar" title="Abre a janelinha de anotações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4M8 12h8M8 16h5"/></svg><span>Anotar (janelinha)</span></button>`;
+    if(ref) ref.insertAdjacentHTML("afterend", html); else rail.insertAdjacentHTML("beforeend", html);
+  }
+  if(rail && !$("#anVer")) rail.insertAdjacentHTML("beforeend", `<div id="anVer" class="an-ver">Mapa ${esc(AN_VER)}</div>`);
+}
+function anRender(){
+  try{ if(typeof PAPEIS==="object" && PAPEIS && !PAPEIS.backup) PAPEIS.backup="Backup automático (só leitura)"; }catch(e){}
+  if(AN_MINI) anMiniRender(); else anNormalRender();
+}
+(function(){ const st=document.createElement("style"); st.textContent =
+ ".an-mini{position:fixed;inset:0;z-index:95;background:#fff6bf;color:#3b3200;display:flex;flex-direction:column;font-size:14px;overflow:hidden}"
+ + ".an-modo{overflow:hidden}.an-top{display:flex;align-items:center;gap:6px;padding:8px 10px;background:#fbe88a;border-bottom:1px solid #eed76a}"
+ + ".an-top b{font-size:14px}.an-quem{font-size:12px;opacity:.75}.an-sp{flex:1}"
+ + ".an-body{padding:10px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:6px}"
+ + ".an-in{width:100%;box-sizing:border-box;border:1px solid #e3cf62;background:#fffdf0;color:#2b2400;border-radius:8px;padding:9px 10px;font:inherit;font-size:14px}"
+ + ".an-in:focus{outline:2px solid #c9a400;outline-offset:0}"
+ + ".an-prev{font-size:12px;line-height:1.4}.an-prev.muted,.an-mini .muted{opacity:.65}"
+ + ".an-chips{display:flex;flex-wrap:wrap;gap:4px}.an-chip{border:1px solid #d9c35a;background:#fffbe0;color:#3b3200;border-radius:12px;padding:2px 8px;font-size:12px;cursor:pointer}.an-chip.on{background:#3b3200;color:#fff6bf;border-color:#3b3200}"
+ + ".an-msg{font-size:12px;min-height:16px}.an-msg.ok{color:#2f6b12}.an-msg.warn{color:#9a3b00;font-weight:600}"
+ + ".an-tabs{display:flex;gap:4px;margin-top:4px}.an-tabs button{flex:1;border:1px solid #e3cf62;background:transparent;color:#3b3200;border-radius:8px;padding:5px;font-size:12px;cursor:pointer}.an-tabs button.on{background:#fbe88a;font-weight:600}.an-tabs button.an-tem:not(.on){border-color:#c77d00;color:#9a3b00}"
+ + ".an-lst{display:flex;flex-direction:column}.an-it{display:flex;gap:8px;align-items:flex-start;padding:7px 2px;border-top:1px solid #efdc85}"
+ + ".an-ck{width:16px;height:16px;flex:none;margin-top:2px;border:1.5px solid #8a7300;border-radius:4px;background:transparent;cursor:pointer;padding:0}.an-ck:hover{background:#e9d36c}"
+ + ".an-tx{flex:1;min-width:0;font-size:13px;line-height:1.35;word-break:break-word}.an-tx small{display:block;font-size:11.5px;opacity:.8;margin-top:1px}"
+ + ".an-velho{background:#fde7a0;border-radius:6px}.an-velho small::after{content:' · há mais de 48h';color:#9a3b00}"
+ + ".an-late{color:#a32d2d;font-weight:600}.an-hoje{color:#8a5a00;font-weight:600}.an-urg{color:#a32d2d}"
+ + ".an-mini-b{border:1px solid #d9c35a;background:#fffbe0;color:#3b3200;border-radius:7px;padding:3px 8px;font-size:12px;cursor:pointer;white-space:nowrap}.an-mini-b:hover{background:#f6e690}.an-pri{background:#3b3200;color:#fff6bf;border-color:#3b3200}.an-pri:hover{background:#574a00}"
+ + ".an-lnk{border:0;background:none;color:#7a5c00;text-decoration:underline;cursor:pointer;font-size:12px;padding:2px}"
+ + ".an-tri{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px 0 8px 24px}.an-tri input,.an-tri select,.an-row select{border:1px solid #e3cf62;background:#fffdf0;color:#2b2400;border-radius:6px;padding:4px;font-size:12px;min-width:0}"
+ + ".an-help{background:#fffdf0;border:1px solid #e3cf62;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45}.an-help p{margin:4px 0 8px}.an-help code{background:#f6eaa8;border-radius:4px;padding:1px 4px;word-break:break-all}"
+ + ".an-small{font-size:12px}.an-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}"
+ + "#anLista{width:100%;box-sizing:border-box;border:1px solid #e3cf62;background:#fffdf0;color:#2b2400;border-radius:8px;padding:8px;font:inherit;font-size:12.5px;resize:vertical}"
+ + ".an-plist{display:flex;flex-direction:column;max-height:none}.an-pl{display:flex;gap:6px;align-items:flex-start;padding:6px 0;border-top:1px solid #efdc85}.an-pl.off{opacity:.45}"
+ + ".an-tag{display:inline-block;font-size:11px;border-radius:6px;padding:0 5px;background:#efe3a8;color:#4a3d00}.an-tag.ok{background:#d9efc4;color:#27500a}.an-tag.novo{background:#fde2c8;color:#712b13}"
+ + ".an-foot{font-size:11px;text-align:right;margin-top:auto;padding-top:8px}"
+ + ".an-ver{font-size:10.5px;opacity:.55;padding:10px 14px 14px;line-height:1.3}";
+ document.head.appendChild(st); })();
+const anRenderBase = render;
+render = function(){ anRenderBase(); anRender(); };
+const anChipBase = renderSaveChip;
+renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregando") anMiniRender(); };
+/* ================= MENU EM GRUPOS (v6.1, 26/10/2026): títulos do menu abrem e fecham os itens ================= */
+/* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
+/* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
+const MN_KEY = "mapa-menu-grupos";
+const MN_VER = "Mapa v6.1 · 26/10/2026";
+const MN_PADRAO = {"Principal":true};
+function mnEstado(){
+  if(ui.mn) return ui.mn;
+  let o=null; try{ o=JSON.parse(localStorage.getItem(MN_KEY)||"null"); }catch(e){ o=null; }
+  ui.mn = (o && typeof o==="object") ? o : Object.assign({}, MN_PADRAO);
+  return ui.mn;
+}
+function mnGrava(){ try{ localStorage.setItem(MN_KEY, JSON.stringify(ui.mn||{})); }catch(e){} }
+function mnGrupos(){
+  const rail=$(".rail"); if(!rail) return [];
+  const G=[]; let g=null;
+  Array.from(rail.children).forEach(el=>{
+    if(el.classList.contains("ngrp")){ g={h:el, nome:(el.dataset.mnNome||el.textContent||"").trim(), itens:[]}; el.dataset.mnNome=g.nome; G.push(g); return; }
+    if(!g || !el.classList.contains("nav") || el.classList.contains("mob-only")) return;
+    g.itens.push(el);
+  });
+  return G;
+}
+function mnAplicar(){
+  const ver=$("#anVer"); if(ver && ver.textContent!==MN_VER) ver.textContent=MN_VER;
+  const G=mnGrupos(); if(!G.length) return;
+  const mini=document.body.classList.contains("rail-mini");
+  const st=mnEstado();
+  G.forEach(g=>{
+    const ativo=g.itens.some(n=>n.classList.contains("on"));
+    const aberto = mini || ativo || !!st[g.nome];
+    g.itens.forEach(n=>n.classList.toggle("mn-oculto", !aberto));
+    const aviso = !aberto && g.itens.some(n=>n.style.display!=="none" && n.querySelector(".dot"));
+    const h=g.h;
+    if(!h.dataset.mn){ h.dataset.mn="1"; h.setAttribute("role","button"); h.setAttribute("tabindex","0"); h.innerHTML=`<span class="mn-t">${esc(g.nome)}</span><span class="mn-av"></span><svg class="mn-seta" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>`; }
+    h.classList.toggle("mn-aberto", aberto);
+    h.setAttribute("aria-expanded", aberto?"true":"false");
+    h.title = ativo ? "Você está numa tela deste grupo" : (aberto ? "Clique para fechar" : "Clique para abrir");
+    const av=h.querySelector(".mn-av"); if(av) av.classList.toggle("on", aviso);
+    h.style.display = g.itens.some(n=>n.style.display!=="none") ? "" : "none";
+  });
+}
+function mnAlternar(h){
+  const nome=h.dataset.mnNome; if(!nome) return;
+  const st=mnEstado();
+  st[nome] = !h.classList.contains("mn-aberto");
+  mnGrava(); mnAplicar();
+}
+document.addEventListener("click", e=>{ if(e.target && e.target.closest && e.target.closest("#railTog")){ setTimeout(()=>{ try{ mnAplicar(); }catch(x){} }, 0); return; } const h=e.target && e.target.closest ? e.target.closest(".rail .ngrp[data-mn]") : null; if(!h || document.body.classList.contains("rail-mini")) return; e.preventDefault(); mnAlternar(h); });
+document.addEventListener("keydown", e=>{ if((e.key==="Enter"||e.key===" ") && e.target && e.target.matches && e.target.matches(".rail .ngrp[data-mn]")){ e.preventDefault(); mnAlternar(e.target); } });
+(function(){ const st=document.createElement("style"); st.textContent = ".rail .nav.mn-oculto{display:none!important}"
+ + ".rail .ngrp[data-mn]{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;border-radius:8px;margin:2px 0}"
+ + ".rail .ngrp[data-mn]:hover{color:var(--text,inherit);background:var(--surface-2)}"
+ + ".rail .ngrp[data-mn]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}"
+ + ".mn-t{flex:1}.mn-seta{transition:transform .15s;opacity:.7}.ngrp.mn-aberto .mn-seta{transform:rotate(90deg)}"
+ + ".mn-av{width:7px;height:7px;border-radius:50%;background:var(--danger);display:none}.mn-av.on{display:inline-block}"
+ + ".rail-mini .ngrp[data-mn]{cursor:default}.rail-mini .ngrp[data-mn]>*{display:none}";
+ document.head.appendChild(st); })();
+const mnRenderBase = render;
+render = function(){ mnRenderBase(); try{ mnAplicar(); }catch(e){ console.warn("menu", e); } };
+setInterval(()=>{ try{ mnAplicar(); }catch(e){} }, 5000);
 /* ================= INÍCIO ================= */
 render();
 updUndo();
