@@ -7068,7 +7068,7 @@ function mppMaisAbrir(){
   const vidro = typeof mpfSouVidro==="function" && mpfSouVidro(ui.ap||apGet());
   const itens = [["tema", temaAtual()==="dark" ? "Tema claro" : "Tema escuro"], ["ajuda","Como usar"]];
   if(vidro) itens.push(["fundo","Fundo da tela"]);
-  if(mppMaster()) itens.push(["aparencia","Aparência do Painel"]);
+  if(mppMaster()) itens.push(["aparencia","Aparência do Painel"]); else itens.unshift(["minha","Minha aparência"]);
   modal("Mais opções", `<div class="cr-g">${itens.map(([k,n])=>`<button type="button" class="cr-b" data-mpp="mais-${k}">${esc(n)}</button>`).join("")}</div>`, [{label:"Fechar"}]);
 }
 function mppMaisAcao(k){
@@ -7076,7 +7076,8 @@ function mppMaisAcao(k){
   if(k==="tema"){ const b=$("#temaBtn"); if(b) b.click(); return; }
   if(k==="ajuda"){ const b=$('.top [data-act="help"]'); if(b) b.click(); return; }
   if(k==="fundo"){ if(typeof mpfAbrir==="function") mpfAbrir(); return; }
-  if(k==="aparencia"){ go("aparencia"); }
+  if(k==="aparencia"){ go("aparencia"); return; }
+  if(k==="minha"){ mppMinhaAbrir(); }
 }
 
 /* ---------- A4: menu com dica e "Ir para" ---------- */
@@ -7229,7 +7230,8 @@ document.addEventListener("click", ev=>{
   if(k==="aviso-tirar"){ mppAvisoTirar(id); return; }
   if(k==="mudou-visto"){ apLS(mppVistoKey(), Date.now()); ui.mppMudouTudo=false; render(); return; }
   if(k==="mudou-mais"){ ui.mppMudouTudo=true; render(); return; }
-  if(k==="status"){ mppStatusTrocar(); }
+  if(k==="status"){ mppStatusTrocar(); return; }
+  if(k.indexOf("apl-")===0){ mppMinhaEscolher(k.slice(4)); }
 });
 
 /* ---------- Montagem na tela ---------- */
@@ -7291,6 +7293,47 @@ render = function(){
  + ".mpp-aprova{background:var(--ok);border-color:var(--ok);color:var(--accent-fg)}"
  + "@media (max-width:640px){.mpp-cols{gap:6px}.mpp-n{font-size:10.5px}.mpp-feed li{grid-template-columns:auto 1fr}.mpp-h{display:none}}"
  + "@media (prefers-reduced-motion:reduce){.mpp-b{transition:none}}";
+ document.head.appendChild(st); })();
+
+/* ---------- E: aparência pessoal (Ellen, Alan e Evaldo escolhem a própria linguagem visual) ---------- */
+/* Fica em S.prefs[pessoa].apLing e acompanha a pessoa em todos os aparelhos. Vazio = padrão da equipe (definido pelo master em Sistema › Aparência). */
+/* O master não usa: a escolha dele em Sistema › Aparência já é a dele e a da equipe. */
+function mppApPessoal(){ if(mppMaster() || !ui.me) return ""; const p=(S.prefs||{})[ui.me]; const k=p && p.apLing; return (k && AP_LINGS[k]) ? k : ""; }
+const mppApGetBase = apGet;
+apGet = function(){
+  const r = mppApGetBase();
+  const k = mppApPessoal();
+  if(!k || k===r.ling) return r;
+  return Object.assign({}, r, {ling:k, cores:"", cor:"", paleta:"ling", fonte:"ling", cantos:"ling", menu:"ling", cartoes:"ling", densidade:"ling", logo: k==="vidro" ? "verde" : r.logo});
+};
+function mppMinhaHtml(){
+  const atual = mppApPessoal();
+  const time = mppApGetBase();
+  const Lt = AP_LINGS[time.ling] || AP_LINGS.atual;
+  const escuro = temaAtual()==="dark";
+  const sw = L=>{ const t = escuro ? L.d : L.l; return `<span class="mpp-apl-sw" style="background:${t.bg}"><i style="background:${t.s};border-color:${t.line}"></i><u style="background:${t.accent}"></u></span>`; };
+  const op = (k,L,nome,sub)=>`<button type="button" class="mpp-apl${(atual===k)?" on":""}" data-mpp="apl-${k||"padrao"}" aria-pressed="${atual===k}">${sw(L)}<span class="mpp-apl-t"><b>${esc(nome)}</b><small>${esc(sub)}</small></span></button>`;
+  const lista = op("", Lt, "Padrão da equipe", Lt.n) + Object.entries(AP_LINGS).filter(([k])=>k!==time.ling).map(([k,L])=>op(k, L, L.n, L.sub || ("no espírito de "+L.ref))).join("");
+  return `<p class="muted" style="margin:0 0 10px;font-size:13px">Muda só para você, no notebook e no celular. Os outros continuam vendo o padrão da equipe. Tema claro/escuro${AP_LINGS.vidro?" e fundo":""} ficam no botão ⋯.</p><div class="mpp-apls">${lista}</div>`;
+}
+function mppMinhaAbrir(){ modal("Minha aparência", mppMinhaHtml(), [{label:"Pronto", cls:"primary"}], true); }
+function mppMinhaEscolher(k){
+  if(mppMaster() || !ui.me) return;
+  const v = (k==="padrao") ? "" : k;
+  if(v && !AP_LINGS[v]) return;
+  const p = prefsMe();
+  if(v) p.apLing = v; else delete p.apLing;
+  save(); apAplicar(apGet(), true); render();
+  mppMinhaAbrir();
+  toast(v ? "Sua aparência: "+AP_LINGS[v].n+"." : "Você voltou ao padrão da equipe.");
+}
+(function(){ const st=document.createElement("style"); st.id="mppApStyle"; st.textContent = ""
+ + ".mpp-apls{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}"
+ + ".mpp-apl{display:flex;align-items:center;gap:10px;text-align:left;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:inherit;font:inherit;cursor:pointer}"
+ + ".mpp-apl:hover{border-color:var(--accent)}.mpp-apl.on{border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}"
+ + ".mpp-apl-sw{width:58px;height:40px;flex:none;border-radius:8px;padding:6px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line)}"
+ + ".mpp-apl-sw i{display:block;height:12px;border-radius:4px;border:1px solid}.mpp-apl-sw u{display:block;width:60%;height:7px;border-radius:4px}"
+ + ".mpp-apl-t{display:flex;flex-direction:column;min-width:0}.mpp-apl-t b{font-size:14px}.mpp-apl-t small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}";
  document.head.appendChild(st); })();
 /* ================= INÍCIO ================= */
 render();
