@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.1 · 04/11/2026";
+const MN_VER = "Mapa v7.2 · 04/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -7035,6 +7035,7 @@ if(typeof R2_VIEWS!=="undefined") R2_VIEWS.aparencia = viewAparencia;
 /* C: painel que age (indicadores zerados viram "em dia", esteira em barras com gargalo, Aprovar direto no pedido). */
 /* D: acompanhar a equipe (aviso fixado com "Li", "O que mudou desde a sua última visita", "Equipe agora"). */
 /* O celular fica para o pacote seguinte. */
+/* v7.1.1: conteúdo ocupa a largura toda (antes parava em 1240 px) e telas muito grandes ganham zoom (1.2 a partir de 2200 px, 1.5 a partir de 3000 px). */
 const MPP_STATUS = [
   {k:"escritorio", n:"No escritório", c:"var(--ok)"},
   {k:"atendimento", n:"Em atendimento", c:"var(--warn)"},
@@ -7292,7 +7293,10 @@ render = function(){
  + ".mpp-n{font-size:12px;color:var(--muted);text-align:center;line-height:1.25}"
  + ".mpp-aprova{background:var(--ok);border-color:var(--ok);color:var(--accent-fg)}"
  + "@media (max-width:640px){.mpp-cols{gap:6px}.mpp-n{font-size:10.5px}.mpp-feed li{grid-template-columns:auto 1fr}.mpp-h{display:none}}"
- + "@media (prefers-reduced-motion:reduce){.mpp-b{transition:none}}";
+ + "@media (prefers-reduced-motion:reduce){.mpp-b{transition:none}}"
+ + ".content{max-width:none!important}.content>*:not(.doc){max-width:none!important}"
+ + "@media (min-width:2200px){html{zoom:1.2}}"
+ + "@media (min-width:3000px){html{zoom:1.5}}";
  document.head.appendChild(st); })();
 
 /* ---------- E: aparência pessoal (Ellen, Alan e Evaldo escolhem a própria linguagem visual) ---------- */
@@ -7335,6 +7339,392 @@ function mppMinhaEscolher(k){
  + ".mpp-apl-sw i{display:block;height:12px;border-radius:4px;border:1px solid}.mpp-apl-sw u{display:block;width:60%;height:7px;border-radius:4px}"
  + ".mpp-apl-t{display:flex;flex-direction:column;min-width:0}.mpp-apl-t b{font-size:14px}.mpp-apl-t small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}";
  document.head.appendChild(st); })();
+
+/* ================= ENTRADA 3D + VERA DE BOAS-VINDAS (v7.2, em teste) ================= */
+/* Passagem com efeito 3D da tela de login para o painel de cada pessoa. */
+/* Toca depois de digitar a senha e na primeira abertura do dia (quem já está logado vê uma tela curta de entrada). */
+/* Depois dos dados carregados, a Vera mostra o resumo do dia da pessoa. Sem IA: só lê o que já está no Mapa, custo zero. */
+/* Preferência por pessoa em S.prefs[nome].entrada = {fx, vera, voz}. Padrão (decisão do Gabriel, 04/11): Cubo, resumo ligado, Vera fala sozinha. */
+/* O aparelho guarda o último efeito em localStorage "mp-entrada-fx" para usar antes de os dados chegarem. */
+/* Com "reduzir movimento" ligado no sistema, a passagem vira um esmaecer simples e nada gira. */
+
+const MPE_FX = {
+  cubo:{n:"Cubo", sub:"Padrão da equipe. A tela gira como um cubo e mostra o seu painel."},
+  portal:{n:"Portal", sub:"Você atravessa o login e o painel vem do fundo."},
+  holo:{n:"Holograma", sub:"Anéis de luz, e os blocos do painel entram em camadas."},
+  nenhum:{n:"Sem efeito", sub:"Abre direto, como hoje."}
+};
+const mpe = {pendente:false, vera:false, fim:0};
+
+function mpeLS(k, v){
+  try{
+    if(v===undefined) return localStorage.getItem(k);
+    localStorage.setItem(k, v);
+  }catch(e){}
+  return null;
+}
+function mpeReduz(){
+  try{ return window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; }
+}
+function mpePrefs(nome){
+  const p = (((S && S.prefs) || {})[nome || ui.me || "?"] || {}).entrada || {};
+  const c = mpeLS("mp-entrada-fx");
+  let fx = MPE_FX[p.fx] ? p.fx : (MPE_FX[c] ? c : "cubo");
+  if(window.MPE_FX_TESTE && MPE_FX[window.MPE_FX_TESTE]) fx = window.MPE_FX_TESTE;
+  return {fx, vera: p.vera !== false, voz: p.voz !== false};
+}
+function mpePrimeiraDoDia(){
+  const hoje = isoDia();
+  if(mpeLS("mp-entrada-dia") === hoje) return false;
+  mpeLS("mp-entrada-dia", hoje);
+  return true;
+}
+
+/* ---------- Passagem login → painel ---------- */
+const mpeAposBase = aposLogin;
+aposLogin = async function(){
+  if($("#authBox")) mpe.pendente = true;
+  else if(mpePrimeiraDoDia()){
+    authBox(`<h2>Mapa de Atendimento</h2><p class="muted">Abrindo o seu painel…</p><div class="mpe-spin" aria-hidden="true"></div>`);
+    mpe.pendente = true;
+  }
+  return mpeAposBase.apply(this, arguments);
+};
+const mpeTelaLoginBase = telaLogin;
+telaLogin = function(){
+  mpe.pendente = false;
+  mpeVisualLogin();
+  return mpeTelaLoginBase.apply(this, arguments);
+};
+
+/* A tela de login usa a última aparência que a pessoa viu logada neste aparelho (vidro + fundo). */
+/* Antes do login o Mapa ainda não sabe a aparência da equipe; sem isso o login aparecia cinza. */
+const mpeApAplicarBase = apAplicar;
+apAplicar = function(a, guardar){
+  const r = mpeApAplicarBase.apply(this, arguments);
+  if(ui.perfil && guardar !== false){ const st = document.getElementById("apStyle"); if(st) mpeLS("mp-ap-login", st.textContent); }
+  return r;
+};
+function mpeVisualLogin(){
+  if(ui.perfil) return;
+  const c = mpeLS("mp-ap-login"), st = document.getElementById("apStyle");
+  if(c && st) st.textContent = c;
+}
+
+const mpeAuthCloseBase = authClose;
+authClose = function(){
+  const b = $("#authBox");
+  if(!b || !mpe.pendente){ mpe.pendente = false; return mpeAuthCloseBase(); }
+  mpe.pendente = false;
+  mpe.vera = true;
+  mpeSair(b, mpePrefs().fx);
+};
+
+function mpeSair(b, fx){
+  if(mpeReduz() || fx === "nenhum") fx = "fade";
+  b.id = "mpeSaindo";
+  b.setAttribute("aria-hidden", "true");
+  const app = $(".app");
+  const raiz = document.documentElement;
+  raiz.classList.add("mpe-anim");
+  if(fx === "holo") b.insertAdjacentHTML("beforeend", `<i class="mpe-ring"></i><i class="mpe-ring r2"></i><i class="mpe-ring r3"></i><b class="mpe-scan"></b>`);
+  b.classList.add("mpe-out", "mpe-" + fx);
+  if(app) app.classList.add("mpe-in", "mpe-" + fx);
+  const dur = {fade:350, portal:1300, cubo:1050, holo:2000}[fx] || 1300;
+  mpe.fim = Date.now() + dur;
+  setTimeout(()=>{
+    b.remove();
+    if(app) app.classList.remove("mpe-in", "mpe-" + fx);
+    raiz.classList.remove("mpe-anim");
+  }, dur);
+}
+
+/* Rever a passagem sem sair do Mapa (botão "Ver" no ⋯ › Entrada e Vera). */
+function mpeDemo(fx){
+  if(typeof closeModal === "function") closeModal();
+  window.scrollTo(0, 0);
+  authBox(`<h2>Mapa de Atendimento</h2><p class="muted">Entrando como ${esc(ui.me || "")}…</p><div class="mpe-spin" aria-hidden="true"></div>`);
+  setTimeout(()=>{
+    const b = $("#authBox"); if(!b) return;
+    mpeSair(b, fx);
+    const pr = mpePrefs();
+    if(pr.vera) setTimeout(()=>mpeVeraAbrir(false), Math.max(0, mpe.fim - Date.now()) + 120);
+  }, 650);
+}
+
+/* ---------- Vera: resumo do dia ---------- */
+const mpeIniciarBase = iniciarDados;
+iniciarDados = async function(){
+  const r = await mpeIniciarBase.apply(this, arguments);
+  mpeDepoisDados();
+  return r;
+};
+function mpeDepoisDados(){
+  try{
+    if(!ui.me || $("#authBox") || srv.state !== "ok") return;
+    const p = (((S.prefs || {})[ui.me]) || {}).entrada;
+    if(p && MPE_FX[p.fx]) mpeLS("mp-entrada-fx", p.fx);
+    const pr = mpePrefs();
+    const deve = pr.vera && (mpe.vera || mpeLS("mp-vera-dia-" + ui.me) !== isoDia());
+    mpe.vera = false;
+    if(!deve) return;
+    setTimeout(()=>mpeVeraAbrir(false), Math.max(0, mpe.fim - Date.now()) + 150);
+  }catch(e){}
+}
+
+function mpeQuando(iso){
+  const d = diasAte(iso);
+  if(d === 0) return "hoje";
+  if(d === 1) return "amanhã";
+  return "em " + d + " dias (" + fmtIso(iso) + ")";
+}
+function mpeResumo(){
+  const me = ui.me, hoje = isoDia(), agora = new Date();
+  const hm = pad2(agora.getHours()) + ":" + pad2(agora.getMinutes());
+  const socio = ui.papel === "master" || ui.papel === "socio";
+  const meu = r => !r || r === me || r === "Todos" || (socio && (r === "Sócios" || r === "Socios"));
+  const L = [];
+  let itens = [];
+  try{ itens = calItens(hoje).filter(x=>meu(x.r)); }catch(e){}
+  const comp = itens.filter(x=>x.h && ["ev","sala","adm","lm"].includes(x.k));
+  const prox = comp.find(x=>x.h >= hm);
+  if(prox){
+    const resto = comp.filter(x=>x.h >= hm).length;
+    L.push({c:"ag", t:(resto > 1 ? resto + " compromissos até o fim do dia. " : "") + "Próximo às " + prox.h + ": " + prox.t + "."});
+  }else if(comp.length){
+    L.push({c:"ag", t:"Os compromissos de hoje já passaram (" + comp.length + ")."});
+  }
+  let tfs = [];
+  try{ tfs = tfLista().filter(t=>!t.done && t.resp === me); }catch(e){}
+  const tHoje = tfs.filter(t=>t.data === hoje || t.dataComp === hoje).length;
+  const tAtr = tfs.filter(t=>t.data && t.data < hoje).length;
+  if(tHoje || tAtr){
+    L.push({c: tAtr ? "at" : "tf", t:(tHoje ? tHoje + (tHoje > 1 ? " tarefas suas para hoje" : " tarefa sua para hoje") : "Nenhuma tarefa sua vence hoje") + (tAtr ? " · " + tAtr + (tAtr > 1 ? " atrasadas" : " atrasada") : "") + "."});
+  }
+  let peds = 0;
+  try{ peds = pdAbertos().filter(p=>p.para === me || (!p.para && socio)).length; }catch(e){}
+  if(peds) L.push({c:"pd", t: peds + (peds > 1 ? " pedidos esperando " : " pedido esperando ") + (ui.papel === "master" ? "a sua decisão." : "você.")});
+  let pz = null;
+  try{ pz = pzAll().filter(p=>!p.done && p.data && p.data >= hoje && (ui.papel === "master" || meu(p.resp))).sort((a,b)=>a.data.localeCompare(b.data))[0]; }catch(e){}
+  if(pz) L.push({c: diasAte(pz.data) <= 2 ? "at" : "pz", t:"Prazo mais perto: " + pz.caso + (pz.resp && pz.resp !== me ? " (" + pz.resp + ")" : "") + ", " + mpeQuando(pz.data) + "."});
+  if(!L.length) L.push({c:"ok", t:"Dia tranquilo por aqui. Bom momento para adiantar prazos."});
+  const h = agora.getHours();
+  const saud = (h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite") + ", " + (me || "") + ".";
+  const dias = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+  const data = dias[agora.getDay()] + ", " + pad2(agora.getDate()) + "/" + pad2(agora.getMonth() + 1);
+  return {saud, data, L};
+}
+
+function mpeVeraFechar(){
+  const v = $("#mpeVera"); if(!v) return;
+  try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
+  v.classList.add("sai");
+  setTimeout(()=>v.remove(), 220);
+}
+function mpeVeraAbrir(manual){
+  if(!ui.me || $("#mpeVera")) return;
+  if($("#authBox") || $("#mpeSaindo")){ if(!manual) setTimeout(()=>mpeVeraAbrir(false), 400); return; }
+  mpeLS("mp-vera-dia-" + ui.me, isoDia());
+  const r = mpeResumo();
+  const orb = `<svg class="mpe-orb" viewBox="0 0 120 120" aria-hidden="true"><circle class="o1" cx="60" cy="60" r="55"/><circle class="o2" cx="60" cy="60" r="45"/><circle class="o3" cx="60" cy="60" r="34"/><circle class="o4" cx="60" cy="60" r="20"/><text x="60" y="61">V</text></svg>`;
+  const linhas = r.L.map((x,i)=>`<li class="mpe-l c-${x.c}" style="--d:${0.5 + i * 0.18}s">${esc(x.t)}</li>`).join("");
+  document.body.insertAdjacentHTML("beforeend", `<div id="mpeVera" class="mpe-vbg" data-mpe="fundo">
+    <div class="mpe-v" role="dialog" aria-modal="true" aria-labelledby="mpeVt">
+      <div class="mpe-vh">${orb}<div class="mpe-vtx"><small>VERA · RESUMO DO SEU DIA</small><h2 id="mpeVt"></h2><span class="mpe-vd">${esc(r.data)}</span></div></div>
+      <ul class="mpe-ls">${linhas}</ul>
+      <div class="mpe-vb"><button type="button" class="mpe-b" data-mpe="ouvir">Ouvir</button><button type="button" class="mpe-b pri" data-mpe="comecar">Começar</button></div>
+      <p class="mpe-vn">Sem IA por enquanto: a Vera só lê o que já está no Mapa. Ajuste em ⋯ › Entrada e Vera.</p>
+    </div></div>`);
+  const h2 = $("#mpeVt");
+  if(mpeReduz()) h2.textContent = r.saud;
+  else{
+    let i = 0;
+    const t = setInterval(()=>{ i++; h2.textContent = r.saud.slice(0, i); if(i >= r.saud.length || !document.body.contains(h2)) clearInterval(t); }, 38);
+  }
+  const bt = $('#mpeVera [data-mpe="comecar"]'); if(bt) setTimeout(()=>bt.focus(), 60);
+  mpe.texto = (r.saud + " " + r.L.map(x=>x.t).join(" ")).replace(/ \(\d{2}\/\d{2}\)/g, "").replace(/ \(\d+\)/g, "");
+  const pr = mpePrefs();
+  if(pr.voz) setTimeout(()=>mpeFalarSozinha(), 700);
+}
+/* O navegador só deixa uma página falar depois de algum clique nela. */
+/* Depois do login (clique em Entrar) a Vera fala sozinha; na abertura do dia sem clique, o botão Ouvir pisca. */
+function mpeFalarSozinha(){
+  if(!$("#mpeVera") || !window.speechSynthesis) return;
+  let pode = true;
+  try{ if(navigator.userActivation) pode = navigator.userActivation.hasBeenActive || navigator.userActivation.isActive; }catch(e){}
+  if(!pode){ const b = $('#mpeVera [data-mpe="ouvir"]'); if(b){ b.classList.add("chama"); b.title = "Clique para a Vera ler o resumo"; } return; }
+  const vai = ()=>{ if($("#mpeVera") && !speechSynthesis.speaking) mpeFalar(); };
+  if(speechSynthesis.getVoices().length) vai();
+  else{
+    let feito = false;
+    const uma = ()=>{ if(feito) return; feito = true; vai(); };
+    speechSynthesis.addEventListener("voiceschanged", uma, {once:true});
+    setTimeout(uma, 900);
+  }
+}
+function mpeFalar(){
+  const ss = window.speechSynthesis, orb = $("#mpeVera .mpe-orb"), b = $('#mpeVera [data-mpe="ouvir"]');
+  if(!ss){ toast("Este navegador não tem leitura em voz."); return; }
+  if(ss.speaking){ ss.cancel(); if(orb) orb.classList.remove("falando"); if(b) b.textContent = "Ouvir"; return; }
+  const u = new SpeechSynthesisUtterance(mpe.texto || "");
+  u.lang = "pt-BR"; u.rate = 1.03;
+  const v = ss.getVoices().find(x=>/^pt[-_]BR/i.test(x.lang));
+  if(v) u.voice = v;
+  u.onend = u.onerror = ()=>{ if(orb) orb.classList.remove("falando"); if(b) b.textContent = "Ouvir"; };
+  if(orb) orb.classList.add("falando");
+  if(b) b.textContent = "Parar";
+  ss.speak(u);
+}
+
+/* ---------- ⋯ › Entrada e Vera (cada pessoa escolhe a sua) ---------- */
+function mpeConfigHtml(){
+  const pr = mpePrefs();
+  const op = Object.entries(MPE_FX).map(([k,f])=>`<div class="mpe-op${pr.fx===k?" on":""}"><button type="button" class="mpe-opb" data-mpe="fx-${k}" aria-pressed="${pr.fx===k}"><span class="mpe-th t-${k}" aria-hidden="true"><i></i></span><span><b>${esc(f.n)}</b><small>${esc(f.sub)}</small></span></button>${k!=="nenhum"?`<button type="button" class="btn sm" data-mpe="ver-${k}">Ver</button>`:""}</div>`).join("");
+  return `<p class="muted" style="margin:0 0 10px;font-size:13px">Vale só para você. A passagem toca quando você entra com a senha e na primeira vez que abre o Mapa no dia.${mpeReduz()?" Seu computador está com “reduzir movimento” ligado: a passagem fica um esmaecer simples.":""}</p>
+    <div class="mpe-ops">${op}</div>
+    <label class="check" style="margin-top:12px"><input type="checkbox" data-mpe="vera" ${pr.vera?"checked":""}> Vera mostra o resumo do meu dia ao abrir</label>
+    <label class="check"><input type="checkbox" data-mpe="voz" ${pr.voz?"checked":""}> Vera fala sozinha ao abrir (desmarcado: ela só fala quando você clica em Ouvir)</label>`;
+}
+function mpeConfigAbrir(){
+  modal("Entrada e Vera", `<div id="mpeCfg">${mpeConfigHtml()}</div>`, [{label:"Ver o resumo agora", fn:()=>{ setTimeout(()=>mpeVeraAbrir(true), 60); }}, {label:"Pronto", cls:"primary"}], true);
+}
+function mpeGuardar(campo, valor){
+  if(ui.verComo){ toast("No modo “ver como”, nada é salvo."); return; }
+  const p = prefsMe();
+  p.entrada = Object.assign({fx:"cubo", vera:true, voz:true}, p.entrada || {});
+  p.entrada[campo] = valor;
+  if(campo === "fx") mpeLS("mp-entrada-fx", valor);
+  save();
+}
+
+const mpeMaisAbrirBase = mppMaisAbrir;
+mppMaisAbrir = function(){
+  mpeMaisAbrirBase.apply(this, arguments);
+  const g = $("#modalRoot .cr-g");
+  if(g && !g.querySelector('[data-mpp="mais-entrada"]')) g.insertAdjacentHTML("beforeend", `<button type="button" class="cr-b" data-mpp="mais-entrada">Entrada e Vera</button><button type="button" class="cr-b" data-mpp="mais-vera">Resumo do dia</button>`);
+};
+const mpeMaisAcaoBase = mppMaisAcao;
+mppMaisAcao = function(k){
+  if(k === "entrada"){ closeModal(); mpeConfigAbrir(); return; }
+  if(k === "vera"){ closeModal(); setTimeout(()=>mpeVeraAbrir(true), 60); return; }
+  return mpeMaisAcaoBase.apply(this, arguments);
+};
+
+document.addEventListener("click", ev=>{
+  const b = ev.target.closest && ev.target.closest("[data-mpe]"); if(!b) return;
+  const k = b.dataset.mpe;
+  if(k === "fundo"){ if(ev.target === b) mpeVeraFechar(); return; }
+  if(k === "comecar"){ mpeVeraFechar(); return; }
+  if(k === "ouvir"){ mpeFalar(); return; }
+  if(k.indexOf("fx-") === 0){ mpeGuardar("fx", k.slice(3)); const box = $("#mpeCfg"); if(box) box.innerHTML = mpeConfigHtml(); toast("Sua entrada: " + MPE_FX[k.slice(3)].n + "."); return; }
+  if(k.indexOf("ver-") === 0){ mpeDemo(k.slice(4)); return; }
+});
+document.addEventListener("change", ev=>{
+  const b = ev.target.closest && ev.target.closest('input[data-mpe]'); if(!b) return;
+  if(b.dataset.mpe === "vera") mpeGuardar("vera", b.checked);
+  if(b.dataset.mpe === "voz") mpeGuardar("voz", b.checked);
+});
+document.addEventListener("keydown", ev=>{
+  if(ev.key === "Escape" && $("#mpeVera")){ ev.stopPropagation(); mpeVeraFechar(); }
+}, true);
+
+/* ---------- Login com cara de vidro (só quando a linguagem da equipe/pessoa é Vidro) ---------- */
+const mpeApCssBase = apCss;
+apCss = function(a){
+  let c = mpeApCssBase.apply(this, arguments);
+  if(typeof mpfSouVidro === "function" && mpfSouVidro(a)){
+    let fundo = "#061214";
+    try{
+      const e = mpfEscolha(a), F = MPF_FUNDOS[e.fundo], cor = F.bg.split(" ")[0], resto = F.bg.slice(cor.length + 1), v = (e.veu / 100);
+      fundo = "linear-gradient(rgba(3,10,12," + v + "),rgba(3,10,12," + v + "))," + resto + "," + cor;
+    }catch(err){}
+    c += ".auth-bg{background:" + fundo + "!important}";
+    c += ".auth{background:rgba(9,24,27,.74)!important;border:1px solid rgba(255,255,255,.16)!important;color:#eef5f6;box-shadow:0 30px 90px rgba(0,0,0,.45)!important;backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}";
+    c += ".auth .muted{color:#c9dadd}.auth-logo{background:linear-gradient(135deg,#7fd0d5,#2f7f86)!important;color:#0b1a1c!important}";
+  }
+  return c;
+};
+
+/* ---------- Estilos ---------- */
+(function(){ const st=document.createElement("style"); st.id="mpeStyle"; st.textContent = ""
+ + "html.mpe-anim,html.mpe-anim body{overflow:hidden!important}"
+ + "html.mpe-anim body>*:not(.app):not(#mpeSaindo):not(#mpeVera):not(#modalRoot){visibility:hidden}"
+ + ".mpe-spin{width:30px;height:30px;border-radius:50%;border:3px solid rgba(127,227,234,.25);border-top-color:#7fe3ea;animation:mpeRot 1s linear infinite;margin:6px auto 0}"
+ + "#mpeSaindo{pointer-events:none}"
+ + "#mpeSaindo.mpe-fade{animation:mpeFade .35s ease forwards}"
+ + "@keyframes mpeFade{to{opacity:0}}"
+ + "#mpeSaindo.mpe-portal{background:transparent!important}"
+ + "#mpeSaindo.mpe-portal .auth{animation:mpePortalOut .75s cubic-bezier(.55,0,.8,.2) forwards}"
+ + "@keyframes mpePortalOut{0%{transform:none;opacity:1;filter:none}100%{transform:perspective(900px) translateZ(420px);opacity:0;filter:blur(12px)}}"
+ + ".app.mpe-portal{transform-origin:50% 35%;animation:mpePortalIn 1s .25s cubic-bezier(.16,1,.3,1) both}"
+ + "@keyframes mpePortalIn{0%{transform:perspective(1400px) translateZ(-420px) rotateX(9deg);opacity:0;filter:blur(6px)}55%{opacity:1;filter:none}100%{transform:none;opacity:1;filter:none}}"
+ + "#mpeSaindo.mpe-cubo{transform-origin:100% 50%;backface-visibility:hidden;animation:mpeCuboOut 1s cubic-bezier(.65,0,.35,1) forwards}"
+ + "@keyframes mpeCuboOut{0%{transform:perspective(1800px) translateX(0) rotateY(0);filter:brightness(1)}100%{transform:perspective(1800px) translateX(-100%) rotateY(-90deg);filter:brightness(.45)}}"
+ + ".app.mpe-cubo{transform-origin:0% 50%;backface-visibility:hidden;animation:mpeCuboIn 1s cubic-bezier(.65,0,.35,1) both}"
+ + "@keyframes mpeCuboIn{0%{transform:perspective(1800px) translateX(100%) rotateY(90deg);filter:brightness(.45)}100%{transform:perspective(1800px) translateX(0) rotateY(0);filter:brightness(1)}}"
+ + "#mpeSaindo.mpe-holo{background:transparent!important}"
+ + "#mpeSaindo.mpe-holo .auth{animation:mpeHoloOut .9s cubic-bezier(.5,0,.75,0) forwards}"
+ + "@keyframes mpeHoloOut{0%{transform:none;opacity:1}35%{transform:scale(.96);filter:brightness(1.5) drop-shadow(0 0 24px rgba(127,227,234,.8))}100%{transform:perspective(900px) rotateX(75deg) scale(.15);opacity:0;filter:brightness(2)}}"
+ + ".mpe-ring{position:absolute;left:50%;top:50%;width:320px;height:320px;margin:-160px 0 0 -160px;border-radius:50%;border:2px solid rgba(127,227,234,.9);box-shadow:0 0 24px rgba(127,227,234,.6),inset 0 0 24px rgba(127,227,234,.35);opacity:0;animation:mpeRing 1.1s .35s cubic-bezier(.2,.7,.3,1) forwards}"
+ + ".mpe-ring.r2{animation-delay:.5s;border-style:dashed}.mpe-ring.r3{animation-delay:.65s;border-width:1px}"
+ + "@keyframes mpeRing{0%{transform:scale(.1);opacity:0}20%{opacity:1}100%{transform:scale(4.2);opacity:0}}"
+ + ".mpe-scan{position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#7fe3ea,transparent);box-shadow:0 0 18px #7fe3ea;opacity:0;animation:mpeScan .9s .55s ease-in-out forwards}"
+ + "@keyframes mpeScan{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(100vh);opacity:0}}"
+ + ".app.mpe-holo .rail{animation:mpeHoloRail .8s .45s cubic-bezier(.16,1,.3,1) both}"
+ + "@keyframes mpeHoloRail{0%{transform:perspective(1000px) translateX(-70px) rotateY(28deg);opacity:0}100%{transform:none;opacity:1}}"
+ + ".app.mpe-holo .top{animation:mpeHoloTop .7s .55s cubic-bezier(.16,1,.3,1) both}"
+ + "@keyframes mpeHoloTop{0%{transform:perspective(900px) translateY(-36px) rotateX(-35deg);opacity:0}100%{transform:none;opacity:1}}"
+ + ".app.mpe-holo #content>*{animation:mpeHoloCard .8s .65s cubic-bezier(.16,1,.3,1) both}"
+ + ".app.mpe-holo #content>*:nth-child(2){animation-delay:.73s}.app.mpe-holo #content>*:nth-child(3){animation-delay:.81s}.app.mpe-holo #content>*:nth-child(4){animation-delay:.89s}.app.mpe-holo #content>*:nth-child(5){animation-delay:.97s}.app.mpe-holo #content>*:nth-child(n+6){animation-delay:1.05s}"
+ + "@keyframes mpeHoloCard{0%{transform:perspective(1200px) translateZ(-320px) translateY(36px) rotateX(16deg);opacity:0;filter:drop-shadow(0 0 18px rgba(127,227,234,.9)) brightness(1.4)}70%{opacity:1}100%{transform:none;opacity:1;filter:none}}"
+ + ".mpe-vbg{position:fixed;inset:0;z-index:130;display:grid;place-items:center;padding:16px;background:rgba(2,8,10,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:mpeVbg .35s ease both}"
+ + ".mpe-vbg.sai{animation:mpeFade .2s ease forwards}"
+ + "@keyframes mpeVbg{from{opacity:0}}"
+ + ".mpe-v{position:relative;box-sizing:border-box;width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;border-radius:24px;padding:24px 24px 16px;background:rgba(7,22,25,.9);border:1px solid rgba(127,227,234,.35);box-shadow:0 30px 90px rgba(0,0,0,.55),inset 0 0 60px rgba(95,183,189,.12);color:#eef5f6;font-family:Figtree,'Segoe UI',sans-serif;-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);animation:mpeVin .6s cubic-bezier(.16,1,.3,1) both}"
+ + ".mpe-v::before,.mpe-v::after{content:'';position:absolute;width:26px;height:26px;border:2px solid #7fe3ea;pointer-events:none}"
+ + ".mpe-v::before{left:10px;top:10px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}.mpe-v::after{right:10px;bottom:10px;border-left:0;border-top:0;border-radius:0 0 10px 0}"
+ + "@keyframes mpeVin{0%{transform:perspective(1000px) translateZ(-160px) rotateX(14deg);opacity:0}100%{transform:none;opacity:1}}"
+ + ".mpe-vh{display:flex;align-items:center;gap:16px}"
+ + ".mpe-vtx{min-width:0}.mpe-vtx small{display:block;font-size:11px;letter-spacing:.14em;color:#7fe3ea;font-weight:700}"
+ + ".mpe-vtx h2{margin:4px 0 2px;min-height:1.25em;font-family:'Bricolage Grotesque',Figtree,sans-serif;font-size:26px;font-weight:600;color:#ffffff}"
+ + ".mpe-vd{font-size:13px;color:#c9dadd}"
+ + ".mpe-orb{width:84px;height:84px;flex:0 0 84px;filter:drop-shadow(0 0 12px rgba(127,227,234,.55))}"
+ + ".mpe-orb circle{fill:none;stroke:#7fe3ea;transform-box:fill-box;transform-origin:center}"
+ + ".mpe-orb .o1{stroke-width:2;stroke-dasharray:5 9;opacity:.8;animation:mpeRot 14s linear infinite}"
+ + ".mpe-orb .o2{stroke-width:3;stroke-dasharray:70 26 12 26;animation:mpeRot 6s linear infinite reverse}"
+ + ".mpe-orb .o3{stroke-width:1.5;opacity:.55}"
+ + ".mpe-orb .o4{fill:rgba(127,227,234,.22);stroke-width:2;animation:mpePulse 2.4s ease-in-out infinite}"
+ + ".mpe-orb.falando .o4{animation-duration:.55s}.mpe-orb.falando .o2{animation-duration:2s}"
+ + ".mpe-orb text{fill:#eafcfd;font:700 20px 'Bricolage Grotesque',Figtree,sans-serif;text-anchor:middle;dominant-baseline:central}"
+ + "@keyframes mpeRot{to{transform:rotate(360deg)}}"
+ + "@keyframes mpePulse{50%{transform:scale(1.18);fill:rgba(127,227,234,.45)}}"
+ + ".mpe-ls{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}"
+ + ".mpe-l{position:relative;padding:10px 12px 10px 30px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:14.5px;line-height:1.4;animation:mpeLin .45s var(--d,.5s) cubic-bezier(.16,1,.3,1) both}"
+ + ".mpe-l::before{content:'';position:absolute;left:12px;top:15px;width:8px;height:8px;border-radius:50%;background:#7fe3ea;box-shadow:0 0 10px currentColor}"
+ + ".mpe-l.c-ag::before{background:#7fe3ea}.mpe-l.c-tf::before{background:#a6e3bd}.mpe-l.c-at::before{background:#f6c48a}.mpe-l.c-pd::before{background:#ddcdf8}.mpe-l.c-pz::before{background:#bfe6e8}.mpe-l.c-ok::before{background:#a6e3bd}"
+ + "@keyframes mpeLin{0%{transform:translateX(-14px);opacity:0}100%{transform:none;opacity:1}}"
+ + ".mpe-vb{display:flex;gap:8px;margin-top:16px}"
+ + ".mpe-b{flex:1;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#ffffff;font:inherit;font-weight:600;cursor:pointer}"
+ + ".mpe-b.pri{flex:2;border:0;background:#ffffff;color:#0b1a1c;font-weight:700}"
+ + ".mpe-b.chama{border-color:#7fe3ea;box-shadow:0 0 0 0 rgba(127,227,234,.6);animation:mpeChama 1.6s ease-out 3}"
+ + "@keyframes mpeChama{0%{box-shadow:0 0 0 0 rgba(127,227,234,.6)}100%{box-shadow:0 0 0 12px rgba(127,227,234,0)}}"
+ + ".mpe-b:focus-visible{outline:2px solid #7fe3ea;outline-offset:2px}"
+ + ".mpe-vn{margin:10px 0 0;font-size:11.5px;color:#9fb7bb;text-align:center}"
+ + ".mpe-ops{display:flex;flex-direction:column;gap:8px}"
+ + ".mpe-op{display:flex;align-items:center;gap:8px}"
+ + ".mpe-opb{flex:1;display:flex;align-items:center;gap:12px;text-align:left;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:inherit;font:inherit;cursor:pointer}"
+ + ".mpe-op.on .mpe-opb{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}"
+ + ".mpe-opb small{display:block;color:var(--muted);font-size:12.5px}"
+ + ".mpe-th{flex:0 0 64px;height:42px;border-radius:9px;background:#0b1c1f;position:relative;overflow:hidden;perspective:200px}"
+ + ".mpe-th i{position:absolute;inset:9px 14px;border-radius:5px;background:linear-gradient(135deg,#7fd0d5,#2f7f86)}"
+ + ".mpe-th.t-portal i{animation:mpeThP 2.4s ease-in-out infinite}.mpe-th.t-cubo i{animation:mpeThC 2.4s ease-in-out infinite;transform-origin:100% 50%}.mpe-th.t-holo i{border-radius:50%;inset:8px 19px;background:none;border:2px solid #7fe3ea;animation:mpeThH 2.4s ease-out infinite}.mpe-th.t-nenhum i{opacity:.9}"
+ + "@keyframes mpeThP{0%,30%{transform:none;opacity:1}70%{transform:translateZ(120px);opacity:0}100%{transform:none;opacity:1}}"
+ + "@keyframes mpeThC{0%,30%{transform:none}70%,100%{transform:translateX(-100%) rotateY(-90deg)}}"
+ + "@keyframes mpeThH{0%{transform:scale(.2);opacity:1}100%{transform:scale(2.4);opacity:0}}"
+ + "@media (prefers-reduced-motion:reduce){.app.mpe-in,.app.mpe-in .rail,.app.mpe-in .top,.app.mpe-in #content>*,.mpe-v,.mpe-l,.mpe-orb circle,.mpe-th i{animation:none!important}}"
+ + "@media (max-width:640px){.mpe-v{padding:20px 16px 14px}.mpe-orb{width:64px;height:64px;flex-basis:64px}.mpe-vtx h2{font-size:22px}}";
+ document.head.appendChild(st); })();
+
 /* ================= INÍCIO ================= */
 render();
 updUndo();
