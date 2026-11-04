@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.0 · 04/11/2026";
+const MN_VER = "Mapa v7.1 · 04/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -7029,6 +7029,269 @@ viewAparencia = function(){
   return i>=0 ? h.slice(0,i) + sec + h.slice(i) : h + sec;
 };
 if(typeof R2_VIEWS!=="undefined") R2_VIEWS.aparencia = viewAparencia;
+/* ================= v7.1 PAINEL QUE AGE (pacote 12, 04/11/2026) ================= */
+/* Ideias do perfil code.xr, filtradas pelo princípio do sistema enxuto. */
+/* A: topo enxuto (Ideia dentro do Criar, Salvar só quando falhar, Tema/Ajuda/Fundo no botão Mais, menu com dica e "Ir para"). */
+/* C: painel que age (indicadores zerados viram "em dia", esteira em barras com gargalo, Aprovar direto no pedido). */
+/* D: acompanhar a equipe (aviso fixado com "Li", "O que mudou desde a sua última visita", "Equipe agora"). */
+/* O celular fica para o pacote seguinte. */
+const MPP_STATUS = [
+  {k:"escritorio", n:"No escritório", c:"var(--ok)"},
+  {k:"atendimento", n:"Em atendimento", c:"var(--warn)"},
+  {k:"externo", n:"Fora (audiência/rua)", c:"var(--idea)"},
+  {k:"ausente", n:"Ausente", c:"var(--muted)"}
+];
+function mppHoje(){ return isoDia(); }
+function mppMaster(){ return typeof souMasterReal==="function" ? souMasterReal() : ui.papel==="master"; }
+function mppAvisos(){ if(!Array.isArray(S.avisos)) S.avisos=[]; return S.avisos; }
+function mppPresenca(){ if(!S.presenca || typeof S.presenca!=="object") S.presenca={}; return S.presenca; }
+function mppPessoas(){ return (typeof R2_PESSOAS!=="undefined" && Array.isArray(R2_PESSOAS)) ? R2_PESSOAS : ["Gabriel","Alan","Evaldo","Ellen"]; }
+function mppQuando(t){
+  const d=new Date(t||0), h=new Date();
+  const mesmoDia=d.toDateString()===h.toDateString();
+  const hm=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  return mesmoDia ? hm : String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+hm;
+}
+function mppVistoKey(){ return "mp-visto-"+(ui.me||"?"); }
+function mppVisto(){ const v=apLS(mppVistoKey()); return typeof v==="number" ? v : Date.now()-24*3600*1000; }
+
+/* ---------- A1: Ideia dentro do Criar ---------- */
+const mppCriarBase = criarMenu;
+criarMenu = function(){
+  mppCriarBase();
+  const g=$("#modalRoot .cr-g");
+  if(g && !g.querySelector('[data-act="ideaQuick"]')) g.insertAdjacentHTML("beforeend", `<button class="cr-b" data-act="ideaQuick" data-crm="1">Ideia</button>`);
+};
+
+/* ---------- A3: botão Mais (Tema, Ajuda, Fundo, Aparência) ---------- */
+function mppMaisAbrir(){
+  const vidro = typeof mpfSouVidro==="function" && mpfSouVidro(ui.ap||apGet());
+  const itens = [["tema", temaAtual()==="dark" ? "Tema claro" : "Tema escuro"], ["ajuda","Como usar"]];
+  if(vidro) itens.push(["fundo","Fundo da tela"]);
+  if(mppMaster()) itens.push(["aparencia","Aparência do Painel"]);
+  modal("Mais opções", `<div class="cr-g">${itens.map(([k,n])=>`<button type="button" class="cr-b" data-mpp="mais-${k}">${esc(n)}</button>`).join("")}</div>`, [{label:"Fechar"}]);
+}
+function mppMaisAcao(k){
+  closeModal();
+  if(k==="tema"){ const b=$("#temaBtn"); if(b) b.click(); return; }
+  if(k==="ajuda"){ const b=$('.top [data-act="help"]'); if(b) b.click(); return; }
+  if(k==="fundo"){ if(typeof mpfAbrir==="function") mpfAbrir(); return; }
+  if(k==="aparencia"){ go("aparencia"); }
+}
+
+/* ---------- A4: menu com dica e "Ir para" ---------- */
+function mppSemAcento(t){ return String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
+function mppMenu(){
+  const rail=$(".rail"); if(!rail) return;
+  rail.querySelectorAll(".nav").forEach(n=>{ if(!n.title){ const sp=n.querySelector("span"); n.title=(sp?sp.textContent:n.textContent).trim(); } });
+  const logo = rail.querySelector(".logo");
+  const lab = $("#mppIr") ? $("#mppIr").closest(".mpp-ir") : null;
+  if(lab && logo && lab.previousElementSibling!==logo) logo.insertAdjacentElement("afterend", lab);
+  if(!lab){
+    const html = `<label class="mpp-ir"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="mppIr" type="search" placeholder="Ir para…" aria-label="Ir para uma tela do menu" autocomplete="off"></label>`;
+    if(logo) logo.insertAdjacentHTML("afterend", html); else rail.insertAdjacentHTML("afterbegin", html);
+  }
+}
+function mppFiltrarMenu(q){
+  const rail=$(".rail"); if(!rail) return;
+  const k=mppSemAcento(q).trim();
+  rail.classList.toggle("mpp-busca", !!k);
+  rail.querySelectorAll(".nav").forEach(n=>{ n.classList.toggle("mpp-off", !!k && !mppSemAcento(n.title||n.textContent).includes(k)); });
+}
+document.addEventListener("input", ev=>{ if(ev.target && ev.target.id==="mppIr") mppFiltrarMenu(ev.target.value); });
+document.addEventListener("keydown", ev=>{
+  const t=ev.target; if(!t || t.id!=="mppIr") return;
+  if(ev.key==="Escape"){ t.value=""; mppFiltrarMenu(""); t.blur(); }
+  if(ev.key==="Enter"){ const n=[...document.querySelectorAll(".rail .nav")].find(x=>!x.classList.contains("mpp-off") && x.offsetParent!==null); if(n){ ev.preventDefault(); t.value=""; mppFiltrarMenu(""); n.click(); } }
+});
+
+/* ---------- C1: indicadores zerados viram "em dia" ---------- */
+function mppIndicadores(){
+  document.querySelectorAll("#content .inds .ind, #content .ag .ag-k").forEach(b=>{
+    const v=b.querySelector("b"); const zero = v && v.textContent.trim()==="0";
+    b.classList.toggle("mpp-zero", !!zero);
+    if(!b.querySelector(".mpp-seta")) b.insertAdjacentHTML("beforeend", `<svg class="mpp-seta" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>`);
+    if(zero && !b.querySelector(".mpp-emdia")) b.insertAdjacentHTML("beforeend", `<small class="mpp-emdia">em dia</small>`);
+  });
+}
+
+/* ---------- C2: esteira em barras com gargalo ---------- */
+function mppEsteiraHtml(){
+  if(typeof esAtivo!=="function" || !esAtivo()) return "";
+  const cols=esCols("A").filter(c=>!c.fim);
+  const conta=c=>csAll().filter(x=>x.coluna===c.id).length;
+  const vals=cols.map(conta);
+  const jur=esCols("B").filter(c=>!c.fim).reduce((n,c)=>n+conta(c),0);
+  const tot=vals.reduce((a,b)=>a+b,0);
+  const max=Math.max(1, jur, ...vals);
+  const gi = Math.max(...vals)>0 ? vals.indexOf(Math.max(...vals)) : -1;
+  const nome=c=>String(c.nome||"").replace(/^\d+\.\s*/,"");
+  const barra=(n,v,cls,dica)=>`<button type="button" class="mpp-col" data-go="casos" title="${esc(n)}: ${v} ${v===1?"caso":"casos"}"><span class="mpp-v">${dica?`<i>${esc(dica)}</i>`:v}</span><span class="mpp-b ${cls}" style="height:${Math.round(14+150*v/max)}px"></span><span class="mpp-n">${esc(n)}</span></button>`;
+  const html = cols.map((c,i)=>barra(nome(c), vals[i], i===gi?"on":"", i===gi&&vals[i]>1?"Gargalo · "+vals[i]:"")).join("") + barra("Jurídico", jur, "jur", "");
+  return `<section class="pg-sec mpp-est"><div class="pf-bh"><h3>Esteira de atendimento</h3><span class="muted" style="font-size:12.5px">${tot} ${tot===1?"caso":"casos"} da chegada ao kit · ${jur} no jurídico · clique para abrir</span></div><div class="mpp-cols" style="grid-template-columns:repeat(${cols.length+1},minmax(0,1fr))">${html}</div></section>`;
+}
+
+/* ---------- C3: Aprovar direto no pedido de decisão ---------- */
+const mppRcLinhaBase = rcLinha;
+rcLinha = function(p){
+  let h = mppRcLinhaBase(p);
+  const decide = (p.tipo==="decisao"||p.tipo==="urgente") && p.status!=="atendido" && p.quem!==ui.me && (typeof isApprover==="function" ? isApprover() : mppMaster());
+  if(decide) h = h.replace('<div class="rc-acts">', `<div class="rc-acts"><button class="btn sm mpp-aprova" data-mpp="aprovar" data-id="${esc(p.id)}">Aprovar</button>`);
+  return h;
+};
+function mppAprovar(id){
+  const p=(S.pedidos||[]).find(x=>x.id===id); if(!p) return;
+  snap();
+  if(!Array.isArray(p.resp)) p.resp=[];
+  p.resp.push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:"Aprovado."});
+  if(!Array.isArray(p.vistoPor)) p.vistoPor=[];
+  if(ui.me && !p.vistoPor.includes(ui.me)) p.vistoPor.push(ui.me);
+  p.status="atendido"; p.atendidoPor=ui.me||"?"; p.atendidoEm=hoje();
+  logA("aprovou um pedido de "+p.quem);
+  save(); render(); if(typeof renderPedidos==="function") renderPedidos(true);
+  toast("Pedido aprovado. "+p.quem+" vê a resposta “Aprovado.”");
+}
+
+/* ---------- D1: aviso fixado com "Li" ---------- */
+function mppAvisosHtml(){
+  const ativos=mppAvisos().filter(a=>a.ativo!==false).slice(-3);
+  const gestor=mppMaster();
+  if(!ativos.length) return gestor ? `<div class="mpp-av-vazio"><button type="button" class="lnk" data-mpp="aviso-novo">+ Fixar um aviso para a equipe</button><span class="muted">aparece no alto do Meu dia de todos, com o botão “Li”</span></div>` : "";
+  return ativos.map(a=>{
+    const lidos=a.lidos||{};
+    const alvo=mppPessoas().filter(n=>n!==a.quem);
+    const leram=alvo.filter(n=>lidos[n]), faltam=alvo.filter(n=>!lidos[n]);
+    const souAlvo=alvo.includes(ui.me);
+    const li = souAlvo && lidos[ui.me];
+    const podeTirar = gestor || a.quem===ui.me;
+    return `<section class="mpp-av" role="status"><div class="mpp-av-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10v4h3l5 4V6L7 10z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></div>
+      <div class="mpp-av-c"><small>Aviso de ${esc(a.quem)} · ${esc(mppQuando(a.t))}</small><p>${esc(a.txt)}</p>${(gestor||a.quem===ui.me)?`<small class="muted">${leram.length?"Lido por "+esc(leram.join(", ")):"Ninguém leu ainda"}${faltam.length?" · falta: "+esc(faltam.join(", ")):" · todos leram"}</small>`:""}</div>
+      <div class="mpp-av-a">${souAlvo ? (li ? `<span class="mpp-lido">Lido</span>` : `<button type="button" class="btn sm primary" data-mpp="aviso-li" data-id="${esc(a.id)}">Li</button>`) : ""}${podeTirar?`<button type="button" class="lnk" data-mpp="aviso-tirar" data-id="${esc(a.id)}">Tirar</button>`:""}${gestor?`<button type="button" class="lnk" data-mpp="aviso-novo">Novo</button>`:""}</div></section>`;
+  }).join("");
+}
+function mppAvisoNovo(){
+  modal("Fixar aviso para a equipe", `<p class="muted" style="margin:0 0 6px">Aparece no alto do Meu dia e do Painel de todos, até você tirar. Cada pessoa marca “Li”. Sem nome completo de cliente, CPF ou senha.</p><textarea class="inp" id="mppAvTxt" maxlength="280" style="min-height:90px" placeholder="Ex.: Mapa atualizado (v7.1). Dê Ctrl+F5."></textarea>`,
+    [{label:"Cancelar"},{label:"Fixar", cls:"primary", fn:()=>{
+      const el=$("#mppAvTxt"); const t=(el.value||"").trim();
+      if(!t){ el.focus(); return false; }
+      if(typeof esSensivel==="function" && esSensivel(t)){ toast("Parece ter CPF ou senha. Tire antes de fixar."); return false; }
+      snap(); mppAvisos().push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:t, ativo:true, lidos:{}});
+      logA("fixou um aviso para a equipe"); save(); render(); toast("Aviso fixado.");
+    }}]);
+  setTimeout(()=>{ const el=$("#mppAvTxt"); if(el) el.focus(); }, 50);
+}
+function mppAvisoLi(id){ const a=mppAvisos().find(x=>x.id===id); if(!a||!ui.me) return; if(!a.lidos||typeof a.lidos!=="object") a.lidos={}; a.lidos[ui.me]=Date.now(); save(); render(); }
+function mppAvisoTirar(id){ const a=mppAvisos().find(x=>x.id===id); if(!a) return; snap(); a.ativo=false; logA("tirou um aviso fixado"); save(); render(); toast("Aviso retirado."); }
+
+/* ---------- D2: o que mudou desde a sua última visita ---------- */
+function mppMudouHtml(){
+  const desde=mppVisto();
+  const novos=(S.log||[]).filter(l=>l && l.t>desde && l.quem && l.quem!==ui.me);
+  const ver=ui.mppMudouTudo ? 30 : 6;
+  const lista=novos.slice(0,ver).map(l=>`<li><span class="mpp-q">${esc(l.quem)}</span><span class="mpp-t">${esc(l.txt||"")}</span><span class="muted mpp-h">${esc(mppQuando(l.t))}</span></li>`).join("");
+  return `<section class="pg-sec mpp-mudou"><div class="pf-bh"><h3>O que mudou${novos.length?` <span class="mpp-n2">${novos.length}</span>`:""}</h3>${novos.length?`<button type="button" class="lnk" data-mpp="mudou-visto">Marcar como visto</button>`:""}</div>
+    ${novos.length?`<ul class="mpp-feed">${lista}</ul>${novos.length>ver?`<button type="button" class="lnk" data-mpp="mudou-mais">Ver mais ${novos.length-ver}</button>`:""}`:`<p class="muted pf-v">Nada novo da equipe desde ${esc(mppQuando(desde))}.</p>`}</section>`;
+}
+
+/* ---------- D3: equipe agora ---------- */
+function mppEquipeHtml(){
+  const h=mppHoje(), pres=mppPresenca();
+  const linha=n=>{
+    const reg=pres[n]; const valido=reg && reg.d===h;
+    const st=valido ? (MPP_STATUS.find(s=>s.k===reg.st)||null) : null;
+    const tfs=tfAll().filter(t=>!t.arq && t.resp===n && ((t.dataComp||t.data)===h));
+    const feitas=tfs.filter(t=>t.done).length, tot=tfs.length;
+    const pct=tot ? Math.round(100*feitas/tot) : 0;
+    const eu=n===ui.me;
+    const chip = `<span class="mpp-st" style="--sc:${st?st.c:"var(--line)"}"><i></i>${st?esc(st.n):"Sem registro hoje"}</span>`;
+    return `<div class="mpp-eq"><span class="mpp-anel" style="--p:${pct}" title="${feitas} de ${tot} tarefas de hoje"><b>${tot?feitas+"/"+tot:"–"}</b></span><span class="mpp-eq-n"><b>${esc(n)}${eu?" (você)":""}</b>${eu?`<button type="button" class="mpp-st-b" data-mpp="status" title="Mudar o seu status">${chip}</button>`:chip}</span></div>`;
+  };
+  return `<section class="pg-sec mpp-equipe"><div class="pf-bh"><h3>Equipe agora</h3><span class="muted" style="font-size:12.5px">anel = tarefas de hoje feitas · clique no seu status para mudar</span></div><div class="mpp-eqs">${mppPessoas().map(linha).join("")}</div></section>`;
+}
+function mppStatusTrocar(){
+  if(!ui.me) return;
+  const h=mppHoje(), pres=mppPresenca(), reg=pres[ui.me];
+  const atual = reg && reg.d===h ? MPP_STATUS.findIndex(s=>s.k===reg.st) : -1;
+  const prox = MPP_STATUS[(atual+1) % MPP_STATUS.length];
+  pres[ui.me]={st:prox.k, d:h, t:Date.now()};
+  save(); render(); toast("Seu status: "+prox.n+".");
+}
+
+/* ---------- Cliques do módulo ---------- */
+document.addEventListener("click", ev=>{
+  const b=ev.target.closest && ev.target.closest("[data-mpp]"); if(!b) return;
+  const k=b.dataset.mpp, id=b.dataset.id;
+  if(k==="mais"){ mppMaisAbrir(); return; }
+  if(k.indexOf("mais-")===0){ mppMaisAcao(k.slice(5)); return; }
+  if(k==="aprovar"){ mppAprovar(id); return; }
+  if(k==="aviso-novo"){ mppAvisoNovo(); return; }
+  if(k==="aviso-li"){ mppAvisoLi(id); return; }
+  if(k==="aviso-tirar"){ mppAvisoTirar(id); return; }
+  if(k==="mudou-visto"){ apLS(mppVistoKey(), Date.now()); ui.mppMudouTudo=false; render(); return; }
+  if(k==="mudou-mais"){ ui.mppMudouTudo=true; render(); return; }
+  if(k==="status"){ mppStatusTrocar(); }
+});
+
+/* ---------- Montagem na tela ---------- */
+function mppTopo(){
+  const top=$(".top"); if(!top || $("#mppMais")) return;
+  const sc=$("#saveChip");
+  const html=`<button type="button" class="iconbtn" id="mppMais" data-mpp="mais" title="Mais opções: tema, ajuda, fundo" aria-label="Mais opções"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>`;
+  if(sc) sc.insertAdjacentHTML("beforebegin", html); else top.insertAdjacentHTML("beforeend", html);
+}
+function mppTela(){
+  const c=$("#content"); if(!c) return;
+  const ph=c.querySelector(".phead"); if(!ph) return;
+  if(c.querySelector(".mpp-bloco")) return;
+  let html="";
+  if(ui.view==="central"){
+    html = mppAvisosHtml() + `<div class="pg-2">${mppEquipeHtml()}${mppMudouHtml()}</div>` + mppEsteiraHtml();
+  } else if(ui.view==="hoje"){
+    html = mppAvisosHtml() + mppMudouHtml();
+  }
+  if(html) ph.insertAdjacentHTML("afterend", `<div class="mpp-bloco" id="mppBloco">${html}</div>`);
+}
+const mppRenderBase = render;
+render = function(){
+  mppRenderBase();
+  try{ mppTopo(); mppMenu(); mppTela(); mppIndicadores(); }catch(e){ console.warn("painel v7.1", e); }
+};
+(function(){ const st=document.createElement("style"); st.id="mppStyle"; st.textContent = ""
+ + ".top .btn.idea,.top [data-act=\"help\"],.top #temaBtn,.top .mpf-btn{display:none!important}"
+ + ".top [data-act=\"salvarAgora\"]{display:none}"
+ + ".top:has(.savechip.err) [data-act=\"salvarAgora\"],.top:has(.savechip.need) [data-act=\"salvarAgora\"]{display:inline-flex;background:var(--danger);border-color:var(--danger);color:var(--accent-fg)}"
+ + ".mpp-ir{display:flex;align-items:center;gap:6px;margin:4px 10px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);color:var(--muted);align-self:stretch}"
+ + ".mpp-ir input{flex:1;min-width:0;border:0;background:transparent;outline:0;color:var(--fg);font:inherit;font-size:13px}"
+ + "body.rail-mini .mpp-ir{display:none}"
+ + ".rail.mpp-busca .ngrp{display:none!important}.rail.mpp-busca .nav.mn-oculto:not(.mpp-off):not([style*=\"display: none\"]){display:flex!important}.rail.mpp-busca .nav.mpp-off{display:none!important}"
+ + ".ind,.ag-k{position:relative}.mpp-seta{position:absolute;top:10px;right:10px;opacity:.45}"
+ + ".ind.mpp-zero b,.ag-k.mpp-zero b{opacity:.35}.mpp-emdia{display:block;font-size:11.5px;color:var(--ok);font-weight:600;margin-top:2px}"
+ + ".mpp-bloco{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}.mpp-bloco .pg-2{margin:0}"
+ + "body.eq-hoje #content > #mppBloco.mpp-bloco.mpp-bloco{display:flex!important}"
+ + ".mpp-av{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid var(--accent);background:var(--accent-soft)}"
+ + ".mpp-av-ic{width:34px;height:34px;flex:none;border-radius:10px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center}"
+ + ".mpp-av-c{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.mpp-av-c p{margin:0;font-size:15px;font-weight:600;white-space:pre-wrap}.mpp-av-c small{font-size:12.5px}"
+ + ".mpp-av-a{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.mpp-lido{font-size:12.5px;font-weight:700;color:var(--ok)}"
+ + ".mpp-av-vazio{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}"
+ + ".mpp-feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}.mpp-feed li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}.mpp-feed li:first-child{border-top:0}"
+ + ".mpp-q{font-weight:700}.mpp-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mpp-h{font-size:12px;font-variant-numeric:tabular-nums}"
+ + ".mpp-n2{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:var(--accent-fg);font-size:11.5px;vertical-align:2px}"
+ + ".mpp-eqs{display:flex;flex-direction:column;gap:10px}.mpp-eq{display:flex;align-items:center;gap:12px}"
+ + ".mpp-anel{--p:0;width:44px;height:44px;flex:none;border-radius:50%;background:conic-gradient(var(--ok) calc(var(--p)*1%),var(--surface-3) 0);display:grid;place-items:center}"
+ + ".mpp-anel b{width:34px;height:34px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:11.5px;font-variant-numeric:tabular-nums}"
+ + ".mpp-eq-n{display:flex;flex-direction:column;gap:3px;min-width:0}.mpp-eq-n b{font-size:14px}"
+ + ".mpp-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}.mpp-st i{width:8px;height:8px;border-radius:50%;background:var(--sc)}"
+ + ".mpp-st-b{border:1px dashed var(--line);background:transparent;border-radius:99px;padding:2px 8px;cursor:pointer;color:inherit;font:inherit;align-self:flex-start}.mpp-st-b:hover{border-color:var(--accent)}"
+ + ".mpp-cols{display:grid;gap:12px;align-items:end;min-height:220px}"
+ + ".mpp-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0;height:100%}"
+ + ".mpp-v{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}.mpp-v i{font-style:normal;font-size:12px;font-weight:700;background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:99px;padding:2px 8px;white-space:nowrap}"
+ + ".mpp-b{display:block;width:100%;max-width:56px;border-radius:99px;background:var(--surface-3);transition:transform .2s ease}.mpp-col:hover .mpp-b{transform:scaleY(1.04)}"
+ + ".mpp-b.on{background:var(--accent);box-shadow:0 0 26px var(--accent-soft)}.mpp-b.jur{background:var(--ok-soft);border:1px dashed var(--ok);box-sizing:border-box}"
+ + ".mpp-n{font-size:12px;color:var(--muted);text-align:center;line-height:1.25}"
+ + ".mpp-aprova{background:var(--ok);border-color:var(--ok);color:var(--accent-fg)}"
+ + "@media (max-width:640px){.mpp-cols{gap:6px}.mpp-n{font-size:10.5px}.mpp-feed li{grid-template-columns:auto 1fr}.mpp-h{display:none}}"
+ + "@media (prefers-reduced-motion:reduce){.mpp-b{transition:none}}";
+ document.head.appendChild(st); })();
 /* ================= INÍCIO ================= */
 render();
 updUndo();
