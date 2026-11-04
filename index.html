@@ -5391,11 +5391,11 @@ render = function(){ agPre(); agRenderBase(); };
 /* Cada coluna do funil ganha esteira (A ou B), dono e, quando houver, portão (itens a marcar). */
 /* Só front, sem SQL. Usa o mesmo S.funil e S.casos. O master ativa uma vez; dá para desfazer logo depois. */
 /* Regra de sigilo: no cartão só primeiro nome ou inicial; CPF, valores e transcrição ficam no Jurichat e no Dropbox. */
-const ES_VER = "v6.2 · 26/10/2026";
+const ES_VER = "v6.3 · 26/10/2026";
 const ES_PADRAO = [
   {k:"AG", esteira:"A", nome:"1. Agendar", dono:"Ellen", portao:["Sinal de R$ 100,00 recebido no Pix"], dica:"Chegou pelo WhatsApp ou no escritório: agendar e mandar a chave Pix ou o link do Asaas. O horário só fica confirmado com o Pix do sinal recebido. Antes da consulta: nome, CPF (no Jurichat), breve relato e documentos."},
   {k:"CONS", esteira:"A", nome:"2. Consulta", dono:"Gabriel", portao:["Consulta feita e saldo pago"], dica:"Gravar no iPad e mandar a gravação para a Ellen. Retorno em até 7 dias úteis depois dos documentos."},
-  {k:"DOC", esteira:"A", nome:"3. Documentos", dono:"Ellen", d0:true, portao:["Pasta pronta (documentos essenciais recebidos)"], dica:"Mover a transcrição de _ENTRADA_ATENDIMENTOS para 00_Atendimentos na pasta do cliente, registrar o atendimento (resumo + link) e cobrar os documentos. Pasta pronta conta os prazos sozinha."},
+  {k:"DOC", esteira:"A", nome:"3. Documentos", dono:"Ellen", d0:true, portao:["Pasta pronta (documentos essenciais recebidos)"], dica:"Se veio só o áudio, transcrever antes (Transcritor M&P). Mover para 00_Atendimentos na pasta do cliente, registrar o atendimento (resumo + link) e cobrar os documentos. Pasta pronta conta os prazos sozinha."},
   {k:"VIAB", esteira:"A", nome:"4. Viabilidade", dono:"Gabriel", portao:[], dica:"Estudo jurídico ou de projeto do Grupo M&P. Prazo: 5 dias úteis da pasta pronta."},
   {k:"RET", esteira:"A", nome:"5. Retorno", dono:"Ellen · Gabriel", portao:[], dica:"A Ellen agenda; o Gabriel apresenta. Viável: proposta abatendo os R$ 250,00. Não viável: parecer por escrito."},
   {k:"CONTR", esteira:"A", nome:"6. Contratação", dono:"Ellen", trava:true, passa:true, portao:["Honorários iniciais pagos","Procuração assinada","Contrato assinado"], dica:"Diligências, pagamentos, documentos que faltam e kit. Só passa ao jurídico com os três itens."},
@@ -5502,9 +5502,14 @@ function esMover(c, destId){
   snap();
   c.coluna=para.id; c.movidoEm=Date.now();
   if((de.esteira||"A")==="A" && para.esteira==="B") esPassouJur(c, de);
+  if(para.k==="DOC" && de.k!=="DOC") esTarefaRegistro(c);
   logA("moveu o caso “"+c.titulo+"” para "+para.nome);
   save(); render();
   if($("#esSec")) esRefresh(c);
+}
+function esTarefaRegistro(c){
+  if(tfAll().some(t=>t.origem==="esteira-reg" && t.caso===c.id && !t.done)) return;
+  tfAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", area:c.area||"", txt:"Registrar atendimento: "+c.titulo+" (se veio só o áudio, transcrever antes)", resp:"Ellen", data:"", dataComp:isoDia(), done:false, status:"pendente", obs:"Mover a transcrição para 00_Atendimentos e registrar resumo + link no caso.", pessoa:c.pessoa||"", caso:c.id, prio:"", origem:"esteira-reg"});
 }
 function esPassouJur(c, de){
   c.jur={t:Date.now(), quem:ui.me||"?", de:de.nome};
@@ -5692,7 +5697,7 @@ document.addEventListener("click", e=>{
     if(esSensivel(res)){ toast("O resumo parece ter CPF ou senha. Tire do texto: a íntegra fica no link do Dropbox."); return; }
     if(link && !/^https?:\/\//i.test(link)){ toast("Cole o link completo da transcrição (começa com https://)."); return; }
     snap(); (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:tipo+": "+res, tipo, data, resumo:res, link});
-    logA("registrou atendimento ("+tipo+") no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); toast("Atendimento registrado no histórico do cliente."); }
+    tfAll().filter(t=>t.origem==="esteira-reg" && t.caso===c.id && !t.done).forEach(t=>{ t.done=true; t.status="concluida"; t.doneEm=Date.now(); t.doneBy=ui.me||"?"; }); logA("registrou atendimento ("+tipo+") no caso “"+c.titulo+"”"); save(); render(); esRefresh(c); toast("Atendimento registrado no histórico do cliente."); }
   else if(a==="docCopiar" && c){ const t=esDocsTexto(c); if(t) copyText(t, "Pedido copiado. Cole no WhatsApp do cliente."); }
 });
 document.addEventListener("change", e=>{
@@ -6659,10 +6664,11 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v6.2 · 26/10/2026";
+const MN_VER = "Mapa v7.0 · 04/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
-const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true};
+const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
+function mnPadrao(){ return ui.papel==="equipe" ? MN_PADRAO_EQUIPE : MN_PADRAO; }
 function mnEstado(){
   if(ui.mn) return ui.mn;
   if(!ui.papel) return Object.assign({}, MN_PADRAO);
@@ -6688,7 +6694,7 @@ function mnAplicar(){
   const st=mnEstado();
   G.forEach(g=>{
     const ativo=g.itens.some(n=>n.classList.contains("on"));
-    const aberto = mini || ativo || !!st[g.nome];
+    const aberto = mini || ativo || ((g.nome in st) ? !!st[g.nome] : !!mnPadrao()[g.nome]);
     g.itens.forEach(n=>n.classList.toggle("mn-oculto", !aberto));
     const aviso = !aberto && g.itens.some(n=>n.style.display!=="none" && n.querySelector(".dot"));
     const h=g.h;
@@ -6719,6 +6725,310 @@ document.addEventListener("keydown", e=>{ if((e.key==="Enter"||e.key===" ") && e
 const mnRenderBase = render;
 render = function(){ mnRenderBase(); try{ mnAplicar(); }catch(e){ console.warn("menu", e); } };
 setInterval(()=>{ try{ mnAplicar(); }catch(e){} }, 5000);
+/* ================= MEU DIA DA EQUIPE + MENU DA EQUIPE (v6.3, 26/10/2026) ================= */
+/* Só para o papel equipe (Ellen). Master e sócios continuam com o Meu dia e o menu de antes. */
+/* Meu dia: botões do topo, avisos, Esta semana, Hoje, Minha parte na esteira, Fechar o dia. */
+/* Menu: Meu trabalho, Clientes, Equipe, Ajuda. O que a equipe não usa fica guardado fora da vista (os itens continuam existindo). */
+const EQ_DSEM = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+function eqSouEquipe(){ return ui.papel==="equipe" && !!ui.me; }
+function eqMeu(r){ return r===ui.me || r==="" || r==null; }
+
+/* ---------- Avisos (só aparecem se houver) ---------- */
+function eqAvisos(){
+  const L=[];
+  const meus=(S.pedidos||[]).filter(p=>p.quem===ui.me && Array.isArray(p.resp) && p.resp.length && (p.resp[p.resp.length-1].t||0)>Date.now()-2*864e5 && p.resp[p.resp.length-1].quem!==ui.me);
+  if(meus.length) L.push(`<button class="eq-chip" data-act="pdToggle">${meus.length===1?"1 pedido seu respondido":meus.length+" pedidos seus respondidos"}</button>`);
+  const ab=(typeof pdAbertos==="function"?pdAbertos():[]).filter(p=>p.para===ui.me);
+  if(ab.length) L.push(`<button class="eq-chip" data-act="pdToggle">${ab.length===1?"1 pedido para você":ab.length+" pedidos para você"}</button>`);
+  const pn=(typeof pnNaoLidos==="function")?pnNaoLidos().length:0;
+  if(pn) L.push(`<button class="eq-chip" data-go="postits">${pn===1?"1 post-it para você":pn+" post-its para você"}</button>`);
+  const lm=(typeof lmMeusPend==="function")?lmMeusPend():0;
+  if(lm) L.push(`<button class="eq-chip" data-go="lembretes">${lm===1?"1 lembrete":lm+" lembretes"}</button>`);
+  return L.length?`<div class="eq-avisos">${L.join("")}</div>`:"";
+}
+
+/* ---------- Esta semana (seg a sex) ---------- */
+function eqSegunda(){ const d=lmIsoDate(isoDia()); const w=d.getDay(); d.setDate(d.getDate()-(w===0?6:w-1)); return isoDia(d); }
+function eqSemana(){
+  const ini=eqSegunda(), hoje=isoDia();
+  const dias=[0,1,2,3,4].map(i=>agSoma(ini,i));
+  return `<section class="eq-card"><div class="eq-h"><h2>Esta semana</h2><span class="muted">clique no dia para abrir o Calendário</span></div><div class="eq-wk">${dias.map(iso=>{
+    const its=calItens(iso).filter(x=>x.k!=="sala");
+    const ev=its.filter(x=>x.k==="ev").length, tf=its.filter(x=>x.k!=="ev" && eqMeu(x.r)).length;
+    const d=lmIsoDate(iso); const txt=[ev?ev+(ev===1?" compromisso":" compromissos"):"", tf?tf+(tf===1?" tarefa":" tarefas"):""].filter(Boolean).join(" · ")||"livre";
+    return `<button class="eq-dy${iso===hoje?" on":""}${iso<hoje?" pas":""}" data-eq="dia" data-d="${iso}"><b>${EQ_DSEM[d.getDay()]} ${d.getDate()}</b><small>${esc(txt)}</small></button>`; }).join("")}</div></section>`;
+}
+
+/* ---------- Hoje: compromissos + tarefas dela (atrasadas primeiro) ---------- */
+function eqHoje(){
+  const h=isoDia();
+  const ev=calItens(h).filter(x=>x.k==="ev").sort((a,b)=>(a.h||"").localeCompare(b.h||""));
+  const tf=tfLista().filter(t=>!t.done && !t.arq && t.resp===ui.me && ((t.dataComp && t.dataComp<=h) || (t.data && t.data<=h)));
+  const atr=t=>{ const d=t.data&&t.data<h?t.data:(t.dataComp&&t.dataComp<h?t.dataComp:""); return d; };
+  tf.sort((a,b)=>(atr(b)?1:0)-(atr(a)?1:0) || (a.prio==="alta"?-1:0)-(b.prio==="alta"?-1:0) || (atr(a)||a.dataComp||a.data||"").localeCompare(atr(b)||b.dataComp||b.data||""));
+  const liT=t=>{ const a=atr(t); const dias=a?Math.round((lmIsoDate(h)-lmIsoDate(a))/864e5):0; const p=t.pessoa?psNome(t.pessoa):"";
+    return `<div class="eq-li"><button class="eq-ck" data-act="tfDone2" data-id="${t.id}" aria-label="Concluir"></button><button class="eq-tx" data-act="tfEdit2" data-id="${t.id}">${esc(t.txt)}${p?` <span class="muted">· ${esc(p)}</span>`:""}</button>${a?`<span class="eq-tag r">atrasada ${dias} dia${dias===1?"":"s"}</span>`:(t.data===h?`<span class="eq-tag r">fatal hoje</span>`:`<span class="eq-tag w">hoje</span>`)}</div>`; };
+  const liE=x=>`<div class="eq-li"><span class="eq-hr">${esc(x.h||"dia")}</span><button class="eq-tx" data-act="evAbrir" data-id="${x.id}">${esc(x.t)}${x.sub?` <span class="muted">· ${esc(x.sub)}</span>`:""}</button>${x.link?`<a class="btn sm" href="${esc(x.link)}" target="_blank" rel="noopener">Entrar</a>`:""}</div>`;
+  const vazio=!ev.length && !tf.length;
+  return `<section class="eq-card"><div class="eq-h"><h2>Hoje</h2><span class="muted">compromissos e suas tarefas, atrasadas primeiro</span></div>
+    ${vazio?`<p class="muted" style="margin:0">Nada marcado para hoje. Confira a esteira ao lado.</p>`:ev.map(liE).join("")+tf.map(liT).join("")}
+    <div class="eq-row"><button class="btn sm" data-act="tfNova">+ Tarefa</button><button class="btn sm" data-act="evNovo">+ Compromisso</button><button class="lnk" data-go="tarefas">Todas as tarefas</button></div></section>`;
+}
+
+/* ---------- Minha parte na esteira ---------- */
+function eqParado(c){ return Math.floor((Date.now()-(c.movidoEm||c.t||0))/864e5); }
+function eqEsteira(){
+  if(typeof esAtivo!=="function" || !esAtivo()) return `<section class="eq-card"><div class="eq-h"><h2>Minha parte na esteira</h2></div><p class="muted" style="margin:0">As esteiras ainda não foram ativadas. O Gabriel ativa em Atendimentos e casos.</p></section>`;
+  const linha=(k, rotulo, resumo)=>{ const col=esK(k); if(!col) return "";
+    const L=csAll().filter(c=>c.coluna===col.id).sort((a,b)=>eqParado(b)-eqParado(a));
+    const txt=resumo(L, col);
+    return `<div class="eq-est"><button class="eq-est-h" data-eq="esteira"><b>${esc(rotulo)}</b><span class="eq-n">${L.length}</span></button>${txt?`<small>${txt}</small>`:""}
+      ${L.slice(0,3).map(c=>`<button class="eq-cs" data-act="csAbrir" data-id="${c.id}">${esc(c.titulo)}${esNome(c)?` · ${esc(esNome(c))}`:""}<span class="muted">${eqParado(c)}d</span></button>`).join("")}${L.length>3?`<button class="lnk" data-eq="esteira">+ ${L.length-3} na esteira</button>`:""}</div>`; };
+  const ag=linha("AG","1. Agendar",(L,col)=>{ const n=L.filter(c=>esFalta(c,col).length).length; return n?`${n} aguardando Pix do sinal`:""; });
+  const doc=linha("DOC","3. Documentos",(L,col)=>{ const reg=L.filter(c=>!esRegs(c).length).length, par=L.filter(c=>eqParado(c)>5).length;
+    return [reg?`${reg} sem atendimento registrado`:"", par?`${par} parado${par>1?"s":""} há mais de 5 dias`:""].filter(Boolean).map(esc).join(" · ")+(L.some(c=>esDocs(c).some(d=>!d.ok))?` · <button class="lnk" data-eq="esteira">copiar pedido no cartão</button>`:""); });
+  const ret=linha("RET","5. Retorno a agendar",(L)=>L.length?"viabilidade concluída pelo Gabriel":"");
+  const contr=linha("CONTR","6. Contratação",(L,col)=>{ const f=L.map(c=>esFalta(c,col)).filter(x=>x.length); if(!f.length) return L.length?"pronto para passar ao jurídico":""; const tudo={}; f.forEach(x=>x.forEach(i=>{ tudo[i]=(tudo[i]||0)+1; })); return "falta: "+Object.keys(tudo).map(i=>esc(i.toLowerCase())).join(", "); });
+  const nc=linha("NC","Não contratou",(L)=>L.length?"follow-up do mês":"");
+  return `<section class="eq-card"><div class="eq-h"><h2>Minha parte na esteira</h2><span class="muted">clique abre o cartão</span></div>${ag}${doc}${ret}${contr}${nc}</section>`;
+}
+
+/* ---------- Fechar o dia (relatório das 17h; sexta = resumo da semana) ---------- */
+function eqRelatorio(){
+  const hoje=isoDia(), d=lmIsoDate(hoje), sexta=d.getDay()===5;
+  const ini=sexta?lmIsoDate(eqSegunda()).getTime():lmIsoDate(hoje).getTime();
+  const feitas=tfLista().filter(t=>t.done && t.doneBy===ui.me && (t.doneEm||0)>=ini);
+  const regs=csAll().flatMap(c=>esRegs(c).filter(r=>r.quem===ui.me && (r.t||0)>=ini).map(r=>"Atendimento registrado ("+(r.tipo||"Consulta")+"): "+c.titulo));
+  const pend=tfLista().filter(t=>!t.done && !t.arq && t.resp===ui.me && ((t.dataComp && t.dataComp<=hoje) || (t.data && t.data<=hoje)));
+  const trav=[];
+  if(typeof esAtivo==="function" && esAtivo()){
+    ["AG","DOC","RET","CONTR"].forEach(k=>{ const col=esK(k); if(!col) return; csAll().filter(c=>c.coluna===col.id && eqParado(c)>5).forEach(c=>trav.push(col.nome.replace(/^\d+\.\s*/,"")+": "+c.titulo+" (parado há "+eqParado(c)+" dias)")); });
+    const ct=esK("CONTR"); if(ct) csAll().filter(c=>c.coluna===ct.id && esFalta(c,ct).length).forEach(c=>trav.push("Contratação: "+c.titulo+" — falta "+esFalta(c,ct).join(", ").toLowerCase()));
+  }
+  const am=agSoma(hoje, sexta?3:1); const evAm=calItens(am).filter(x=>x.k==="ev");
+  const dt=fmtIso(hoje);
+  let t=(sexta?"Resumo da semana — ":"Relatório do dia — ")+ui.me+" — "+dt+"\n";
+  t+="\nFeito"+(sexta?" na semana":" hoje")+":\n"+((feitas.length||regs.length)?feitas.map(x=>"• "+x.txt).concat(regs.map(x=>"• "+x)).join("\n"):"• (nada marcado como concluído no Mapa)");
+  t+="\n\nPendente:\n"+(pend.length?pend.map(x=>"• "+x.txt).join("\n"):"• nada pendente");
+  t+="\n\nTravado / precisa de você:\n"+(trav.length?trav.map(x=>"• "+x).join("\n"):"• nada travado");
+  t+="\n\n"+(sexta?"Segunda":"Amanhã")+" ("+fmtIso(am)+"):\n"+(evAm.length?evAm.sort((a,b)=>(a.h||"").localeCompare(b.h||"")).map(x=>"• "+(x.h?x.h+" ":"")+x.t).join("\n"):"• sem compromissos marcados");
+  return t;
+}
+function eqFechar(){
+  const sexta=lmIsoDate(isoDia()).getDay()===5;
+  return `<section class="eq-card eq-fim"><div><h2>Fechar o dia</h2><p class="muted" style="margin:2px 0 0">Monta o relatório das 17h (feito, pendente, travado) para mandar no WhatsApp.${sexta?" Hoje é sexta: sai o resumo da semana.":""}</p></div><button class="btn primary" data-eq="relatorio">${sexta?"Montar resumo da semana":"Montar relatório das 17h"}</button></section>`;
+}
+
+/* ---------- Tela Meu dia ---------- */
+function viewHoje(){
+  const dia = new Date().toLocaleDateString("pt-BR",{weekday:"long", day:"numeric", month:"long"});
+  if(eqSouEquipe()){
+    return `<div class="phead"><div><h1>${saudacao()}, ${esc(ui.me||"")}</h1><p>${esc(dia.charAt(0).toUpperCase()+dia.slice(1))}</p></div>
+      <div class="row"><button class="btn primary" data-eq="novo">${ic("plus")} Novo atendimento</button><button class="btn" data-an="abrirJanela">Anotar</button><button class="btn" data-gtab="biblioteca">Mensagens prontas</button></div></div>
+      <div id="eqDia" class="eq-dia">${eqAvisos()}${eqSemana()}<div class="eq-cols">${eqHoje()}${eqEsteira()}</div>${eqFechar()}</div>`;
+  }
+  const first = !seen();
+  let h = `<div class="phead"><div><h1>${saudacao()}, ${esc(ui.me||"")}</h1><p>${esc(dia.charAt(0).toUpperCase()+dia.slice(1))}</p></div>
+    <div class="row"><button class="btn" data-act="atNovo">${ic("plus")} Novo cliente</button><button class="btn idea" data-act="ideaQuick">${ic("bulb")} Nova ideia</button></div></div>`;
+  if(first) h += `<div class="banner"><span><b>Versão 5.</b> Tudo o que já foi feito continua aqui e agora <b>salva a cada alteração</b>. Comece por esta tela: ela mostra o que fazer hoje.</span><button class="btn sm" data-act="seen">Entendi</button></div>`;
+  return h + (isApprover() ? hojeGestor() : hojeEquipe());
+}
+
+/* ---------- Menu da equipe ---------- */
+const EQ_MENU = [
+  ["Meu trabalho", ["nav-hoje","nav-casos","nav-tarefas","nav-calendario","nav-prazos","nav-cobrancas","nav-admin"]],
+  ["Clientes", ["nav-pessoas","nav-documentos","nav-eq-msg"]],
+  ["Equipe", ["nav-recados","nav-chat","nav-postits","nav-lembretes","nav-anotar"]],
+  ["Ajuda", ["nav-eq-guia","nav-instalar"]]
+];
+function eqMenu(){
+  const rail=$(".rail"); if(!rail || !eqSouEquipe() || rail.dataset.eq==="1") return;
+  if(!$("#nav-anotar")) return;
+  const ico=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${d}</svg>`;
+  rail.insertAdjacentHTML("beforeend", `<button class="nav" data-gtab="biblioteca" id="nav-eq-msg">${ico('<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/>')}<span>Mensagens prontas</span></button><button class="nav" data-act="help" id="nav-eq-guia">${ico('<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17h.01"/>')}<span>Guia da rotina</span></button>`);
+  let guarda=$("#eqGuarda"); if(!guarda){ rail.insertAdjacentHTML("beforeend", `<div id="eqGuarda" style="display:none"></div>`); guarda=$("#eqGuarda"); }
+  const usados=new Set(EQ_MENU.flatMap(g=>g[1]));
+  const ancora=rail.querySelector(".logo") || $("#railTog");
+  Array.from(rail.children).forEach(el=>{
+    if(el.classList.contains("ngrp")) { guarda.appendChild(el); return; }
+    if(el.classList.contains("nav") && !el.classList.contains("mob-only") && !usados.has(el.id)) guarda.appendChild(el);
+  });
+  let ref=ancora;
+  EQ_MENU.forEach(([nome, ids])=>{
+    const h=document.createElement("div"); h.className="ngrp"; h.textContent=nome;
+    if(ref) ref.insertAdjacentElement("afterend", h); else rail.insertAdjacentElement("afterbegin", h);
+    ref=h;
+    ids.forEach(id=>{ const n=document.getElementById(id); if(n){ ref.insertAdjacentElement("afterend", n); ref=n; } });
+  });
+  rail.dataset.eq="1";
+}
+
+/* ---------- Ações ---------- */
+document.addEventListener("click", e=>{
+  const b=e.target && e.target.closest ? e.target.closest("[data-eq]") : null; if(!b) return;
+  const a=b.dataset.eq; e.preventDefault();
+  if(a==="dia"){ ui.cal.ref=b.dataset.d; ui.cal.sel=b.dataset.d; try{ agPrefs().modo="dia"; }catch(x){} go("calendario"); }
+  else if(a==="esteira"){ if(ui.es) ui.es.aba="A"; go("casos"); }
+  else if(a==="novo"){ const col=(typeof esAtivo==="function" && esAtivo()) ? esK("AG") : null; csModal(null, {coluna:col?col.id:funil()[0].id, resp:ui.me||"Ellen"}); }
+  else if(a==="relatorio"){ const t=eqRelatorio(); modal(lmIsoDate(isoDia()).getDay()===5?"Resumo da semana":"Relatório do dia", `<p class="muted" style="margin:0 0 6px">Confira, ajuste o que quiser e copie para o WhatsApp.</p><textarea class="inp" id="eqRel" style="min-height:300px;font-size:13.5px">${esc(t)}</textarea>`,
+      [{label:"Fechar"},{label:"Copiar para o WhatsApp", cls:"primary", fn:()=>{ copyText(($("#eqRel")||{}).value||t, "Relatório copiado. Cole no WhatsApp."); return false; }}], true); }
+});
+(function(){ const st=document.createElement("style"); st.textContent = "body.eq-hoje #content > :not(.phead):not(#eqDia){display:none!important}"
+ + ".eq-dia{display:flex;flex-direction:column;gap:14px}"
+ + ".eq-avisos{display:flex;gap:8px;flex-wrap:wrap}.eq-chip{border:0;border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;background:var(--warn-soft,#fcefd8);color:var(--warn,#8f5400);cursor:pointer}"
+ + ".eq-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}"
+ + ".eq-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.eq-h h2{margin:0;font-size:16px}.eq-h .muted{font-size:12.5px}"
+ + ".eq-wk{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}"
+ + ".eq-dy{border:1px solid var(--line);background:var(--surface-2);color:inherit;border-radius:10px;padding:8px 10px;text-align:left;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:2px;min-width:0}"
+ + ".eq-dy small{color:var(--muted);font-size:12px}.eq-dy.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.eq-dy.pas{opacity:.6}"
+ + ".eq-cols{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}"
+ + ".eq-li{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}"
+ + ".eq-ck{width:17px;height:17px;flex:none;border:1.5px solid var(--muted);border-radius:4px;background:transparent;cursor:pointer;padding:0}.eq-ck:hover{border-color:var(--accent);background:var(--surface-2)}"
+ + ".eq-tx{flex:1;min-width:0;text-align:left;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}"
+ + ".eq-hr{width:42px;flex:none;font-weight:700;font-variant-numeric:tabular-nums}"
+ + ".eq-tag{flex:none;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.eq-tag.r{background:var(--danger-soft,#fbe5e3);color:var(--danger)}.eq-tag.w{background:var(--warn-soft,#fcefd8);color:var(--warn,#8f5400)}"
+ + ".eq-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}"
+ + ".eq-est{border-radius:10px;background:var(--surface-2);padding:8px 10px;display:flex;flex-direction:column;gap:3px}"
+ + ".eq-est-h{display:flex;align-items:center;gap:8px;border:0;background:none;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:left}.eq-est-h b{flex:1}"
+ + ".eq-n{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}.eq-est small{color:var(--muted);font-size:12.5px}"
+ + ".eq-cs{display:flex;gap:8px;justify-content:space-between;border:0;background:var(--surface);color:inherit;font:inherit;font-size:13px;border-radius:7px;padding:4px 8px;cursor:pointer;text-align:left}"
+ + ".eq-fim{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.eq-fim h2{margin:0;font-size:16px}"
+ + "@media (max-width:900px){.eq-cols{grid-template-columns:1fr}}@media (max-width:600px){.eq-wk{grid-template-columns:repeat(2,minmax(0,1fr))}}";
+ document.head.appendChild(st); })();
+const eqRenderBase = render;
+render = function(){ eqRenderBase(); try{ document.body.classList.toggle("eq-hoje", eqSouEquipe() && ui.view==="hoje"); eqMenu(); if(typeof mnAplicar==="function") mnAplicar(); }catch(e){ console.warn("equipe", e); } };
+/* ================= v7.0 VIDRO M&P (pacote 11, 04/11/2026) ================= */
+/* Linguagem "Vidro M&P": cartões de vidro sobre o fundo das araucárias. */
+/* Fundo: cada pessoa escolhe o seu (fica neste aparelho, chave mp-fundo); o master define o padrão da equipe em Sistema › Aparência. */
+/* Arquivos que acompanham: fundo-araucarias.svg e fundo-noite.svg, na raiz do site, ao lado do index.html. */
+const MPF_FUNDOS = {
+  araucarias:{n:"Araucárias · fim de tarde", bg:"#061214 url(fundo-araucarias.svg) center bottom / cover no-repeat"},
+  noite:{n:"Araucárias · noite", bg:"#030812 url(fundo-noite.svg) center bottom / cover no-repeat"},
+  liso:{n:"Verde M&P liso", bg:"radial-gradient(900px 600px at 12% 8%, rgba(13,92,99,.6), rgba(13,92,99,0) 70%), radial-gradient(800px 700px at 92% 85%, rgba(95,183,189,.25), rgba(95,183,189,0) 70%), #081113"}
+};
+const MPF_VIDRO_COR = {bg:"#061214",s:"rgba(9,24,27,.6)",s2:"rgba(255,255,255,.07)",s3:"rgba(255,255,255,.12)",line:"rgba(255,255,255,.14)",fg:"#eef5f6",muted:"#c9dadd",accent:"#5fb7bd",a2:"#86cdd2",soft:"rgba(95,183,189,.22)"};
+AP_LINGS.vidro = {n:"Vidro M&P", ref:"", sub:"cartões de vidro sobre as araucárias", desc:"Fundo do planalto com araucárias, cartões translúcidos e verde-água. Sempre escuro. Cada pessoa escolhe o próprio fundo.", f:"atual", r:[20,12,10], cards:"vidro", dens:"normal", menu:"vidro",
+  l:Object.assign({}, MPF_VIDRO_COR), d:Object.assign({}, MPF_VIDRO_COR)};
+function mpfSouVidro(a){ return !!a && a.ling==="vidro"; }
+function mpfPessoal(){ const p=apLS("mp-fundo"); return (p && typeof p==="object") ? p : null; }
+function mpfEscolha(a){
+  const p=mpfPessoal()||{};
+  let f=p.fundo || a.fundo || "araucarias";
+  if(!MPF_FUNDOS[f]) f="araucarias";
+  let v=(p.veu!==undefined && p.veu!==null) ? +p.veu : ((a.veu!==undefined && a.veu!=="" && a.veu!==null) ? +a.veu : 10);
+  if(!(v>=0 && v<=60)) v=10;
+  return {fundo:f, veu:v};
+}
+function mpfCss(a){
+  const e=mpfEscolha(a), F=MPF_FUNDOS[e.fundo];
+  const vidro="backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)";
+  const caixas=".card,.pg-sec,.pf-one,.tf-box,.pf-b,.ind,.cal,.md,.ch-panel,.pd-panel,.imp-c,.inst-box,.sl-d";
+  let c="";
+  c+="html:root,html:root[data-theme=\"light\"],html:root[data-theme=\"dark\"]{color-scheme:dark;--accent-soft:rgba(95,183,189,.22);--accent-fg:#0b1a1c;--warn:#f6c48a;--warn-soft:rgba(240,180,90,.2);--danger:#ffb3ac;--danger-soft:rgba(255,138,128,.2);--ok:#a6e3bd;--ok-soft:rgba(108,198,143,.2);--idea:#ddcdf8;--idea-soft:rgba(195,166,240,.2);--t-inicio:#6cc68f;--t-acao:#8fb0e6;--t-mensagem:#5fc6cf;--t-decisao:#f0b45a;--t-coleta:#b9a2ea;--t-encaminhar:#9aa8f5;--t-espera:#a8b2b7;--t-fim:#f08aa3;--t-reuniao:#6cc0de;--t-cobranca:#e0c060;--t-documento:#c8ae98;--t-registro:#78c9ad;--t-followup:#d99ade;--shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 40px rgba(0,0,0,.25)}";
+  c+="html body{background:"+F.bg+";background-attachment:fixed;color:var(--fg)}";
+  c+="html body::before{content:\"\";position:fixed;inset:0;pointer-events:none;z-index:0;background:rgba(3,10,12,"+(e.veu/100)+")}";
+  c+=".app{position:relative;z-index:1}";
+  c+=".rail,.top{background:rgba(6,18,20,.58)!important;border-color:rgba(255,255,255,.12)!important;"+vidro+"}";
+  c+=caixas+"{"+vidro+"}";
+  c+=".modal,.drawer{background:rgba(9,24,27,.93)!important;border-color:rgba(255,255,255,.14)!important;"+vidro+"}";
+  c+=".modal-bg{background:rgba(2,8,10,.55)!important}";
+  c+=".phead h1{color:#ffffff}";
+  c+=":focus-visible{outline-color:#ffffff!important}";
+  c+=".mpf-btn{display:inline-grid!important}";
+  c+=".nav .dot,.btn.ok,.btn.idea,.btn.danger.solid,.vote.on,.pd-fab .pd-badge,.ch-fab .pn-n,.ch-tabs button i{color:#0b1a1c!important}";
+  c+="@media (max-width:640px){html body{background-attachment:scroll;background-position:62% bottom}"+caixas+",.rail,.top{backdrop-filter:blur(12px) saturate(130%);-webkit-backdrop-filter:blur(12px) saturate(130%)}}";
+  const solido="html:root,html:root[data-theme=\"light\"],html:root[data-theme=\"dark\"]{--surface:#0e2225;--surface-2:#14292d;--surface-3:#1b3236}.rail,.top{background:#0b1c1f!important}";
+  c+="@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){"+solido+"}";
+  c+="@media (prefers-reduced-transparency:reduce){"+solido+"}";
+  return c;
+}
+const apCssAntesVidro = apCss;
+apCss = function(a){
+  let css = apCssAntesVidro(a);
+  if(mpfSouVidro(a)) css += mpfCss(a);
+  return css;
+};
+const apEscolherLingAntesVidro = apEscolherLing;
+apEscolherLing = function(k){
+  apEscolherLingAntesVidro(k);
+  if(k==="vidro" && ui.ap){
+    Object.assign(ui.ap, {fonte:"ling", paleta:"ling", cor:"", cores:"", logo:"verde", tema:"escuro", fundo:"araucarias", veu:"10"});
+    apRascunhoGuardar(); apAplicar(ui.ap,false); render();
+  }
+};
+function mpfReaplicar(){
+  if(ui.ap) apAplicar(ui.ap,false); else apAplicar(apGet(), true);
+}
+function mpfModalHtml(){
+  const a=ui.ap||apGet(), e=mpfEscolha(a), p=mpfPessoal();
+  const ops=Object.entries(MPF_FUNDOS).map(([k,F])=>`<button type="button" class="mpf-op${e.fundo===k?" on":""}" data-mpf="${k}" aria-pressed="${e.fundo===k}"><span class="mpf-th mpf-th-${k}"></span><span>${esc(F.n)}</span></button>`).join("");
+  return `<div class="mpf-grid">${ops}</div>
+  <label class="mpf-veu" for="mpfVeu"><span>Escurecer o fundo · <b id="mpfVeuTxt">${e.veu}%</b></span><input type="range" id="mpfVeu" min="0" max="60" step="5" value="${e.veu}"></label>
+  <p class="muted" style="font-size:12.5px;margin:0">Vale só para você, neste aparelho. ${p?"Você está usando a sua escolha.":"Você está usando o padrão da equipe."} O padrão da equipe fica em Sistema › Aparência.</p>`;
+}
+function mpfAbrir(){
+  modal("Fundo da tela", mpfModalHtml(), [
+    {label:"Usar o padrão da equipe", fn:()=>{ apLS("mp-fundo", null); mpfReaplicar(); toast("Fundo da equipe de volta."); }},
+    {label:"Pronto", cls:"primary"}
+  ]);
+}
+function mpfGuardar(mud){
+  const a=ui.ap||apGet(), e=mpfEscolha(a);
+  const novo=Object.assign({fundo:e.fundo, veu:e.veu}, mud);
+  apLS("mp-fundo", novo);
+  mpfReaplicar();
+}
+document.addEventListener("click", ev=>{
+  const b=ev.target.closest && ev.target.closest("[data-mpf]");
+  if(!b) return;
+  const k=b.dataset.mpf;
+  if(k==="abrir"){ mpfAbrir(); return; }
+  if(!MPF_FUNDOS[k]) return;
+  mpfGuardar({fundo:k});
+  document.querySelectorAll(".mpf-op").forEach(x=>{ const on=x.dataset.mpf===k; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on?"true":"false"); });
+});
+document.addEventListener("input", ev=>{
+  const t=ev.target;
+  if(!t || t.id!=="mpfVeu") return;
+  const v=Math.max(0, Math.min(60, +t.value||0));
+  const tx=document.getElementById("mpfVeuTxt"); if(tx) tx.textContent=v+"%";
+  mpfGuardar({veu:v});
+});
+function mpfBotao(){
+  if(document.querySelector(".mpf-btn")) return;
+  const sc=document.getElementById("saveChip");
+  if(!sc) return;
+  sc.insertAdjacentHTML("beforebegin", `<button type="button" class="iconbtn mpf-btn" data-mpf="abrir" title="Fundo da tela" aria-label="Fundo da tela"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg></button>`);
+}
+mpfBotao();
+(function(){ const st=document.createElement("style"); st.id="mpfStyle"; st.textContent = ".mpf-btn{display:none}"
+ + ".mpf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}"
+ + ".mpf-op{display:flex;flex-direction:column;gap:6px;border:0;background:none;color:inherit;font:inherit;font-size:13px;font-weight:600;text-align:left;padding:0;cursor:pointer}"
+ + ".mpf-th{display:block;height:78px;border-radius:12px;border:1px solid var(--line);box-sizing:border-box}"
+ + ".mpf-op.on .mpf-th{border:2px solid var(--fg);box-shadow:0 0 0 3px var(--accent-soft)}"
+ + ".mpf-th-araucarias{background:#061214 url(fundo-araucarias.svg) center bottom / cover no-repeat}"
+ + ".mpf-th-noite{background:#030812 url(fundo-noite.svg) center bottom / cover no-repeat}"
+ + ".mpf-th-liso{background:radial-gradient(120px 90px at 20% 15%, rgba(13,92,99,.8), rgba(13,92,99,0) 70%), radial-gradient(120px 90px at 90% 90%, rgba(95,183,189,.35), rgba(95,183,189,0) 70%), #081113}"
+ + ".mpf-veu{display:flex;flex-direction:column;gap:6px;font-size:13.5px}.mpf-veu input{width:100%;accent-color:var(--accent)}"
+ + "@media (max-width:520px){.mpf-grid{grid-template-columns:1fr 1fr}}";
+ document.head.appendChild(st); })();
+const viewAparenciaAntesVidro = viewAparencia;
+viewAparencia = function(){
+  let h = viewAparenciaAntesVidro();
+  const a = ui.ap;
+  if(!a || !mpfSouVidro(a)) return h;
+  const atualF = MPF_FUNDOS[a.fundo] ? a.fundo : "araucarias";
+  const atualV = String((a.veu!==undefined && a.veu!==null && a.veu!=="") ? a.veu : "10");
+  const bF = Object.entries(MPF_FUNDOS).map(([k,F])=>`<button type="button" class="ap-o${atualF===k?" on":""}" data-apk="fundo" data-apv="${k}"><i class="ap-sw mpf-th-${k}" style="border-radius:6px"></i><span>${esc(F.n)}</span></button>`).join("");
+  const bV = ["0","10","20","30","40"].map(v=>`<button type="button" class="ap-o${atualV===v?" on":""}" data-apk="veu" data-apv="${v}"><span>${v}%</span></button>`).join("");
+  const sec = `<section class="pg-sec"><div class="pf-bh"><h3>Fundo padrão da equipe</h3><span class="muted" style="font-size:12.5px">cada pessoa pode trocar o seu no botão de imagem, no alto da tela</span></div>
+    <div class="ap-opts">${bF}</div>
+    <h4 style="margin:12px 0 6px">Escurecer o fundo</h4><div class="ap-opts">${bV}</div>
+    <p class="muted" style="font-size:12.5px;margin:8px 0 0">O Vidro M&amp;P é sempre escuro. Foto própria de fundo vem no próximo pacote.</p></section>`;
+  const i = h.indexOf('<div class="pg-2">');
+  return i>=0 ? h.slice(0,i) + sec + h.slice(i) : h + sec;
+};
+if(typeof R2_VIEWS!=="undefined") R2_VIEWS.aparencia = viewAparencia;
 /* ================= INÍCIO ================= */
 render();
 updUndo();
