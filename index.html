@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.2 · 04/11/2026";
+const MN_VER = "Mapa v7.4 · 05/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -7724,6 +7724,356 @@ apCss = function(a){
  + "@media (prefers-reduced-motion:reduce){.app.mpe-in,.app.mpe-in .rail,.app.mpe-in .top,.app.mpe-in #content>*,.mpe-v,.mpe-l,.mpe-orb circle,.mpe-th i{animation:none!important}}"
  + "@media (max-width:640px){.mpe-v{padding:20px 16px 14px}.mpe-orb{width:64px;height:64px;flex-basis:64px}.mpe-vtx h2{font-size:22px}}";
  document.head.appendChild(st); })();
+
+/* ================= Pacote 16 · v7.4 · Caixa rápida, Editar e Encaminhar ================= */
+/* Regra de edição: master edita tudo; os demais editam o que criaram. Quem recebe conclui, adia e encaminha. */
+ui.cx = ui.cx || {ed:"", fw:"", folha:"dia", aviso:"", paraOk:false};
+function cxEu(){ return ui.me || "Gabriel"; }
+function cxMaster(){ return (typeof souMasterReal==="function") ? souMasterReal() : ui.papel==="master"; }
+function cxPode(item){ if(!item) return false; if(cxMaster()) return true; return !!ui.me && item.quem===ui.me; }
+function cxHoje(){ return isoDia(); }
+function cxData(t){ return t.dataComp || t.data || ""; }
+function cxMinhas(){
+  const eu=cxEu();
+  const L=tfLista().filter(t=>!t.done && (t.resp===eu || (t.quem===eu && (t.origem==="caixa"||t.origem==="anotar"))));
+  const peso=t=>{ const d=cxData(t); if(t.triar) return 1; if(!d) return 3; if(d<cxHoje()) return 0; if(d===cxHoje()) return 2; return 4; };
+  return L.sort((a,b)=>(peso(a)-peso(b)) || String(cxData(a)).localeCompare(String(cxData(b))) || ((b.t||0)-(a.t||0)));
+}
+function cxTag(t){
+  const d=cxData(t);
+  if(t.triar) return `<span class="cx-tag tr">para triar</span>`;
+  if(!d) return `<span class="cx-tag sd">sem data</span>`;
+  if(d<cxHoje()) return `<span class="cx-tag at">atrasada · ${esc(fmtIso(d))}</span>`;
+  if(d===cxHoje()) return `<span class="cx-tag hj">hoje</span>`;
+  return `<span class="cx-tag sd">${esc(fmtIso(d))}</span>`;
+}
+function cxLinha(t){
+  const p=t.pessoa ? psGet(t.pessoa) : null;
+  const pode=cxPode(t);
+  if(ui.cx.ed===t.id){
+    const val=(p?p.nome+": ":"")+(t.txt||"");
+    return `<div class="cx-row ed"><input class="inp" id="cxEd" value="${esc(val)}" aria-label="Editar anotação"><button class="btn sm primary" data-cx="edSalvar" data-id="${t.id}">Salvar</button><button class="btn sm" data-cx="edCancelar">Cancelar</button></div>`;
+  }
+  if(ui.cx.fw===t.id){
+    return `<div class="cx-row ed"><span class="cx-fwt">Encaminhar “${esc(t.txt)}” para</span><select class="inp" id="cxFwP">${["Gabriel","Ellen","Alan","Evaldo"].map(n=>`<option ${t.resp===n?"selected":""}>${n}</option>`).join("")}</select><select class="inp" id="cxFwT"><option value="tarefa">como tarefa</option><option value="pendencia">como pendência</option></select><button class="btn sm primary" data-cx="fwEnviar" data-id="${t.id}">Enviar</button><button class="btn sm" data-cx="fwCancelar">Cancelar</button></div>`;
+  }
+  const meta=[t.resp!==cxEu()?"faz: "+t.resp:"", t.quem && t.quem!==cxEu()?"de "+t.quem:"", t.edits&&t.edits.length?"editado por "+t.edits[t.edits.length-1].quem:"", t.enc?"encaminhado por "+t.enc.quem:""].filter(Boolean).join(" · ");
+  return `<div class="cx-row${t.prio==="alta"?" urg":""}"><input type="checkbox" data-cx="feito" data-id="${t.id}" aria-label="Concluir">
+    <div class="cx-tx">${p?`<a href="#" class="cx-cli" data-cx="ficha" data-p="${p.id}">${esc(p.nome)}</a>${p.provisoria?`<span class="cx-prov">a completar</span>`:""} · `:""}${esc(t.txt||"")}${meta?`<small>${esc(meta)}</small>`:""}</div>
+    ${cxTag(t)}
+    ${pode?`<button class="btn sm" data-cx="editar" data-id="${t.id}" title="Editar">✎</button>`:""}
+    <button class="btn sm" data-cx="encaminhar" data-id="${t.id}" title="Encaminhar">Encaminhar</button>
+    <button class="btn sm" data-cx="adiar" data-id="${t.id}" title="Adiar 1 dia">Adiar</button>
+    ${t.edits&&t.edits.length?`<button class="lnk" data-cx="antes" data-id="${t.id}">Ver antes</button>`:""}</div>`;
+}
+function cxFecharDia(L){
+  const h=new Date().getHours(); if(h<17) return "";
+  const pend=L.filter(t=>t.triar || !cxData(t)).length; if(!pend) return "";
+  return `<div class="cx-fd"><b>Fechar o dia:</b> ${pend===1?"1 item":pend+" itens"} sem cliente ou sem data. Resolva antes de sair: dê dono, data ou conclua. <span class="muted">Papel do dia também entra aqui.</span></div>`;
+}
+function cxProvisorias(){ return psAll().filter(p=>p.provisoria).length; }
+function cxBlocoHtml(){
+  const L=cxMinhas(); const vis=L.slice(0,8); const at=L.filter(t=>!t.triar && cxData(t) && cxData(t)<cxHoje()).length;
+  const prov=cxProvisorias();
+  return `<section class="cx-box" id="cxBox">
+    <div class="cx-h"><b>Caixa rápida</b><span class="muted">${at?at+" atrasada"+(at>1?"s":"")+" · ":""}${L.length} aberta${L.length===1?"":"s"}</span><span class="grow"></span>
+      <select class="inp cx-folha" id="cxFolha" aria-label="Folha para imprimir"><option value="dia" ${ui.cx.folha==="dia"?"selected":""}>Folha do dia</option><option value="semana" ${ui.cx.folha==="semana"?"selected":""}>Folha da semana</option><option value="mes" ${ui.cx.folha==="mes"?"selected":""}>Folha do mês</option></select>
+      <button class="btn sm" data-cx="imprimir">Imprimir</button>
+      <button class="btn sm" data-cx="colar" title="Abre a janelinha Anotar com o Colar lista">Colar lista do papel</button></div>
+    <input class="inp cx-in" id="cxIn" placeholder="Cliente: o que fazer #dono prazo !   ·   #mapa ideia   ·   15:30 Nome" autocomplete="off">
+    <div class="cx-prev" id="cxPrev">${ui.cx.aviso?esc(ui.cx.aviso):"Enter grava · tecla N abre aqui · cliente novo vira ficha “a completar” · sem cliente vai para Para triar"}</div>
+    ${cxFecharDia(L)}
+    <div class="cx-list">${vis.length?vis.map(cxLinha).join(""):`<p class="cx-empty">Nada aberto. Anote acima o que surgir.</p>`}</div>
+    <div class="cx-foot">${L.length>8?`<button class="lnk" data-go="tarefas">Ver todas (${L.length})</button>`:""}${prov?`<button class="lnk" data-go="pessoas">${prov} ficha${prov>1?"s":""} a completar</button>`:""}</div>
+  </section>`;
+}
+function cxRender(){
+  if(ui.view!=="central" && ui.view!=="hoje") return;
+  const c=$("#content"); if(!c || $("#cxBox")) return;
+  const ph=c.querySelector(".phead"); if(!ph) return;
+  ph.insertAdjacentHTML("afterend", cxBlocoHtml());
+  if(ui.cx.ed){ const e=$("#cxEd"); if(e){ e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }
+}
+function cxPrevia(){
+  const inp=$("#cxIn"), pv=$("#cxPrev"); if(!inp || !pv) return;
+  const raw=inp.value.trim(); if(!raw){ pv.textContent="Enter grava · tecla N abre aqui · cliente novo vira ficha “a completar” · sem cliente vai para Para triar"; return; }
+  if(/^#mapa\b/i.test(raw)){ pv.textContent="→ Ideias do Mapa (Ferramenta / sistema)"; return; }
+  const o=anParse(raw); let cli="Para triar";
+  if(o.cliente){ const e=anEscolha(o.cliente); cli = e && e.id ? e.nome : (e ? e.nome+" (ficha nova, a completar)" : o.cliente); }
+  else { const so=cxSoNome(raw); if(so) cli=so.nome+" · ver pendências"; }
+  pv.textContent="→ "+cli+" · "+(o.resp||cxEu())+(o.hora?" · compromisso "+(o.data?fmtIso(o.data):"hoje")+" "+o.hora:(o.data?" · "+fmtIso(o.data):""))+(o.urg?" · urgente":"");
+}
+function cxSoNome(raw){
+  if(raw.includes(":") || raw.split(/\s+/).length>3 || !/^[A-ZÀ-Ý]/.test(raw)) return null;
+  const c=anBusca(raw); return c.length && c[0].s>=2 ? c[0] : null;
+}
+function cxSalvar(){
+  const inp=$("#cxIn"); if(!inp) return; const raw=inp.value.trim(); if(!raw) return;
+  if(ui.verComo){ toast("No Ver como nada é gravado. Volte para o seu painel para anotar."); return; }
+  if(anSensivel(raw) && ui.cx.aviso!==raw){ ui.cx.aviso=raw; const pv=$("#cxPrev"); if(pv) pv.textContent="Parece ter senha ou CPF. Isso fica no Juridiq ou no gerenciador de senhas. Aperte Enter de novo para gravar mesmo assim."; return; }
+  ui.cx.aviso="";
+  snap();
+  if(/^#mapa\b/i.test(raw)){
+    const txt=raw.replace(/^#mapa\b\s*/i,"").trim() || raw;
+    S.ideias.unshift({id:uid(), t:Date.now(), quem:cxEu(), titulo:txt.slice(0,90), texto:txt, cat:"ferramenta", status:"nova", votos:[], conversa:[], flow:"", step:""});
+    logA("anotou ideia para o Mapa: “"+txt+"” (Caixa rápida)");
+    save(); inp.value=""; render(); toast("Ideia guardada em Ideias do Mapa."); cxFoco(); return;
+  }
+  let o=anParse(raw), pessoa=null;
+  if(o.cliente){
+    const e=anEscolha(o.cliente);
+    const novo=!e || !e.id;
+    pessoa=anPessoaDe(e);
+    if(pessoa && novo){ pessoa.provisoria=true; pessoa.origem="Caixa rápida"; }
+  } else {
+    const so=cxSoNome(raw);
+    if(so){ pessoa=psGet(so.id)||null; o=Object.assign(o,{texto:"Ver pendências de "+so.nome}); }
+  }
+  const r=anCriar(o, pessoa, "");
+  r.item.origem="caixa"; r.item.obs="via Caixa rápida";
+  save(); inp.value=""; render();
+  toast((r.tipo==="ev"?"Compromisso gravado":"Anotado")+(pessoa?" na ficha de "+pessoa.nome+(pessoa.provisoria?" (a completar)":""):" em Para triar")+".");
+  cxFoco();
+}
+function cxFoco(){ setTimeout(()=>{ const i=$("#cxIn"); if(i) i.focus(); },30); }
+function cxTf(id){ return tfAll().find(x=>x.id===id); }
+function cxRegistraEdit(t, antes){
+  if(!Array.isArray(t.edits)) t.edits=[];
+  t.edits.push({quem:(ui.vcReal?ui.vcReal.me:ui.me)||"?", em:Date.now(), antes});
+}
+function cxEdSalvar(id){
+  const t=cxTf(id); const e=$("#cxEd"); if(!t || !e) return;
+  if(!cxPode(t)){ toast("Só quem criou ou o Gabriel edita o texto."); return; }
+  const raw=e.value.trim(); if(!raw){ e.focus(); return; }
+  const o=anParse(raw, false, true);
+  const antes={txt:t.txt, pessoa:t.pessoa||""};
+  snap();
+  let pessoa=t.pessoa?psGet(t.pessoa):null;
+  if(o.cliente){ const es=anEscolha(o.cliente); const novo=!es||!es.id; pessoa=anPessoaDe(es); if(pessoa && novo){ pessoa.provisoria=true; pessoa.origem="Caixa rápida"; } }
+  t.txt=o.texto || raw; if(pessoa){ t.pessoa=pessoa.id; t.triar=false; }
+  cxRegistraEdit(t, antes);
+  logA("editou a anotação"+(pessoa?" de "+pessoa.nome:"")+": “"+antes.txt+"” → “"+t.txt+"”");
+  ui.cx.ed=""; save(); render();
+}
+function cxAdiar(id){
+  const t=cxTf(id); if(!t) return; snap();
+  const base=cxData(t) && cxData(t)>cxHoje() ? new Date(cxData(t)+"T12:00:00") : new Date();
+  base.setDate(base.getDate()+1);
+  if(t.dataComp || !t.data) t.dataComp=isoDia(base); else t.data=isoDia(base);
+  const p=t.pessoa?psGet(t.pessoa):null;
+  logA("adiou para "+fmtIso(isoDia(base))+(p?" a anotação de "+p.nome:"")+": “"+t.txt+"”");
+  save(); render();
+}
+function cxFwEnviar(id){
+  const t=cxTf(id); if(!t) return; const para=$("#cxFwP").value, tipo=$("#cxFwT").value;
+  snap();
+  const quem=(ui.vcReal?ui.vcReal.me:ui.me)||"?";
+  t.resp=para; t.enc={quem, em:Date.now(), tipo}; if(tipo==="pendencia") t.status="pendente";
+  const p=t.pessoa?psGet(t.pessoa):null;
+  logA("encaminhou para "+para+" como "+tipo+(p?" (cliente "+p.nome+")":"")+": “"+t.txt+"”");
+  ui.cx.fw=""; save(); render(); toast("Encaminhado para "+para+".");
+}
+function cxFeito(id){
+  const t=cxTf(id); if(!t) return; snap();
+  t.status="concluida"; t.done=true; t.doneEm=Date.now(); t.doneBy=ui.me||"?";
+  const p=t.pessoa?psGet(t.pessoa):null;
+  logA("concluiu"+(p?" para "+p.nome:"")+": “"+t.txt+"”");
+  save(); render(); toast("Concluída.", ()=>{ undo(); render(); });
+}
+function cxAntes(id){
+  const t=cxTf(id); if(!t || !t.edits) return;
+  modal("Versões anteriores", `<div class="cx-ant">${t.edits.slice().reverse().map(e=>`<p><b>${esc(e.quem)}</b> em ${esc(fmtT(e.em))}<br>Antes: “${esc((e.antes&&e.antes.txt)||e.antes&&e.antes.texto||"")}”</p>`).join("")}<p class="muted">Agora: “${esc(t.txt||"")}”</p></div>`, [{label:"Fechar", cls:"primary"}]);
+}
+
+/* ---------- Folha do dia, da semana ou do mês (impressão, sem dados de cliente) ---------- */
+function cxFolhaHtml(tipo){
+  const d0=new Date(); const dias=[];
+  const n = tipo==="semana" ? 7 : tipo==="mes" ? new Date(d0.getFullYear(), d0.getMonth()+1, 0).getDate()-d0.getDate()+1 : 1;
+  for(let i=0;i<n;i++){ const d=new Date(d0); d.setDate(d0.getDate()+i); if(tipo!=="dia" && (d.getDay()===0||d.getDay()===6)) continue; dias.push(d); }
+  const nomeDia=d=>d.toLocaleDateString("pt-BR",{weekday:"long", day:"2-digit", month:"2-digit", year:"numeric"});
+  const linhas=k=>Array.from({length:k}).map(()=>`<div class="l"></div>`).join("");
+  const pg=d=>`<section class="pg"><header><b>M&amp;P · Folha do dia</b><span>${nomeDia(d)}</span></header>
+    <div class="cols"><div><h2>Agenda</h2><p class="dica">hora · nome · ✓</p>${linhas(16)}</div><div><h2>Clientes</h2><p class="dica">Nome: o que fazer #dono prazo</p>${linhas(16)}</div><div><h2>Ideias do Mapa</h2><p class="dica">#mapa</p>${linhas(16)}</div></div>
+    <footer>Fim do dia: passar tudo para a Caixa rápida e descartar esta folha. Sem senhas, CPF ou código eProc.</footer></section>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Folha M&amp;P</title><style>
+    @page{size:A4 landscape;margin:12mm}
+    body{font-family:Inter,Arial,sans-serif;color:#111;margin:0}
+    .pg{page-break-after:always;height:180mm;display:flex;flex-direction:column}
+    header{display:flex;justify-content:space-between;border-bottom:2px solid #0d5c63;padding-bottom:6px;margin-bottom:8px;font-size:14px;text-transform:capitalize}
+    .cols{display:grid;grid-template-columns:1fr 1.4fr .9fr;gap:14px;flex:1}
+    h2{font-size:13px;margin:0;color:#0d5c63}
+    .dica{font-size:10px;color:#777;margin:2px 0 6px}
+    .l{border-bottom:1px solid #ccc;height:9mm}
+    footer{font-size:10px;color:#666;margin-top:6px}
+  </style></head><body>${dias.map(pg).join("")}<script>
+    window.onload=function(){ window.print(); };
+  <\/script></body></html>`;
+}
+function cxImprimir(){
+  const tipo=($("#cxFolha")||{}).value || ui.cx.folha || "dia"; ui.cx.folha=tipo;
+  const w=window.open("", "_blank"); if(!w){ toast("O navegador bloqueou a janela. Libere pop-ups para o Mapa."); return; }
+  w.document.open(); w.document.write(cxFolhaHtml(tipo)); w.document.close();
+}
+function cxColar(){
+  const u=location.href.split("#")[0].split("?")[0]+"?modo=anotar";
+  window.open(u, "anotar", "width=340,height=560");
+}
+
+/* ---------- Tarefas: regra de edição e registro do "antes" no modal ---------- */
+const cxTfModal2Base = tfModal2;
+tfModal2 = function(t, pre){
+  cxTfModal2Base(t, pre);
+  if(!t) return;
+  ui.cx.tfAntes={id:t.id, txt:t.txt, obs:t.obs||""};
+  if(!cxPode(t)){
+    ["#tf2Txt","#tf2Obs"].forEach(s=>{ const el=$(s); if(el){ el.readOnly=true; el.title="Só quem criou ou o Gabriel edita o texto"; } });
+    const f=$("#tf2Txt"); if(f) f.insertAdjacentHTML("afterend", `<small class="muted">Texto: só quem criou (${esc(t.quem||"?")}) ou o Gabriel edita. Você pode mudar responsável, datas e situação.</small>`);
+  }
+};
+function cxTfAntesCheck(){
+  const a=ui.cx.tfAntes; if(!a) return;
+  const t=cxTf(a.id); if(!t){ ui.cx.tfAntes=null; return; }
+  if(t.txt!==a.txt || (t.obs||"")!==a.obs){ ui.cx.tfAntes=null; cxRegistraEdit(t, {txt:a.txt, obs:a.obs}); save(); return; }
+  if(!$("#tf2Txt")) ui.cx.tfAntes=null;
+}
+
+/* ---------- Post-its: padrão só para mim, Editar e Virar pendência ---------- */
+function cxPnPadrao(){ if(!ui.cx.paraOk && ui.me){ ui.pn.para=ui.me; ui.cx.paraOk=true; } }
+const cxPnVerBase = pnVer;
+pnVer = function(id){
+  cxPnVerBase(id);
+  const n=pnGet(id); const ft=$("#modalRoot .mfoot"); if(!n || !ft) return;
+  const h=`${cxPode(n)?`<button class="btn" data-cx="pnEditar" data-id="${n.id}">✎ Editar</button>`:""}${!n.feito?`<button class="btn" data-cx="pnVira" data-id="${n.id}">Virar pendência do cliente</button>`:""}${n.edits&&n.edits.length?`<button class="btn" data-cx="pnAntes" data-id="${n.id}">Ver antes</button>`:""}`;
+  ft.insertAdjacentHTML("afterbegin", h);
+};
+function cxPnEditar(id){
+  const n=pnGet(id); if(!n) return; if(!cxPode(n)){ toast("Só quem criou ou o Gabriel edita."); return; }
+  modal("Editar post-it", `<div class="df"><label>Recado</label><textarea class="inp" id="cxPnTx" style="min-height:110px">${esc(n.texto)}</textarea></div>
+    <div class="df"><label>Para quem</label><select class="inp" id="cxPnPara">${PN_PARA.map(p=>`<option ${n.para===p?"selected":""}>${p}</option>`).join("")}</select></div>
+    <div class="df"><label>Cor</label><select class="inp" id="cxPnCor">${Object.keys(PN_CORES).map(c=>`<option ${n.cor===c?"selected":""}>${c}</option>`).join("")}</select></div>`,
+    [{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{
+      const tx=$("#cxPnTx").value.trim(); if(!tx){ $("#cxPnTx").focus(); return false; }
+      snap(); const antes={texto:n.texto, para:n.para, cor:n.cor};
+      if(!Array.isArray(n.edits)) n.edits=[];
+      n.edits.push({quem:(ui.vcReal?ui.vcReal.me:ui.me)||"?", em:Date.now(), antes});
+      n.texto=tx; n.para=$("#cxPnPara").value; n.cor=$("#cxPnCor").value;
+      logA("editou um post-it: “"+antes.texto+"” → “"+tx+"”");
+      save(); render(); toast("Post-it atualizado.");
+    }}]);
+}
+function cxPnAntes(id){
+  const n=pnGet(id); if(!n || !n.edits) return;
+  modal("Versões anteriores do post-it", `<div class="cx-ant">${n.edits.slice().reverse().map(e=>`<p><b>${esc(e.quem)}</b> em ${esc(fmtT(e.em))}<br>Antes: “${esc(e.antes.texto)}” · p/ ${esc(e.antes.para)}</p>`).join("")}<p class="muted">Agora: “${esc(n.texto)}”</p></div>`, [{label:"Fechar", cls:"primary"}]);
+}
+function cxPnVira(id){
+  const n=pnGet(id); if(!n) return;
+  modal("Virar pendência do cliente", `<p class="muted" style="margin:0 0 8px">O post-it sai do mural e vira tarefa na ficha do cliente, com registro no histórico. Se o cliente não tiver ficha, ela é criada “a completar”.</p>
+    <div class="df"><label>Cliente</label><input class="inp" id="cxPvCli" placeholder="Nome do cliente"></div>
+    <div class="df"><label>Quem faz</label><select class="inp" id="cxPvResp">${["Gabriel","Ellen","Alan","Evaldo"].map(x=>`<option ${x===cxEu()?"selected":""}>${x}</option>`).join("")}</select></div>
+    <div class="df"><label>Prazo</label><input class="inp" type="date" id="cxPvData"></div>`,
+    [{label:"Cancelar"},{label:"Virar pendência", cls:"primary", fn:()=>{
+      const cli=$("#cxPvCli").value.trim(); if(!cli){ $("#cxPvCli").focus(); toast("Escreva o nome do cliente."); return false; }
+      snap();
+      const e=anEscolha(cli); const novo=!e||!e.id; const p=anPessoaDe(e);
+      if(p && novo){ p.provisoria=true; p.origem="Caixa rápida"; }
+      const r=anCriar({cliente:cli, texto:n.texto, resp:$("#cxPvResp").value, data:$("#cxPvData").value, hora:"", urg:false}, p, "");
+      r.item.origem="caixa"; r.item.obs="veio de um post-it de "+(n.quem||"?");
+      n.feito=true; n.feitoPor=ui.me||"?"; n.feitoEm=Date.now();
+      logA("transformou um post-it em pendência"+(p?" na ficha de "+p.nome:""));
+      save(); render(); toast("Virou pendência"+(p?" na ficha de "+p.nome:"")+".");
+    }}]);
+  setTimeout(()=>{ const i=$("#cxPvCli"); if(i) i.focus(); },40);
+}
+
+/* ---------- Ficha provisória: aviso e Juntar com outra ficha ---------- */
+function cxFichaProv(){
+  if(ui.view!=="pessoa") return; const p=psGet(ui.psId); if(!p || !p.provisoria || $("#cxProvBar")) return;
+  const ph=$("#content .pf-tabs") || $("#content .tabs") || $("#content .phead") || $("#content > *"); if(!ph) return;
+  const outras=psAll().filter(x=>x.id!==p.id && !x.provisoria).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  ph.insertAdjacentHTML("beforebegin", `<div class="cx-pv" id="cxProvBar"><b>Ficha a completar.</b> Foi criada pela Caixa rápida só com o nome. Complete em Dados ou, se for a mesma pessoa de outra ficha, junte:
+    <select class="inp" id="cxJuntaSel"><option value="">Escolha a ficha certa…</option>${outras.map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join("")}</select>
+    <button class="btn sm primary" data-cx="juntar" data-id="${p.id}">Juntar</button><button class="btn sm" data-cx="provOk" data-id="${p.id}">Já completei</button></div>`);
+}
+function cxJuntar(id){
+  const p=psGet(id), alvo=psGet(($("#cxJuntaSel")||{}).value); if(!p || !alvo){ toast("Escolha a ficha certa."); return; }
+  snap();
+  tfAll().forEach(t=>{ if(t.pessoa===p.id) t.pessoa=alvo.id; });
+  evAll().forEach(e=>{ if(e.pessoa===p.id) e.pessoa=alvo.id; });
+  pnAll().forEach(n=>{ if(n.pessoa===p.id) n.pessoa=alvo.id; });
+  (S.atendimentos||[]).forEach(a=>{ if(a.pessoa===p.id) a.pessoa=alvo.id; });
+  (typeof csAll==="function"?csAll():[]).forEach(c=>{ if(c.pessoa===p.id) c.pessoa=alvo.id; });
+  const k=p.nome.toLowerCase();
+  S.log.filter(x=>(x.txt||"").toLowerCase().includes(k) && !(x.txt||"").includes("["+alvo.nome+"]")).forEach(x=>{ x.txt=x.txt+" ["+alvo.nome+"]"; });
+  S.pessoas=psAll().filter(x=>x.id!==p.id);
+  logA("juntou a ficha provisória "+p.nome+" com "+alvo.nome);
+  ui.psId=alvo.id; save(); render(); toast("Fichas juntadas em "+alvo.nome+".", ()=>{ undo(); render(); });
+}
+
+/* ---------- Cliques, teclas e render ---------- */
+document.addEventListener("click", e=>{
+  const b=e.target.closest && e.target.closest("[data-cx]"); if(!b) return;
+  const a=b.dataset.cx, id=b.dataset.id;
+  if(a==="feito"){ cxFeito(id); return; }
+  e.preventDefault();
+  if(a==="ficha"){ ui.psId=b.dataset.p; ui.psAba="geral"; go("pessoa"); }
+  else if(a==="editar"){ ui.cx.ed=id; ui.cx.fw=""; render(); }
+  else if(a==="edSalvar") cxEdSalvar(id);
+  else if(a==="edCancelar"){ ui.cx.ed=""; render(); }
+  else if(a==="encaminhar"){ ui.cx.fw=id; ui.cx.ed=""; render(); }
+  else if(a==="fwEnviar") cxFwEnviar(id);
+  else if(a==="fwCancelar"){ ui.cx.fw=""; render(); }
+  else if(a==="adiar") cxAdiar(id);
+  else if(a==="antes") cxAntes(id);
+  else if(a==="imprimir") cxImprimir();
+  else if(a==="colar") cxColar();
+  else if(a==="pnEditar"){ closeModal(); cxPnEditar(id); }
+  else if(a==="pnVira"){ closeModal(); cxPnVira(id); }
+  else if(a==="pnAntes"){ closeModal(); cxPnAntes(id); }
+  else if(a==="juntar") cxJuntar(id);
+  else if(a==="provOk"){ const p=psGet(id); if(p){ snap(); p.provisoria=false; logA("completou a ficha de "+p.nome); save(); render(); } }
+});
+document.addEventListener("keydown", e=>{
+  const t=e.target;
+  if(t && t.id==="cxIn" && e.key==="Enter"){ e.preventDefault(); cxSalvar(); return; }
+  if(t && t.id==="cxIn" && e.key==="Escape"){ t.value=""; cxPrevia(); return; }
+  if(t && t.id==="cxEd" && e.key==="Enter"){ e.preventDefault(); cxEdSalvar(ui.cx.ed); return; }
+  if(t && t.id==="cxEd" && e.key==="Escape"){ ui.cx.ed=""; render(); return; }
+  const digitando=/INPUT|TEXTAREA|SELECT/.test(t.tagName) || t.isContentEditable;
+  if(!digitando && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key==="n"||e.key==="N") && !$("#modalRoot .modal")){
+    if(ui.view!=="central" && ui.view!=="hoje"){ go(eqSouEquipeCx()?"hoje":"central"); }
+    e.preventDefault(); cxFoco();
+  }
+});
+document.addEventListener("input", e=>{ if(e.target && e.target.id==="cxIn") cxPrevia(); });
+document.addEventListener("change", e=>{ if(e.target && e.target.id==="cxFolha") ui.cx.folha=e.target.value; });
+function eqSouEquipeCx(){ return typeof eqSouEquipe==="function" ? eqSouEquipe() : ui.papel==="equipe"; }
+const cxRenderBase = render;
+render = function(){
+  cxRenderBase();
+  try{ cxPnPadrao(); cxTfAntesCheck(); cxRender(); cxFichaProv(); }catch(e){ console.warn("caixa v7.4", e); }
+};
+(function(){ const st=document.createElement("style"); st.id="cxStyle"; st.textContent = ""
+ + ".cx-box{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:14px 16px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px}"
+ + ".cx-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cx-h b{font-size:15px}.cx-h .muted{font-size:12.5px}.cx-h .grow{flex:1}"
+ + ".cx-folha{width:auto;height:30px;padding:2px 8px;font-size:12.5px}"
+ + ".cx-in{width:100%;font-size:15px}"
+ + ".cx-prev{font-size:12px;color:var(--muted);min-height:16px}"
+ + ".cx-fd{font-size:13px;padding:8px 10px;border-radius:10px;border:1px solid var(--warn,#d9a400);background:var(--warn-soft,rgba(217,164,0,.12))}"
+ + ".cx-list{display:flex;flex-direction:column}"
+ + ".cx-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}"
+ + ".cx-row.urg .cx-tx{font-weight:600}.cx-row.ed .inp{flex:1;min-width:160px}.cx-row.ed select.inp{flex:0 0 auto;width:auto}"
+ + ".cx-tx{flex:1;min-width:180px}.cx-tx small{display:block;font-size:11.5px;color:var(--muted)}"
+ + ".cx-cli{color:var(--accent);font-weight:600;text-decoration:none}"
+ + ".cx-prov{font-size:10.5px;margin-left:4px;padding:1px 6px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}"
+ + ".cx-tag{font-size:11.5px;padding:2px 8px;border-radius:7px;white-space:nowrap;background:var(--surface-2);color:var(--muted)}"
+ + ".cx-tag.at{background:rgba(220,60,60,.14);color:var(--danger,#c33)}.cx-tag.hj{background:rgba(217,164,0,.16);color:#9a6b00}.cx-tag.tr{background:var(--accent-soft);color:var(--accent)}"
+ + ".cx-empty{margin:4px 0;color:var(--muted);font-size:13px}"
+ + ".cx-foot{display:flex;gap:14px}.cx-foot:empty{display:none}"
+ + ".cx-pv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;border:1px solid var(--accent);background:var(--accent-soft);margin-bottom:14px;font-size:13.5px}.cx-pv select{width:auto}"
+ + ".cx-ant p{margin:0 0 10px;font-size:13.5px}"
+ + "@media (max-width:640px){.cx-row .btn.sm{padding:2px 6px}.cx-folha{display:none}}";
+ document.head.appendChild(st); })();
+/* ================= fim do Pacote 16 ================= */
 
 /* ================= INÍCIO ================= */
 render();
