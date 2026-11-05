@@ -74,6 +74,10 @@ h1,h2,h3{font-family:var(--f-display);margin:0}
 .tg2{display:inline-block;font-weight:700;font-size:12.5px;background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:2px 9px}
 html.embed .top .logo,html.embed .top h1,html.embed .top p{display:none}html.embed .wrap{padding-top:8px;max-width:none}
 @media (max-width:700px){ .mi .mt{display:none} }
+.mod{max-height:92vh;overflow:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:99px;padding:3px 10px;font-size:12.5px;font-weight:600}.chip:hover{border-color:var(--accent);color:var(--accent)}
+.lk{border:0;background:none;padding:0;color:var(--accent);font-weight:600;text-align:left}
+.f.full{grid-column:1/-1}
 </style>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -133,7 +137,7 @@ function gcal(x){ var d=x.data.replace(/-/g,""); var a=hm(x.inicio).replace(":",
 function telaSemana(){
   var hoje=iso(new Date()); var fimSem=addD(st.seg,4);
   var titulo=pad(st.seg.getDate())+"/"+pad(st.seg.getMonth()+1)+" a "+pad(fimSem.getDate())+"/"+pad(fimSem.getMonth()+1);
-  var h='<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Clique num horário livre para reservar. Segunda a sexta, de meia em meia hora.</p></div><span class="grow"></span><button class="tbtn" id="bTema" title="Tema claro / escuro">'+(document.documentElement.getAttribute("data-theme")==="dark"?"☀":"☾")+'</button><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>';
+  var h='<div class="top"><div class="logo">MPMN</div><div><h1>Sala de reunião</h1><p>Clique num horário livre para reservar. Segunda a sexta, das 7h às 20h, em qualquer horário.</p></div><span class="grow"></span><button class="tbtn" id="bTema" title="Tema claro / escuro">'+(document.documentElement.getAttribute("data-theme")==="dark"?"☀":"☾")+'</button><button class="btn" id="bRes">Copiar resumo para o grupo</button><button class="btn primary" id="bNova">Nova reserva</button></div>';
   h+='<div class="nav"><button class="btn" id="bAnt" aria-label="Semana anterior">‹</button><b>'+titulo+'</b><button class="btn" id="bProx" aria-label="Próxima semana">›</button><button class="btn" id="bHoje">Esta semana</button></div>';
   h+='<div class="days-tabs">'; for(var i=0;i<5;i++){ var d=addD(st.seg,i); h+='<button data-tab="'+i+'" class="'+(i===st.dia?"on":"")+'">'+DIAS[d.getDay()].slice(0,3)+'<b>'+d.getDate()+'</b></button>'; } h+='</div>';
   h+='<div class="cal"><div class="hd corner"></div>'; for(i=0;i<5;i++){ d=addD(st.seg,i); h+='<div class="hd'+(iso(d)===hoje?" hj":"")+(i===st.dia?" sel":"")+'">'+DIAS[d.getDay()]+'<b>'+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</b></div>'; }
@@ -169,40 +173,56 @@ function diaModal(k){
   var d=new Date(k+"T12:00:00"); var its=st.itens.filter(function(x){return x.data===k;});
   var bg=document.createElement("div"); bg.className="bg";
   var lista=its.length? its.map(function(x){ return '<button class="dl '+cor(x.quem)+'" data-ev="'+x.id+'"><span class="dlh">'+hm(x.inicio)+' – '+hm(x.fim)+'</span><span><b>'+esc(x.quem)+' <em class="tg">'+esc(tipoN(x))+'</em></b>'+(priv(x)?'<small>Detalhes só para a equipe</small>':(x.assunto||x.cliente?'<small>'+esc([x.cliente,x.assunto].filter(Boolean).join(' · '))+'</small>':''))+(x.visivel==="equipe"&&!priv(x)?'<small>🔒 Só a equipe vê os detalhes</small>':'')+'</span></button>'; }).join("") : '<p class="muted" style="margin:0">Sala livre o dia todo.</p>';
-  bg.innerHTML='<div class="mod"><h3>'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</h3><div class="dlist">'+lista+'</div><p class="muted" style="font-size:12.5px;margin:0">Toque num horário para ver detalhes, pôr no Google Agenda ou cancelar.</p><div class="acts"><button class="btn" id="dmF">Fechar</button><button class="btn primary" id="dmR">Reservar neste dia</button></div></div>';
+  bg.innerHTML='<div class="mod"><h3>'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</h3><div class="dlist">'+lista+'</div><p class="muted" style="font-size:12.5px;margin:0">Toque num horário para ver detalhes, editar, pôr no Google Agenda ou cancelar.</p><div class="acts"><button class="btn" id="dmF">Fechar</button><button class="btn primary" id="dmR">Reservar neste dia</button></div></div>';
   document.body.appendChild(bg); bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); });
   document.getElementById("dmF").onclick=function(){ bg.remove(); };
   document.getElementById("dmR").onclick=function(){ bg.remove(); form({data:k}); };
   bg.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ var x=st.itens.find(function(y){return y.id===b.dataset.ev;}); bg.remove(); if(x) detalhe(x); }; });
 }
 function form(pre){
-  var d=pre.data||iso(addD(st.seg,st.dia)); var opts=""; for(var m=H0*60;m<H1*60;m+=30) opts+='<option '+(toT(m)===(pre.t||"14:00")?"selected":"")+'>'+toT(m)+'</option>';
+  var ed=pre.x||null; var d=ed?ed.data:(pre.data||iso(addD(st.seg,st.dia)));
+  var ini0=ed?hm(ed.inicio):(pre.t||"14:00"); var fim0=ed?hm(ed.fim):toT(Math.min(mins(ini0)+60,H1*60));
+  var tp0=ed&&TIPOS[ed.tipo]&&ed.tipo!=="privado"?ed.tipo:"reuniao"; var vs0=ed&&ed.visivel==="equipe"?"equipe":"todos";
+  var quem0=ed?ed.quem:st.quem; var pes=PESSOAS.slice(); if(quem0&&pes.indexOf(quem0)<0) pes.push(quem0);
+  var tps=[["reuniao","Reunião"],["atendimento","Atendimento"],["audiencia","Audiência"],["evento","Evento"],["outro","Outro"]];
   var bg=document.createElement("div"); bg.className="bg";
-  bg.innerHTML='<div class="mod"><h3>Reservar a sala</h3><div class="f"><label>Quem vai usar</label><select class="inp" id="fQ">'+PESSOAS.map(function(p){return '<option '+(st.quem===p?"selected":"")+'>'+p+'</option>';}).join("")+'</select></div>'
-   +'<div class="g2"><div class="f"><label>Dia</label><input class="inp" type="date" id="fD" value="'+d+'"></div><div class="f"><label>Início</label><select class="inp" id="fI">'+opts+'</select></div></div>'
-   +'<div class="g2"><div class="f"><label>Duração</label><select class="inp" id="fDur"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option><option value="180">3 horas</option></select></div><div class="f"><label>Com quem / assunto</label><input class="inp" id="fA" placeholder="Ex.: reunião cliente"></div></div>'
-   +'<div class="g2"><div class="f"><label>Tipo</label><select class="inp" id="fT"><option value="reuniao">Reunião</option><option value="atendimento">Atendimento</option><option value="audiencia">Audiência</option><option value="evento">Evento</option><option value="outro">Outro</option></select></div><div class="f"><label>Quem vê os detalhes</label><select class="inp" id="fV"><option value="todos">Todos</option><option value="equipe">Só a equipe do Painel</option></select></div></div>'
-   +(SBI?'<div class="g2"><div class="f"><label>Cliente (só a equipe vê)</label><input class="inp" id="fCli" list="fCliL" placeholder="Nome do cliente"><datalist id="fCliL">'+(st.pessoas||[]).map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist></div><div class="f"><label>Link da pasta (Drive/Dropbox)</label><input class="inp" id="fPasta" placeholder="https://…"></div></div><div class="f"><label>Link da reunião ou audiência (Meet, Zoom, Teams)</label><input class="inp" id="fLink" placeholder="https://…"></div>':'')
+  bg.innerHTML='<div class="mod"><h3>'+(ed?"Editar reserva":"Reservar a sala")+'</h3><div class="f"><label>Quem vai usar</label><select class="inp" id="fQ">'+pes.map(function(p){return '<option '+(quem0===p?"selected":"")+'>'+esc(p)+'</option>';}).join("")+'</select></div>'
+   +'<div class="g2"><div class="f"><label>Dia</label><input class="inp" type="date" id="fD" value="'+d+'"></div><div class="f"><label>Início</label><input class="inp" type="time" id="fI" min="07:00" max="20:00" step="60" value="'+ini0+'"></div></div>'
+   +'<div class="g2"><div class="f"><label>Até</label><input class="inp" type="time" id="fF" min="07:00" max="20:00" step="60" value="'+fim0+'"></div><div class="f"><label>Duração rápida</label><div class="chips"><button type="button" class="chip" data-dur="30">30 min</button><button type="button" class="chip" data-dur="60">1h</button><button type="button" class="chip" data-dur="90">1h30</button><button type="button" class="chip" data-dur="120">2h</button></div></div></div>'
+   +'<div class="f"><label>Com quem / assunto</label><input class="inp" id="fA" placeholder="Ex.: reunião cliente" value="'+esc(ed?ed.assunto:"")+'"></div>'
+   +'<div class="g2"><div class="f"><label>Tipo</label><select class="inp" id="fT">'+tps.map(function(t){return '<option value="'+t[0]+'" '+(tp0===t[0]?"selected":"")+'>'+t[1]+'</option>';}).join("")+'</select></div><div class="f"><label>Quem vê os detalhes</label><select class="inp" id="fV"><option value="todos" '+(vs0==="todos"?"selected":"")+'>Todos</option><option value="equipe" '+(vs0==="equipe"?"selected":"")+'>Só a equipe do Painel</option></select></div></div>'
+   +(SBI?'<div class="f"><label>Cliente (só a equipe vê)</label><input class="inp" id="fCli" list="fCliL" placeholder="Primeiro nome ou iniciais" value="'+esc(ed?ed.cliente:"")+'"><datalist id="fCliL">'+(st.pessoas||[]).map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist></div><div class="f"><label>📁 Pasta do cliente no Drive</label><input class="inp" id="fPasta" placeholder="Cole o link da pasta (https://drive.google.com/…)" value="'+esc(ed?ed.pasta:"")+'"></div><div class="f"><label>Link da reunião ou audiência (Meet, Zoom, Teams)</label><input class="inp" id="fLink" placeholder="https://…" value="'+esc(ed?ed.link:"")+'"></div>':'')
    +'<p class="muted" style="font-size:12.5px;margin:0">“Só a equipe do Painel”: quem abre pelo link vê apenas que a sala está reservada, sem o tipo e o assunto.</p>'
-   +'<div class="err" id="fE"></div><div class="acts"><button class="btn" id="fC">Cancelar</button><button class="btn primary" id="fOk">Reservar</button></div></div>';
+   +'<div class="err" id="fE"></div><div class="acts"><button class="btn" id="fC">Cancelar</button><button class="btn primary" id="fOk">'+(ed?"Salvar alterações":"Reservar")+'</button></div></div>';
   document.body.appendChild(bg);
   bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); }); document.getElementById("fC").onclick=function(){ bg.remove(); };
+  bg.querySelectorAll("[data-dur]").forEach(function(c){ c.onclick=function(){ var v=document.getElementById("fI").value; if(!/^\d\d:\d\d/.test(v)) return; document.getElementById("fF").value=toT(Math.min(mins(v)+(+c.dataset.dur),H1*60)); }; });
+  if(pre.foco&&document.getElementById(pre.foco)) setTimeout(function(){ document.getElementById(pre.foco).focus(); },50);
   document.getElementById("fOk").onclick=function(){
-    var q=document.getElementById("fQ").value, dd=document.getElementById("fD").value, ini=document.getElementById("fI").value, dur=+document.getElementById("fDur").value, a=document.getElementById("fA").value.trim(), tp=document.getElementById("fT").value, vs=document.getElementById("fV").value, cli=SBI&&document.getElementById("fCli")?document.getElementById("fCli").value.trim():"", pst=SBI&&document.getElementById("fPasta")?document.getElementById("fPasta").value.trim():"", lnk=SBI&&document.getElementById("fLink")?document.getElementById("fLink").value.trim():"";
-    if(lnk && !/^https?:\/\/\S+$/i.test(lnk)){ document.getElementById("fE").textContent="O link precisa começar com https://"; return; }
-    var fim=toT(mins(ini)+dur); if(mins(ini)+dur>H1*60){ document.getElementById("fE").textContent="Passa do fim do expediente (20h)."; return; }
+    var E=document.getElementById("fE"); function V(id){ var el=document.getElementById(id); return el?el.value.trim():""; }
+    var q=V("fQ"), dd=V("fD"), ini=V("fI").slice(0,5), fim=V("fF").slice(0,5), a=V("fA"), tp=V("fT"), vs=V("fV"), cli=SBI?V("fCli"):"", pst=SBI?V("fPasta"):"", lnk=SBI?V("fLink"):"";
+    if(!dd){ E.textContent="Escolha o dia."; return; }
+    if(!/^\d\d:\d\d$/.test(ini)||!/^\d\d:\d\d$/.test(fim)){ E.textContent="Preencha o início e o fim (ex.: 14:15 até 15:05)."; return; }
+    if(mins(fim)<=mins(ini)){ E.textContent="O fim precisa ser depois do início."; return; }
+    if(mins(ini)<H0*60||mins(fim)>H1*60){ E.textContent="Horário fora do expediente (7h às 20h)."; return; }
+    if(lnk && !/^https?:\/\/\S+$/i.test(lnk)){ E.textContent="O link da reunião precisa começar com https://"; return; }
+    if(pst && !/^https?:\/\/\S+$/i.test(pst)){ E.textContent="O link da pasta precisa começar com https:// (copie o link do Drive)."; return; }
     ls("sala-quem",q); st.quem=q; this.disabled=true; var self=this;
-    var prm={p_codigo:st.codigo,p_data:dd,p_inicio:ini,p_fim:fim,p_quem:q,p_assunto:a,p_tipo:tp,p_visivel:vs,p_cliente:cli,p_pasta:pst}; if(lnk) prm.p_link=lnk;
-    (SBI||SB).rpc("sala_reservar",prm).then(function(r){ self.disabled=false;
-      var x=r.data||{}; if(r.error||x.erro){ document.getElementById("fE").textContent=(x.erro||"Não consegui reservar. Tente de novo."); return; }
-      bg.remove(); toast("Reservado: "+q+", "+hTxt(ini)+"."); var dt=new Date(dd+"T12:00:00"); st.mes=new Date(dt.getFullYear(), dt.getMonth(), 1); st.seg=segunda(dt); st.dia=Math.max(0,Math.min(4,dt.getDay()-1)); carregar(); });
+    var prm={p_data:dd,p_inicio:ini,p_fim:fim,p_quem:q,p_assunto:a,p_tipo:tp,p_visivel:vs,p_cliente:cli,p_pasta:pst,p_link:lnk};
+    var fn="sala_reservar"; if(ed){ fn="sala_editar"; prm.p_id=ed.id; } else prm.p_codigo=st.codigo;
+    (ed?SBI:(SBI||SB)).rpc(fn,prm).then(function(r){ self.disabled=false;
+      var x=r.data||{}; if(r.error&&ed&&/sala_editar/.test(r.error.message||"")){ E.textContent="A edição ainda não foi ativada no banco. Avise o Gabriel."; return; }
+      if(r.error||x.erro){ E.textContent=(x.erro||(ed?"Não consegui salvar. Tente de novo.":"Não consegui reservar. Tente de novo.")); return; }
+      bg.remove(); toast((ed?"Reserva atualizada: ":"Reservado: ")+q+", "+hTxt(ini)+"–"+hTxt(fim)+"."); var dt=new Date(dd+"T12:00:00"); st.mes=new Date(dt.getFullYear(), dt.getMonth(), 1); st.seg=segunda(dt); st.dia=Math.max(0,Math.min(4,dt.getDay()-1)); carregar(); });
   };
 }
 function detalhe(x){
   var bg=document.createElement("div"); bg.className="bg"; var d=new Date(x.data+"T12:00:00");
-  bg.innerHTML='<div class="mod"><h3>'+esc(x.quem)+'</h3><p style="margin:0">'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+' · '+hm(x.inicio)+' às '+hm(x.fim)+'</p>'+'<p style="margin:0"><span class="tg2">'+esc(tipoN(x))+'</span>'+(x.visivel==="equipe"?' <span class="muted">🔒 detalhes só para a equipe</span>':'')+'</p>'+(x.assunto?'<p class="muted" style="margin:0">'+esc(x.assunto)+'</p>':'')+(x.cliente?'<p style="margin:0">Cliente: <b>'+esc(x.cliente)+'</b></p>':'')+(x.pasta?'<p style="margin:0"><a href="'+esc(x.pasta)+'" target="_blank" rel="noopener">📁 Abrir a pasta do cliente</a></p>':'')+(x.link&&/^https?:\/\//i.test(x.link)?'<p style="margin:0"><a href="'+esc(x.link)+'" target="_blank" rel="noopener">🎥 Entrar na reunião</a></p>':'')
-   +'<div class="acts"><a class="btn" target="_blank" rel="noopener" href="'+gcal(x)+'" style="text-decoration:none">Pôr no meu Google Agenda</a><button class="btn danger" id="dX">Cancelar reserva</button><button class="btn primary" id="dF">Fechar</button></div></div>';
+  bg.innerHTML='<div class="mod"><h3>'+esc(x.quem)+'</h3><p style="margin:0">'+DIAS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+' · '+hm(x.inicio)+' às '+hm(x.fim)+'</p>'+'<p style="margin:0"><span class="tg2">'+esc(tipoN(x))+'</span>'+(x.visivel==="equipe"?' <span class="muted">🔒 detalhes só para a equipe</span>':'')+'</p>'+(x.assunto?'<p class="muted" style="margin:0">'+esc(x.assunto)+'</p>':'')+(x.cliente?'<p style="margin:0">Cliente: <b>'+esc(x.cliente)+'</b></p>':'')+(x.pasta?'<p style="margin:0"><a href="'+esc(x.pasta)+'" target="_blank" rel="noopener">📁 Abrir a pasta do cliente</a></p>':'')+(!x.pasta&&SBI?'<p style="margin:0"><button class="lk" id="dP">+ Incluir pasta do cliente (Drive)</button></p>':'')+(x.link&&/^https?:\/\//i.test(x.link)?'<p style="margin:0"><a href="'+esc(x.link)+'" target="_blank" rel="noopener">🎥 Entrar na reunião</a></p>':'')
+   +'<div class="acts"><a class="btn" target="_blank" rel="noopener" href="'+gcal(x)+'" style="text-decoration:none">Pôr no meu Google Agenda</a><button class="btn danger" id="dX">Cancelar reserva</button>'+(SBI?'<button class="btn" id="dE">Editar</button>':'')+'<button class="btn primary" id="dF">Fechar</button></div></div>';
   document.body.appendChild(bg); bg.addEventListener("mousedown",function(e){ if(e.target===bg) bg.remove(); }); document.getElementById("dF").onclick=function(){ bg.remove(); };
+  if(document.getElementById("dE")) document.getElementById("dE").onclick=function(){ bg.remove(); form({x:x}); };
+  if(document.getElementById("dP")) document.getElementById("dP").onclick=function(){ bg.remove(); form({x:x, foco:"fPasta"}); };
   document.getElementById("dX").onclick=function(){ if(!confirm("Cancelar a reserva de "+x.quem+" das "+hm(x.inicio)+"?")) return; (SBI||SB).rpc("sala_cancelar",{p_codigo:st.codigo,p_id:x.id}).then(function(r){ bg.remove(); if(r.error||(r.data&&r.data.erro)){ toast("Não consegui cancelar."); return; } toast("Reserva cancelada."); carregar(); }); };
 }
 document.addEventListener("click",function(e){ var t=e.target;
