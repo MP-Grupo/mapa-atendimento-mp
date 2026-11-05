@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.4 · 05/11/2026";
+const MN_VER = "Mapa v7.5 · 05/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -8074,6 +8074,293 @@ render = function(){
  + "@media (max-width:640px){.cx-row .btn.sm{padding:2px 6px}.cx-folha{display:none}}";
  document.head.appendChild(st); })();
 /* ================= fim do Pacote 16 ================= */
+
+/* ================= Pacote 18 · v7.5 · CRM WhatsApp 9955 (05/11/2026) ================= */
+/* Campo próprio no menu lateral (grupo CRM), só para o master. Sem integração com o WhatsApp: */
+/* cada contato é um cartão com etapa, etiqueta, responsável, follow-up, histórico e respostas prontas copiadas. */
+/* Regra do Mapa: só iniciais ou primeiro nome e assunto curto. Telefone, CPF e valores ficam fora. */
+const CRM_TAGS = {agendamento:"Agendamento", urgente:"Urgente", duvida:"Dúvida", andamento:"Andamento processual", cobranca:"Cobrança", outro:"Outro"};
+const CRM_ETAPAS = ["Novo","Em conversa","Agendar consulta","Encaminhado à Ellen","Virou atendimento","Não seguiu"];
+const CRM_DONOS = ["Gabriel","Vera (IA)","Ellen"];
+const CRM_RESP = [
+  {k:"Boas-vindas", t:"Olá, {n}! Aqui é a Vera, assessora do Dr. Gabriel Pedron. Me conta rapidinho o que aconteceu, que eu já te direciono."},
+  {k:"Encaminhar ao atendimento", t:"{n}, para agilizar, nosso atendimento é feito pelo número (47) 99648-5629. Chama lá dizendo que veio pelo Dr. Gabriel, que a Ellen já te atende."},
+  {k:"Agendar consulta", t:"{n}, a consulta é de R$ 250, com sinal de R$ 100 para garantir o horário (o saldo é no dia). Te passo a chave Pix assim que você escolher o horário."},
+  {k:"Pedir documentos", t:"{n}, para eu analisar com cuidado, me envie: documento com foto, comprovante de endereço e o que tiver sobre o caso (prints, contratos, notificações)."},
+  {k:"Andamento", t:"{n}, vou verificar o andamento do seu processo e te retorno ainda hoje."},
+  {k:"Retomar contato", t:"Oi, {n}! Passando para saber se ainda posso te ajudar com aquele assunto. Fico à disposição."}
+];
+const CRM_FILTROS = [["todos","Abertos"],["aguarda","Aguardando nós"],["fu","Follow-up"],["ellen","Com a Ellen"],["fim","Encerrados"]];
+
+function crmMaster(){ return typeof souMasterReal==="function" ? souMasterReal() : ui.papel==="master"; }
+function crmDados(){
+  if(!S.crm || typeof S.crm!=="object") S.crm = {contatos:[]};
+  if(!Array.isArray(S.crm.contatos)) S.crm.contatos = [];
+  return S.crm;
+}
+function crmLista(){ return crmDados().contatos.filter(c=>c && typeof c==="object" && !c.apagado); }
+function crmGet(id){ return crmLista().find(c=>c.id===id) || null; }
+function crmUi(){ if(!ui.crm) ui.crm = {sel:"", filtro:"todos", q:"", txt:""}; return ui.crm; }
+function crmIni(n){
+  const p=String(n||"").replace(/[^A-Za-zÀ-ÿ ]/g," ").trim().split(/\s+/).filter(Boolean);
+  return (p.map(x=>x[0]).join("").slice(0,2) || "?").toUpperCase();
+}
+function crmFuVenc(c){ return !!c.fu && c.fu<=isoDia(); }
+function crmFim(c){ return c.etapa>=4; }
+function crmPassa(c){
+  const u=crmUi();
+  if(u.filtro==="fim"){ if(!crmFim(c)) return false; }
+  else {
+    if(crmFim(c)) return false;
+    if(u.filtro==="aguarda" && !c.aguarda) return false;
+    if(u.filtro==="fu" && !crmFuVenc(c)) return false;
+    if(u.filtro==="ellen" && c.etapa!==3) return false;
+  }
+  const q=(u.q||"").trim().toLowerCase();
+  return !q || (c.nome+" "+c.ass).toLowerCase().includes(q);
+}
+function crmOrdem(a,b){
+  const pa=(a.aguarda?2:0)+(crmFuVenc(a)?1:0), pb=(b.aguarda?2:0)+(crmFuVenc(b)?1:0);
+  if(pa!==pb) return pb-pa;
+  return (b.ult||0)-(a.ult||0);
+}
+function crmLog(c, txt){
+  if(!Array.isArray(c.hist)) c.hist=[];
+  c.hist.push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:String(txt||"")});
+  c.ult=Date.now();
+}
+function crmQuando(t){
+  if(!t) return "";
+  const d=new Date(t), h=new Date();
+  if(d.toDateString()===h.toDateString()) return d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const o=new Date(h); o.setDate(h.getDate()-1);
+  if(d.toDateString()===o.toDateString()) return "Ontem";
+  return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+}
+function crmFuTxt(c){
+  if(!c.fu) return "";
+  const h=isoDia();
+  if(c.fu<h) return "follow-up atrasado ("+fmtIso(c.fu)+")";
+  if(c.fu===h) return "follow-up hoje";
+  return "follow-up "+fmtIso(c.fu);
+}
+function crmSomaDias(n){ const d=new Date(); d.setDate(d.getDate()+n); return isoDia(d); }
+function crmGrava(){ if(typeof saveSoon==="function") saveSoon(); else save(); }
+
+/* ---------- Tela ---------- */
+function crmKpis(){
+  const L=crmLista(), A=L.filter(c=>!crmFim(c)), u=crmUi();
+  const k=[
+    ["aguarda", A.filter(c=>c.aguarda).length, "Aguardando resposta nossa"],
+    ["fu", A.filter(crmFuVenc).length, "Follow-up para hoje ou atrasado"],
+    ["todos", A.length, "Conversas abertas"],
+    ["ellen", A.filter(c=>c.etapa===3).length, "Encaminhados à Ellen"]
+  ];
+  return `<div class="crm-kpis">${k.map(([f,n,l])=>`<button class="crm-kpi${u.filtro===f?" on":""}" data-crm="filtro" data-f="${f}"><span class="crm-n">${n}</span><span class="crm-l">${esc(l)}</span></button>`).join("")}</div>`;
+}
+function crmListaHtml(){
+  const u=crmUi(), L=crmLista().filter(crmPassa).sort(crmOrdem);
+  if(!L.length){
+    const vazio = crmLista().length ? "Nada neste filtro." : "Nenhum contato ainda. Clique em “+ Novo contato” quando alguém chamar no 9955.";
+    return `<p class="muted crm-vazio">${esc(vazio)}</p>`;
+  }
+  return L.map(c=>`<button class="crm-it${c.id===u.sel?" sel":""}" data-crm="abrir" data-id="${c.id}">
+    <span class="crm-av">${esc(c.ini||crmIni(c.nome))}</span>
+    <span class="crm-mid"><span class="crm-nm">${esc(c.nome)}${c.aguarda?`<span class="crm-dot" title="Aguardando resposta nossa"></span>`:""}</span>
+      <span class="crm-sm">${esc(c.ass)}</span>
+      <span class="crm-tags"><span class="crm-tag t-${esc(c.tag)}">${esc(CRM_TAGS[c.tag]||"Outro")}</span>${crmFuVenc(c)&&!crmFim(c)?`<span class="crm-tag t-fu">${esc(crmFuTxt(c))}</span>`:""}</span></span>
+    <span class="crm-rt"><span>${esc(crmQuando(c.ult))}</span><span class="crm-dono" title="${esc(c.dono)}">${esc((c.dono||"?")[0])}</span></span>
+  </button>`).join("");
+}
+function crmFichaHtml(){
+  const u=crmUi(), c=crmGet(u.sel);
+  if(!c) return `<div class="crm-ficha-vazia"><h2>Escolha uma conversa</h2><p class="muted">Clique num contato à esquerda para ver a ficha, mudar a etapa e copiar uma resposta pronta.</p></div>`;
+  const nomeMsg = /\./.test(c.nome) ? "tudo bem" : c.nome;
+  const hist = (c.hist||[]).slice().reverse();
+  return `<div class="crm-fh"><span class="crm-av g">${esc(c.ini||crmIni(c.nome))}</span>
+      <div class="crm-fh-t"><h2>${esc(c.nome)}</h2><div class="muted">${esc(c.ass)}${c.ult?" · último movimento "+esc(crmQuando(c.ult)):""}</div></div>
+      <div class="row crm-acts"><button class="btn sm" data-crm="editar">Editar</button><button class="btn sm" data-crm="aguarda">${c.aguarda?"Marcar respondido":"Marcar aguardando"}</button><button class="btn sm primary" data-crm="esteira">Levar para a esteira</button></div></div>
+    <div class="crm-sec"><h3>Etapa</h3><div class="crm-etapas">${CRM_ETAPAS.map((e,i)=>`<button class="crm-et${i===c.etapa?" on":(i<c.etapa&&c.etapa<5?" feito":"")}" data-crm="etapa" data-i="${i}">${esc(e)}</button>`).join("")}</div></div>
+    <div class="crm-g3">
+      <div class="df"><label>Responsável</label><select class="inp" data-crmc="dono">${CRM_DONOS.map(d=>`<option ${c.dono===d?"selected":""}>${esc(d)}</option>`).join("")}</select></div>
+      <div class="df"><label>Etiqueta</label><select class="inp" data-crmc="tag">${Object.entries(CRM_TAGS).map(([k,v])=>`<option value="${k}" ${c.tag===k?"selected":""}>${esc(v)}</option>`).join("")}</select></div>
+      <div class="df"><label>Próximo follow-up</label><input class="inp" type="date" data-crmc="fu" value="${esc(c.fu||"")}">
+        <div class="crm-fu"><button class="crm-mini" data-crm="fu" data-d="0">Hoje</button><button class="crm-mini" data-crm="fu" data-d="1">Amanhã</button><button class="crm-mini" data-crm="fu" data-d="7">7 dias</button><button class="crm-mini" data-crm="fu" data-d="30">30 dias</button><button class="crm-mini" data-crm="fu" data-d="x">Sem data</button></div></div>
+    </div>
+    <div class="crm-sec"><h3>Respostas prontas</h3><p class="muted crm-hint">Clique, ajuste o texto, copie e cole na conversa do WhatsApp 9955.</p>
+      <div class="crm-chips">${CRM_RESP.map((r,i)=>`<button class="crm-chip" data-crm="resp" data-i="${i}" data-n="${esc(nomeMsg)}">${esc(r.k)}</button>`).join("")}</div>
+      <textarea class="inp crm-txt" id="crmTxt" placeholder="Escolha uma resposta pronta ou escreva aqui">${esc(u.txt||"")}</textarea>
+      <div class="row crm-crow"><button class="btn primary" data-crm="copiar">Copiar texto</button><a class="btn" href="https://web.whatsapp.com/" target="_blank" rel="noopener">Abrir WhatsApp Web</a></div></div>
+    <div class="crm-sec"><h3>Histórico</h3>
+      <div class="row crm-nota"><input class="inp" id="crmNota" placeholder="Anotar o que aconteceu (sem CPF, telefone ou valores)"><button class="btn" data-crm="nota">Anotar</button></div>
+      ${hist.length?`<ul class="crm-hist">${hist.map(h=>`<li><time>${esc(fmtT(h.t))}</time><span><b>${esc(h.quem)}</b> ${esc(h.txt)}</span></li>`).join("")}</ul>`:`<p class="muted">Sem registros.</p>`}</div>
+    <div class="crm-rodape"><span class="muted">Só iniciais ou primeiro nome. A conversa continua no app do 9955; dados completos no Jurichat e no Dropbox.</span><button class="btn sm danger" data-crm="apagar">Excluir contato</button></div>`;
+}
+function viewCrm(){
+  if(!crmMaster()) return `<div class="phead"><div><h1>WhatsApp 9955</h1><p>Esta tela é só do Gabriel.</p></div></div>`;
+  const u=crmUi();
+  if(u.sel && !crmGet(u.sel)) u.sel="";
+  return `<div class="phead"><div><h1>WhatsApp 9955</h1><p>Comercial do Gabriel · a Vera recebe os novos e a Ellen atende no (47) 99648-5629</p></div>
+    <div class="row"><button class="btn primary" data-crm="novo">${ic("plus")} Novo contato</button></div></div>
+    <div id="crmKpis">${crmKpis()}</div>
+    <div class="crm-main">
+      <section class="crm-box crm-inbox"><input class="inp" id="crmQ" placeholder="Buscar por iniciais ou assunto" value="${esc(u.q||"")}">
+        <div class="crm-pills">${CRM_FILTROS.map(([f,l])=>`<button class="crm-pill${u.filtro===f?" on":""}" data-crm="filtro" data-f="${f}">${esc(l)}</button>`).join("")}</div>
+        <div class="crm-list" id="crmList">${crmListaHtml()}</div></section>
+      <section class="crm-box crm-ficha" id="crmFicha">${crmFichaHtml()}</section>
+    </div>`;
+}
+
+/* ---------- Novo / editar contato ---------- */
+function crmModal(c){
+  const novo=!c;
+  c=c||{nome:"", ass:"", tag:"agendamento", dono:"Gabriel"};
+  modal(novo?"Novo contato do 9955":"Editar contato", `<div class="cb-form">
+    <div class="df"><label>Iniciais ou primeiro nome</label><input class="inp" id="crmfNome" value="${esc(c.nome)}" placeholder="Ex.: J.S. ou João"></div>
+    <div class="df"><label>Etiqueta</label><select class="inp" id="crmfTag">${Object.entries(CRM_TAGS).map(([k,v])=>`<option value="${k}" ${c.tag===k?"selected":""}>${esc(v)}</option>`).join("")}</select></div>
+    <div class="df cb-span"><label>Assunto (curto, sem dados pessoais)</label><input class="inp" id="crmfAss" value="${esc(c.ass)}" placeholder="Ex.: quer marcar consulta de divórcio"></div>
+    <div class="df"><label>Responsável</label><select class="inp" id="crmfDono">${CRM_DONOS.map(d=>`<option ${c.dono===d?"selected":""}>${esc(d)}</option>`).join("")}</select></div>
+  </div><p class="muted" style="margin:8px 0 0;font-size:12.5px">Sem telefone, CPF ou valores. Só o necessário para lembrar quem é.</p>`,
+  [{label:"Cancelar"},{label:novo?"Salvar contato":"Salvar", cls:"primary", fn:()=>{
+    const nome=($("#crmfNome").value||"").trim(), ass=($("#crmfAss").value||"").trim();
+    if(!nome || !ass){ toast("Preencha o nome (ou iniciais) e o assunto."); return false; }
+    if(/\d{4,}/.test(nome+" "+ass)){ toast("Tire números longos (telefone, CPF) antes de salvar."); return false; }
+    snap();
+    if(novo){
+      const n={id:uid(), nome, ini:crmIni(nome), ass, tag:$("#crmfTag").value, dono:$("#crmfDono").value, etapa:0, aguarda:true, fu:"", criado:Date.now(), ult:Date.now(), hist:[]};
+      crmLog(n, "Contato criado");
+      crmDados().contatos.unshift(n);
+      crmUi().sel=n.id; crmUi().filtro="todos"; crmUi().txt="";
+    } else {
+      const x=crmGet(c.id); if(!x) return;
+      x.nome=nome; x.ini=crmIni(nome); x.ass=ass; x.tag=$("#crmfTag").value; x.dono=$("#crmfDono").value;
+      crmLog(x, "Dados do contato editados");
+    }
+    save(); render();
+  }}]);
+}
+
+/* ---------- Ações ---------- */
+document.addEventListener("click", e=>{
+  const b=e.target && e.target.closest ? e.target.closest("[data-crm]") : null; if(!b) return;
+  if(!crmMaster()) return;
+  const a=b.dataset.crm, u=crmUi(), c=crmGet(u.sel);
+  e.preventDefault();
+  if(a==="filtro"){ u.filtro=b.dataset.f; render(); return; }
+  if(a==="abrir"){ if(u.sel!==b.dataset.id) u.txt=""; u.sel=b.dataset.id; render(); return; }
+  if(a==="novo"){ crmModal(null); return; }
+  if(a==="resp"){ const r=CRM_RESP[+b.dataset.i]; if(!r) return; u.txt=r.t.split("{n}").join(b.dataset.n||""); const t=$("#crmTxt"); if(t){ t.value=u.txt; t.focus(); } $$(".crm-chip").forEach(x=>x.classList.toggle("on", x===b)); return; }
+  if(!c) return;
+  if(a==="editar"){ crmModal(c); return; }
+  if(a==="copiar"){
+    const t=(($("#crmTxt")||{}).value||"").trim(); if(!t){ toast("Escolha ou escreva uma resposta."); return; }
+    copyText(t, "Copiado. Cole na conversa do 9955.");
+    snap(); crmLog(c, "Resposta copiada: "+(t.length>60?t.slice(0,60)+"…":t)); c.aguarda=false; u.txt=""; save(); render(); return;
+  }
+  if(a==="aguarda"){ snap(); c.aguarda=!c.aguarda; crmLog(c, c.aguarda?"Marcado como aguardando resposta nossa":"Marcado como respondido"); save(); render(); return; }
+  if(a==="etapa"){
+    const i=+b.dataset.i; if(i===c.etapa) return;
+    snap(); c.etapa=i; if(i===3) c.dono="Ellen"; if(i>=4){ c.aguarda=false; c.fu=""; }
+    crmLog(c, "Etapa: "+CRM_ETAPAS[i]); save(); render(); return;
+  }
+  if(a==="fu"){
+    snap(); const d=b.dataset.d; c.fu = d==="x" ? "" : crmSomaDias(+d);
+    crmLog(c, c.fu ? "Follow-up marcado para "+fmtIso(c.fu) : "Follow-up retirado"); save(); render(); return;
+  }
+  if(a==="nota"){
+    const inp=$("#crmNota"), v=((inp||{}).value||"").trim(); if(!v) return;
+    if(/\d{6,}/.test(v)){ toast("Tire números longos (telefone, CPF) da anotação."); return; }
+    snap(); crmLog(c, v); save(); render(); return;
+  }
+  if(a==="esteira"){
+    const ag=(typeof esAtivo==="function" && esAtivo() && typeof esK==="function") ? esK("AG") : null;
+    snap(); c.etapa=4; c.aguarda=false; c.fu=""; crmLog(c, "Levado para a esteira de atendimento"); save();
+    if(typeof csModal==="function"){ csModal(null, {titulo:c.nome+" — "+c.ass, coluna:ag?ag.id:funil()[0].id, resp:"Ellen", origem:"WhatsApp 9955"}); }
+    render(); return;
+  }
+  if(a==="apagar"){
+    confirmBox("Excluir contato", "Excluir <b>"+esc(c.nome)+"</b> do CRM do 9955? Dá para desfazer logo em seguida.", "Excluir", ()=>{ snap(); c.apagado=true; c.ult=Date.now(); u.sel=""; save(); render(); toast("Contato excluído.", undo); });
+    return;
+  }
+});
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t || !t.dataset || t.dataset.crmc===undefined) return;
+  const c=crmGet(crmUi().sel); if(!c || !crmMaster()) return;
+  const k=t.dataset.crmc; snap();
+  if(k==="dono"){ c.dono=t.value; crmLog(c, "Responsável: "+t.value); }
+  if(k==="tag"){ c.tag=t.value; crmLog(c, "Etiqueta: "+(CRM_TAGS[t.value]||t.value)); }
+  if(k==="fu"){ c.fu=t.value||""; crmLog(c, c.fu ? "Follow-up marcado para "+fmtIso(c.fu) : "Follow-up retirado"); }
+  save(); render();
+});
+document.addEventListener("input", e=>{
+  const t=e.target; if(!t) return;
+  if(t.id==="crmQ"){ crmUi().q=t.value; const l=$("#crmList"); if(l) l.innerHTML=crmListaHtml(); return; }
+  if(t.id==="crmTxt"){ crmUi().txt=t.value; }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="crmNota"){ e.preventDefault(); const b=$('[data-crm="nota"]'); if(b) b.click(); } });
+
+/* ---------- Menu: grupo CRM logo abaixo do Principal ---------- */
+(function(){
+  if($("#nav-crm")) return;
+  const ref=$("#nav-semana") || $("#nav-hoje"); if(!ref) return;
+  const grp=document.createElement("div"); grp.className="ngrp"; grp.id="grp-crm"; grp.textContent="CRM";
+  const nav=document.createElement("button"); nav.className="nav"; nav.id="nav-crm"; nav.dataset.go="crm";
+  nav.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 18.8z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1.2-1.4-2-1-.9.8a4 4 0 0 1-2.2-2.2l.8-.9-1-2z"/></svg><span>WhatsApp 9955</span>';
+  const ger=Array.from(document.querySelectorAll(".rail .ngrp")).find(g=>(g.dataset.mnNome||g.textContent||"").trim().startsWith("Gestão"));
+  if(ger){ ger.insertAdjacentElement("beforebegin", grp); grp.insertAdjacentElement("afterend", nav); }
+  else { ref.insertAdjacentElement("afterend", grp); grp.insertAdjacentElement("afterend", nav); }
+  if(typeof MN_PADRAO==="object") MN_PADRAO["CRM"]=true;
+})();
+if(typeof R2_VIEWS!=="undefined") R2_VIEWS.crm=viewCrm;
+function crmMenu(){
+  const n=$("#nav-crm"), g=$("#grp-crm"), m=crmMaster();
+  if(n){
+    n.style.display = m ? "" : "none";
+    n.classList.toggle("on", ui.view==="crm");
+    const d=n.querySelector(".dot"); if(d) d.remove();
+    if(m){ const A=crmLista().filter(c=>!crmFim(c)); const k=A.filter(c=>c.aguarda||crmFuVenc(c)).length; if(k) n.insertAdjacentHTML("beforeend", `<span class="dot">${k}</span>`); }
+  }
+  if(g && !m) g.style.display="none";
+}
+(function(){ const st=document.createElement("style"); st.textContent = ""
+ + ".crm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}"
+ + ".crm-kpi{display:flex;flex-direction:column;gap:3px;text-align:left;cursor:pointer;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}"
+ + ".crm-kpi.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.crm-n{font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}.crm-l{font-size:12.5px;color:var(--muted)}"
+ + ".crm-main{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:14px;align-items:start}"
+ + ".crm-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}"
+ + ".crm-pills{display:flex;gap:6px;flex-wrap:wrap}.crm-pill{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:12.5px;border-radius:99px;padding:4px 10px;cursor:pointer}.crm-pill.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg,#fff);font-weight:700}"
+ + ".crm-list{display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow:auto}.crm-vazio{font-size:13.5px;padding:6px 2px}"
+ + ".crm-it{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:start;text-align:left;font:inherit;color:inherit;background:var(--surface-2);border:1px solid transparent;border-radius:12px;padding:9px;cursor:pointer}"
+ + ".crm-it:hover{border-color:var(--line)}.crm-it.sel{border-color:var(--accent)}"
+ + ".crm-av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12.5px;background:var(--accent-soft,rgba(95,183,189,.25));color:var(--accent)}.crm-av.g{width:48px;height:48px;font-size:16px}"
+ + ".crm-mid{min-width:0;display:flex;flex-direction:column;gap:2px}.crm-nm{font-weight:600;display:flex;align-items:center;gap:6px}"
+ + ".crm-dot{width:8px;height:8px;border-radius:50%;background:var(--warn,#e9b071)}"
+ + ".crm-sm{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+ + ".crm-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}.crm-tag{font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;background:var(--surface);color:var(--muted)}"
+ + ".crm-tag.t-agendamento{background:var(--ok-soft,#e6f4ea);color:var(--ok,#1e6b3a)}.crm-tag.t-urgente{background:var(--danger-soft,#fbe5e3);color:var(--danger)}"
+ + ".crm-tag.t-duvida{background:var(--idea-soft,#efe7fb);color:var(--idea,#6b46c1)}.crm-tag.t-andamento{background:var(--accent-soft,#e3f1f2);color:var(--accent)}"
+ + ".crm-tag.t-cobranca,.crm-tag.t-fu{background:var(--warn-soft,#fcefd8);color:var(--warn,#8f5400)}"
+ + ".crm-rt{display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}"
+ + ".crm-dono{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;border:1px solid var(--line)}"
+ + ".crm-ficha{gap:16px;padding:18px}.crm-ficha-vazia h2{margin:0 0 4px;font-size:18px}"
+ + ".crm-fh{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.crm-fh-t{min-width:0;flex:1}.crm-fh h2{margin:0;font-size:20px}.crm-fh .muted{font-size:13px}.crm-acts{gap:6px;flex-wrap:wrap}"
+ + ".crm-sec h3{margin:0 0 8px;font-size:14px}.crm-hint{font-size:12.5px;margin:-4px 0 8px}"
+ + ".crm-etapas{display:flex;gap:6px;flex-wrap:wrap}.crm-et{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:12.5px;border-radius:10px;padding:6px 10px;cursor:pointer}"
+ + ".crm-et.feito{color:inherit;border-color:var(--accent)}.crm-et.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg,#fff);font-weight:700}"
+ + ".crm-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}"
+ + ".crm-fu{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.crm-mini{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:11.5px;border-radius:99px;padding:2px 8px;cursor:pointer}.crm-mini:hover{color:inherit;border-color:var(--accent)}"
+ + ".crm-chips{display:flex;gap:6px;flex-wrap:wrap}.crm-chip{border:1px solid var(--line);background:var(--surface-2);color:inherit;font:inherit;font-size:12.5px;border-radius:99px;padding:5px 11px;cursor:pointer}.crm-chip:hover,.crm-chip.on{border-color:var(--accent);color:var(--accent)}"
+ + ".crm-txt{width:100%;min-height:96px;margin-top:8px;resize:vertical;line-height:1.45}.crm-crow{gap:8px;margin-top:8px;flex-wrap:wrap}.crm-crow a.btn{text-decoration:none}"
+ + ".crm-nota{gap:6px;margin-bottom:8px}.crm-nota .inp{flex:1;min-width:0}"
+ + ".crm-hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}"
+ + ".crm-hist li{display:grid;grid-template-columns:82px minmax(0,1fr);gap:8px;font-size:13px;background:var(--surface-2);border-radius:9px;padding:6px 9px}.crm-hist time{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;padding-top:1px}"
+ + ".crm-rodape{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}.crm-rodape .muted{font-size:12px}"
+ + "@media (max-width:980px){.crm-main{grid-template-columns:1fr}.crm-list{max-height:40vh}}"
+ + "@media (max-width:640px){.crm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.crm-g3{grid-template-columns:1fr}}";
+ document.head.appendChild(st); })();
+const crmRenderBase = render;
+render = function(){ crmRenderBase(); try{ crmMenu(); if(typeof mnAplicar==="function") mnAplicar(); }catch(e){ console.warn("crm", e); } };
+/* ================= fim do Pacote 18 ================= */
 
 /* ================= INÍCIO ================= */
 render();
