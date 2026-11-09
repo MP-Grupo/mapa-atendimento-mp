@@ -10264,7 +10264,7 @@ function protPeca(p){ const n=String(p.prot.cod||"").replace(/\D/g,""); return (
 function protItens(){ return pzAll().filter(p=>p.prot); }
 function protNome(n){
   n=String(n||"").trim(); if(!n) return "";
-  if(/\bs\.\s?a\.?|\b(ltda|eireli|me|epp|uni[aã]o|fazenda|mpsc|mp|minist[eé]rio|munic[ií]pio|estado|detran|celesc|inss|caixa|banco|posto|turismo|distribui[cç][aã]o)\b/i.test(n)) return n;
+  if(/\bs\.\s?a\.?|\b(ltda|eireli|me|epp|uni[aã]o|fazenda|mpsc|mp|minist[eé]rio|munic[ií]pio|estado|detran|celesc|inss|caixa|banco|posto|turismo|distribui[cç][aã]o|auto|agro|promo[cç][aã]o|com[eé]rcio|ind[uú]stria|soberana)\b/i.test(n)) return n;
   const w=n.split(/\s+/).filter(x=>!/^(d[aeo]s?|e)$/i.test(x));
   return w.length<2 ? w[0] : w[0]+" "+w.slice(1).map(x=>x[0].toUpperCase()+".").join(" ");
 }
@@ -10327,11 +10327,14 @@ function protArquivo(f){
 function protImportar(lista){
   let novos=0, atual=0;
   const sem=lista.length ? protSegunda(lista.map(o=>o.vencimento).filter(Boolean).sort()[0]||isoDia()) : protSegunda(isoDia());
+  /* Pacote 24: cada processo vai para a semana do próprio vencimento (dá para importar o mês inteiro de uma vez). */
+  const semanas=new Set();
   lista.forEach(o=>{
     if(!protValido(o)) return;
     const partes=[protNome(o.autor_exequente), protNome(o.reu_executado)].filter(Boolean).join(" x ") || String(o.partes||"").split(/\s+x\s+/i).map(protNome).filter(Boolean).join(" x ");
     const obs=o.observacao||"";
-    const dados={cod:o.id||"", prio:PROT_PRIO[String(o.prioridade||"").toUpperCase()]||"media", juizo:o.juizo||"", classe:o.classe||"", evento:o.evento||"", prazo:o.prazo||"", intN:Number(o.intimacoes_vincular)||0, obs, corridos:/corrid|penal|criminal/i.test(obs+" "+(o.classe||"")), semana:sem};
+    const dados={cod:o.id||"", prio:PROT_PRIO[String(o.prioridade||"").toUpperCase()]||"media", juizo:o.juizo||"", classe:o.classe||"", evento:o.evento||"", prazo:o.prazo||"", intN:Number(o.intimacoes_vincular)||0, obs, corridos:/corrid|penal|criminal/i.test(obs+" "+(o.classe||"")), semana:protSegunda(o.vencimento)};
+    semanas.add(dados.semana);
     if(o.pasta) dados.pasta=o.pasta;
     if(o.minuta) dados.minuta=o.minuta;
     if(o.o_que_fazer) dados.fazer=o.o_que_fazer;
@@ -10344,7 +10347,7 @@ function protImportar(lista){
       pzAll().push(p); novos++;
     }
   });
-  return {novos, atual, sem};
+  return {novos, atual, sem, nSem:semanas.size};
 }
 function protImportarModal(){
   modal("Importar a semana de protocolo", `<p class="muted" style="margin:0 0 8px">Arraste o arquivo que o Claude gerou do painel do eproc (<b>CSV</b>, <b>Markdown</b> com a tabela, ou <b>JSON</b>) ou cole o conteúdo na caixa. As partes entram só com primeiro nome e iniciais.</p>
@@ -10360,7 +10363,7 @@ function protImportarModal(){
       snap(); const r=protImportar(L); if(rad) S.protRadar={txt:rad, em:Date.now(), quem:ui.me||"?"};
       ui.prot.semana=r.sem; ui.prot.modo="semana";
       logA("importou o protocolo da semana de "+fmtIso(r.sem)+" ("+r.novos+" novos, "+r.atual+" atualizados)");
-      save(); render(); toast("Semana importada: "+r.novos+" novo(s), "+r.atual+" atualizado(s).");
+      save(); render(); toast((r.nSem>1?r.nSem+" semanas importadas: ":"Semana importada: ")+r.novos+" novo(s), "+r.atual+" atualizado(s).");
     }}], true);
 }
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="protArq" && t.files && t.files[0]){ protArquivo(t.files[0]); t.value=""; } });
