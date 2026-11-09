@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.5.2 · 09/11/2026";
+const MN_VER = "Mapa v7.5.3 · 09/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -9611,6 +9611,98 @@ window.addEventListener("resize", ttFechar);
  + ".top [data-act=\"who\"]{cursor:pointer}";
  document.head.appendChild(st); })();
 /* ================= fim do Trocar de tela ================= */
+
+/* ================= Pacote 22 · v7.5.3 · Consulta: não compareceu + casos sem sinal (09/11/2026) ================= */
+/* 1. Sem sinal: casos trabalhistas e previdenciários não pagam sinal. Na etapa 2. Agendamento e consulta, */
+/*    o item "Sinal de R$ 100,00 recebido" some para eles (fica só "Consulta feita") e o cartão conta x/1. */
+/*    O sistema reconhece pela área, título ou etiqueta (trabalhista, previdenciário, INSS, aposentadoria, benefício); */
+/*    dentro do caso dá para trocar à mão: "cobra sinal" / "sem sinal". */
+/* 2. Não compareceu: botão na etapa 2 que registra a falta no Andamento, marca "faltou 1x" no cartão, */
+/*    cria a tarefa da Ellen "Remarcar consulta" e copia a mensagem para o WhatsApp. "Remarcou" registra a nova data. */
+/*    O caso continua na etapa 2; mover para Não fechou é sempre manual (decisão do Gabriel). */
+const FT_SINAL_TXT = "Sinal de R$ 100,00 recebido no Pix";
+function ftSemSinal(c){
+  if(c.semSinal===true) return true;
+  if(c.semSinal===false) return false;
+  return /trabalh|previd|inss|aposentad|benef[ií]cio|bpc|loas/i.test([c.area, c.titulo, (c.etiquetas||[]).join(" ")].join(" "));
+}
+const ftFaltaBase = esFalta;
+esFalta = function(c, col){
+  const L=ftFaltaBase(c, col);
+  return (col && col.k==="AGC" && ftSemSinal(c)) ? L.filter(i=>i!==FT_SINAL_TXT) : L;
+};
+const ftCardBase = esCard;
+esCard = function(c, ativo){
+  let h=ftCardBase(c, ativo);
+  if(!ativo) return h;
+  const col=esColDe(c);
+  if(col.k==="AGC" && ftSemSinal(c)){
+    const tot=(col.portao||[]).filter(i=>i!==FT_SINAL_TXT).length, ok=tot-esFalta(c, col).length;
+    h=h.replace(/(<span class="es-pt)( ok)?(" title="Itens da etapa feitos">)\d+\/\d+(<\/span>)/, `$1${ok===tot?" ok":""}$3${ok}/${tot}$4`);
+    h=h.replace('<span class="grow"></span>', '<span class="es-pz ft-ss" title="Trabalhista/previdenciário: sem sinal">sem sinal</span><span class="grow"></span>');
+  }
+  if(c.faltas && !csFim(c) && !(c.remarcadoEm && c.remarcadoEm>c.faltaEm)) h=h.replace('<span class="grow"></span>', `<span class="es-pz late ft-tag" title="Não compareceu à consulta">faltou ${c.faltas}x</span><span class="grow"></span>`);
+  else if(c.faltas && c.remarcadoPara && !csFim(c)) h=h.replace('<span class="grow"></span>', `<span class="es-pz ft-rem" title="Consulta remarcada">remarcada ${esc(fmtIso(c.remarcadoPara))}</span><span class="grow"></span>`);
+  return h;
+};
+const ftSecBase = esSecHTML;
+esSecHTML = function(c){
+  let h=ftSecBase(c);
+  const col=esColDe(c); if(col.k!=="AGC") return h;
+  const ss=ftSemSinal(c);
+  if(ss) h=h.replace(/<label class="check es-ck"><input[^>]*>\s*Sinal de R\$ 100,00 recebido no Pix<\/label>/, "");
+  if(ss) h=h.replace(/(<label class="check es-ck"><input[^>]*>\s*)Consulta feita e saldo pago(<\/label>)/, "$1Consulta feita$2").replace(/<p class="muted es-dica">[\s\S]*?<\/p>/, '<p class="muted es-dica">A Ellen agenda (sem sinal). O Gabriel faz a consulta (gravar no iPad e mandar para a Ellen).</p>');
+  const faltas=c.faltas||0;
+  const bloco=`<div class="ft-box">
+    <div class="ft-sinal">${ss?`<b>Sem sinal</b> · trabalhista/previdenciário, a consulta não tem cobrança antecipada.`:`Cobra sinal de R$ 100,00.`} <button class="lnk" data-ft="sinal" data-id="${c.id}">${ss?"mudar para: cobra sinal":"mudar para: sem sinal"}</button></div>
+    <div class="ft-acts"><button class="btn sm ft-falta" data-ft="falta" data-id="${c.id}">Não compareceu</button>
+      ${faltas?`<span class="ft-n">${faltas} falta(s)${c.faltaEm?" · última "+esc(fmtIso(isoDia(new Date(c.faltaEm)))):""}</span>
+      <span class="ft-rm"><input class="inp" type="date" id="ftData" aria-label="Nova data da consulta"><button class="btn sm" data-ft="remarcou" data-id="${c.id}">Remarcou</button></span>
+      <button class="lnk" data-ft="msg" data-id="${c.id}">Copiar mensagem de remarcação</button>`:""}</div>
+    ${faltas?`<p class="muted ft-dica">Se não remarcar, arraste para <b>Não fechou</b> quando decidirem (sempre manual).</p>`:""}
+  </div>`;
+  if(h.includes('<div class="es-acoes">')) return h.replace('<div class="es-acoes">', bloco+'<div class="es-acoes">');
+  return h.replace('<div class="df"><label>Pasta do cliente', bloco+'<div class="df"><label>Pasta do cliente');
+};
+function ftMensagem(c){
+  const n=esPrimeiro(c);
+  return "Olá"+(n?", "+n:"")+"! Aqui é do escritório M&P Advocacia. Sentimos sua falta na consulta de hoje. Aconteceu algum imprevisto?\n\nPodemos remarcar: me diga o melhor dia e horário para você que eu já reservo.";
+}
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest("[data-ft]") : null; if(!b) return;
+  e.preventDefault();
+  const c=csGet(b.dataset.id); if(!c) return;
+  const a=b.dataset.ft;
+  if(a==="sinal"){ snap(); c.semSinal=!ftSemSinal(c); logA("marcou o caso “"+c.titulo+"” como "+(c.semSinal?"sem sinal":"cobra sinal")); save(); render(); return esRefresh(c); }
+  if(a==="msg") return copyText(ftMensagem(c), "Mensagem de remarcação copiada. Cole no WhatsApp do cliente.");
+  if(a==="falta"){
+    snap();
+    c.faltas=(c.faltas||0)+1; c.faltaEm=Date.now();
+    (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:"Não compareceu à consulta ("+fmtIso(isoDia())+"). Falta nº "+c.faltas+".", tipoAnd:"andamento", data:isoDia(), ve:"todos"});
+    if(!tfAll().some(t=>t.origem==="falta" && t.caso===c.id && !t.done))
+      tfAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", area:c.area||"", txt:"Remarcar consulta: "+c.titulo+(esPrimeiro(c)?" ("+esPrimeiro(c)+")":""), resp:"Ellen", data:"", dataComp:isoDia(), done:false, status:"pendente", obs:"Cliente não compareceu. Mandar a mensagem de remarcação pelo WhatsApp.", pessoa:c.pessoa||"", caso:c.id, prio:"alta", origem:"falta"});
+    logA("registrou falta do cliente na consulta do caso “"+c.titulo+"”");
+    save(); render(); esRefresh(c);
+    copyText(ftMensagem(c), "Falta registrada, tarefa de remarcar criada para a Ellen e mensagem copiada para o WhatsApp.");
+    return;
+  }
+  if(a==="remarcou"){
+    const d=(($("#ftData")||{}).value||""); if(!d){ const i=$("#ftData"); if(i) i.focus(); toast("Escolha a nova data da consulta."); return; }
+    snap(); c.remarcadoEm=Date.now(); c.remarcadoPara=d;
+    (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:"Consulta remarcada para "+fmtIso(d)+".", tipoAnd:"andamento", data:isoDia(), ve:"todos"});
+    tfAll().filter(t=>t.origem==="falta" && t.caso===c.id && !t.done).forEach(t=>{ t.done=true; t.status="concluida"; t.doneEm=Date.now(); t.doneBy=ui.me||"?"; });
+    logA("remarcou a consulta do caso “"+c.titulo+"” para "+fmtIso(d));
+    save(); render(); esRefresh(c); toast("Consulta remarcada para "+fmtIso(d)+". Lembre de pôr na agenda.");
+  }
+});
+
+(function(){ const st=document.createElement("style"); st.id="ftCss"; st.textContent=
+   ".ft-box{border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;display:flex;flex-direction:column;gap:6px;font-size:13px}"
+ + ".ft-acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.ft-falta{border-color:var(--danger);color:var(--danger)}"
+ + ".ft-n{color:var(--danger);font-weight:700;font-size:12.5px}.ft-rm{display:flex;gap:6px;align-items:center}.ft-rm .inp{width:auto;padding:4px 8px}"
+ + ".ft-dica{font-size:12px;margin:0}.ft-rem{color:var(--ok,#2e9e5b)}";
+ document.head.appendChild(st); })();
+/* ================= fim do Não compareceu / sem sinal ================= */
 
 /* ================= INÍCIO ================= */
 render();
