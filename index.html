@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.6 · 09/11/2026";
+const MN_VER = "Mapa v7.6.1 · 09/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -10256,7 +10256,7 @@ document.addEventListener("click", e=>{
 /*   - Radar da próxima semana (texto livre) e faixa no Painel inicial com o que vence hoje. */
 /* Usa os mesmos itens de Prazos (S.prazos) com o campo "prot"; marcar Protocolado cumpre o prazo. */
 /* Sigilo: partes entram só com primeiro nome e iniciais (empresas e órgãos ficam com o nome). Nunca código do eproc. */
-ui.prot = {modo:(function(){ try{ return localStorage.getItem("mapa-pz-modo")||"semana"; }catch(e){ return "semana"; } })(), semana:"", ev:""};
+ui.prot = {modo:(function(){ try{ return localStorage.getItem("mapa-pz-modo")||"semana"; }catch(e){ return "semana"; } })(), semana:"", ev:"", det:""};
 const PROT_PRIO = {URGENTE:"urg", ALTA:"alta", MEDIA:"media", "MÉDIA":"media", BAIXA:"baixa"};
 const PROT_DIAS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
@@ -10281,10 +10281,10 @@ function protAdiantado(p){ return p.done && p.prot.protEm && p.data && p.prot.pr
 
 /* ---------- Importar ---------- */
 /* Lê CSV (; ou ,), JSON ou Markdown (tabela | ... | ou bloco ```csv). Cabeçalhos com acento ou nome curto também valem. */
-const PROT_ALIAS = {p:"id", n:"id", ordem:"id", cod:"id", codigo:"id", prio:"prioridade", venc:"vencimento", data:"vencimento", prazo_final:"vencimento", processo_n:"processo", numero:"processo", n_processo:"processo", vara:"juizo", orgao:"juizo", autor:"autor_exequente", exequente:"autor_exequente", autor_exequente:"autor_exequente", reu:"reu_executado", executado:"reu_executado", reu_executado:"reu_executado", intimacoes:"intimacoes_vincular", intimacoes_a_vincular:"intimacoes_vincular", obs:"observacao", observacoes:"observacao", alerta:"observacao", alertas:"observacao", resp:"responsavel", situacao:"status"};
+const PROT_ALIAS = {p:"id", n:"id", ordem:"id", cod:"id", codigo:"id", prio:"prioridade", venc:"vencimento", data:"vencimento", prazo_final:"vencimento", processo_n:"processo", numero:"processo", n_processo:"processo", vara:"juizo", orgao:"juizo", autor:"autor_exequente", exequente:"autor_exequente", autor_exequente:"autor_exequente", reu:"reu_executado", executado:"reu_executado", reu_executado:"reu_executado", intimacoes:"intimacoes_vincular", intimacoes_a_vincular:"intimacoes_vincular", obs:"observacao", observacoes:"observacao", alerta:"observacao", alertas:"observacao", resp:"responsavel", situacao:"status", pasta_drive:"pasta", link_pasta:"pasta", drive:"pasta", pasta_do_prazo:"pasta", link_drive:"pasta", link_minuta:"minuta", sugestao_peca:"minuta", minuta_sugerida:"minuta", peca_sugerida:"minuta", fazer:"o_que_fazer", providencia:"o_que_fazer", sugestao:"o_que_fazer", o_que_fazer:"o_que_fazer", data_sugerida:"data_sugerida", protocolar_ate:"data_sugerida", meta:"data_sugerida", adiantar_para:"data_sugerida", sugestao_data:"data_sugerida", data_meta:"data_sugerida"};
 function protChave(k){ k=String(k||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[º°]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,""); return PROT_ALIAS[k]||k; }
 function protData(v){ v=String(v||"").trim(); const m=v.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/); if(!m) return v; const y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):String(new Date().getFullYear()); return y+"-"+String(m[2]).padStart(2,"0")+"-"+String(m[1]).padStart(2,"0"); }
-function protLimpa(o){ const r={}; Object.keys(o).forEach(k=>{ r[protChave(k)]=String(o[k]==null?"":o[k]).replace(/\*\*|`/g,"").trim(); }); if(r.vencimento) r.vencimento=protData(r.vencimento); if(r.id && /^\d+$/.test(r.id)) r.id="P"+r.id; return r; }
+function protLimpa(o){ const r={}; Object.keys(o).forEach(k=>{ r[protChave(k)]=String(o[k]==null?"":o[k]).replace(/\*\*|`/g,"").trim(); }); if(r.vencimento) r.vencimento=protData(r.vencimento); if(r.data_sugerida) r.data_sugerida=protData(r.data_sugerida); ["pasta","minuta"].forEach(k=>{ const m=String(r[k]||"").match(/https?:\/\/[^\s)<>"]+/); r[k]=m?m[0]:""; }); if(r.id && /^\d+$/.test(r.id)) r.id="P"+r.id; return r; }
 function protLer(txt){
   txt=String(txt||"").replace(/^\uFEFF/,"").trim(); if(!txt) return [];
   if(txt[0]==="[" || txt[0]==="{"){ const j=JSON.parse(txt); return (Array.isArray(j)?j:[j]).map(protLimpa); }
@@ -10332,6 +10332,11 @@ function protImportar(lista){
     const partes=[protNome(o.autor_exequente), protNome(o.reu_executado)].filter(Boolean).join(" x ") || String(o.partes||"").split(/\s+x\s+/i).map(protNome).filter(Boolean).join(" x ");
     const obs=o.observacao||"";
     const dados={cod:o.id||"", prio:PROT_PRIO[String(o.prioridade||"").toUpperCase()]||"media", juizo:o.juizo||"", classe:o.classe||"", evento:o.evento||"", prazo:o.prazo||"", intN:Number(o.intimacoes_vincular)||0, obs, corridos:/corrid|penal|criminal/i.test(obs+" "+(o.classe||"")), semana:sem};
+    if(o.pasta) dados.pasta=o.pasta;
+    if(o.minuta) dados.minuta=o.minuta;
+    if(o.o_que_fazer) dados.fazer=o.o_que_fazer;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(o.data_sugerida||"")) dados.meta=o.data_sugerida;
+    if(!dados.pasta){ const ant=protItens().filter(x=>x.processo===o.processo && x.prot.pasta).sort((a,b)=>(b.data||"").localeCompare(a.data||""))[0]; if(ant) dados.pasta=ant.prot.pasta; }
     let p=pzAll().find(x=>x.processo===o.processo && x.data===o.vencimento);
     if(p){ p.prot=Object.assign({intV:0}, p.prot||{}, dados); atual++; }
     else {
@@ -10375,11 +10380,12 @@ function protCard(p){
   const nPeca=protPeca(p);
   const ev=ui.prot.ev===p.id;
   return `<div class="pt-card pr-${P.prio}${p.done?" ok":""}${!p.done&&d!==null&&d<=0?" hoje":""}" id="pt-${p.id}">
-    <div class="pt-h"><b class="pt-cod">${esc(P.cod||"")}</b><span class="pt-q">${esc(quando)}</span>${P.corridos?`<span class="pt-tag">dias corridos</span>`:""}<span class="grow"></span><span class="pt-j" title="Juízo">${esc(P.juizo||"")}</span></div>
+    <div class="pt-h"><button class="pt-cod" data-pt="det" data-id="${p.id}" title="Abrir o card completo">${esc(P.cod||"")}</button><span class="pt-q">${esc(quando)}</span>${P.corridos?`<span class="pt-tag">dias corridos</span>`:""}<span class="grow"></span><span class="pt-j" title="Juízo">${esc(P.juizo||"")}</span></div>
     <div class="pt-proc"><span>${esc(p.processo)}</span><button class="lnk" data-pt="copia" data-id="${p.id}" title="Copiar o número para colar no eproc">copiar</button></div>
     <div class="pt-partes">${esc(p.partes||"")}</div>
     <div class="pt-cl">${esc([P.classe, P.evento, P.prazo?"prazo "+P.prazo:""].filter(Boolean).join(" · "))}</div>
     ${P.obs?`<div class="pt-obs">${esc(P.obs)}</div>`:""}
+    ${protSugMini(p)}
     ${p.done ? `<div class="pt-feito">✓ Protocolado${P.protEv?" · evento "+esc(P.protEv):""}${P.protEm?" · "+esc(fmtIso(P.protEm)):""}${p.doneBy?" · "+esc(p.doneBy):""}${protAdiantado(p)?` · <b>${diasAte(p.data)-diasAte(P.protEm)} dia(s) adiantado</b>`:""}<button class="lnk" data-pt="desfaz" data-id="${p.id}">desfazer</button></div>`
     : `<div class="pt-passos">
         <button class="pt-st${P.peca?" on":""}" data-pt="peca" data-id="${p.id}" title="Peça pronta para protocolar">${P.peca?"✓ ":""}Peça pronta</button>
@@ -10430,9 +10436,11 @@ document.addEventListener("click", e=>{
   const a=b.dataset.pt, p=b.dataset.id ? pzAll().find(x=>x.id===b.dataset.id) : null;
   if(a==="modo"){ ui.prot.modo=b.dataset.v; try{ localStorage.setItem("mapa-pz-modo", ui.prot.modo); }catch(x){} return render(); }
   if(a==="importar") return protImportarModal();
+  if(a==="detX"){ ui.prot.det=""; return protDetDraw(); }
   if(a==="abrir"){ ui.prot.modo="semana"; return go("prazos"); }
   if(!p) return;
   const P=p.prot;
+  if(a==="det"){ ui.prot.det=p.id; ui.prot.ev=""; return protDetDraw(); }
   if(a==="copia") return copyText(p.processo, "Número do processo copiado.");
   if(a==="nome") return copyText(protPeca(p), "Começo do nome da peça copiado.");
   if(a==="ir"){ const el=$("#pt-"+p.id); if(el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.classList.add("pisca"); setTimeout(()=>el.classList.remove("pisca"),1600); } return; }
@@ -10441,19 +10449,94 @@ document.addEventListener("click", e=>{
   if(a==="link"){ const u=prompt("Cole o link da peça no Dropbox ("+P.cod+")"); if(!u) return; if(!/^https?:\/\//i.test(u)){ toast("Cole o link completo (começa com https://)."); return; } snap(); P.pecaUrl=u.trim(); P.peca=true; save(); return render(); }
   if(a==="prot"){ ui.prot.ev=p.id; render(); setTimeout(()=>{ const i=$("#ptEv"); if(i) i.focus(); },30); return; }
   if(a==="cancela"){ ui.prot.ev=""; return render(); }
-  if(a==="ok"){
-    const v=(($("#ptEv")||{}).value||"").trim();
-    snap(); P.protEv=v; P.protEm=isoDia(); P.peca=true; if(P.intN) P.intV=P.intN;
-    p.done=true; p.doneEm=Date.now(); p.doneBy=ui.me||"?"; ui.prot.ev="";
-    const adi=p.data && P.protEm<p.data;
-    logA("protocolou "+P.cod+" ("+p.processo+")"+(v?" · evento "+v:"")+(adi?" · adiantado":""));
-    save(); render();
-    const resta=protDaSemana(P.semana).filter(x=>!x.done).length;
-    toast(resta ? P.cod+" protocolado"+(adi?" com folga":"")+". Faltam "+resta+"." : "Semana limpa! Todos os protocolos feitos."); return;
-  }
+  if(a==="ok") return protConfirmar(p, (($("#ptEv")||{}).value||"").trim());
+  if(a==="okDet"){ const prox=protConfirmar(p, (($("#ptDetEv")||{}).value||"").trim()); ui.prot.det = prox ? prox.id : ""; return protDetDraw(); }
+  if(a==="sug") return protSugModal(p);
   if(a==="desfaz"){ snap(); p.done=false; p.doneEm=0; p.doneBy=""; delete P.protEm; delete P.protEv; save(); return render(); }
 });
 document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="ptEv"){ e.preventDefault(); const b=$('[data-pt="ok"]'); if(b) b.click(); } });
+
+/* ---------- Pacote 24 · v7.6.1 · Sugestão do prazo e card completo (09/11/2026) ---------- */
+/* A triagem mensal do Gabriel adianta os prazos e cria uma pasta no Drive para cada prazo. */
+/* O CSV da semana pode trazer 4 colunas a mais: pasta (link da pasta do prazo), minuta (link do arquivo), */
+/* o_que_fazer (texto) e data_sugerida (meta para protocolar, adiantada). Sem pasta no CSV, o Mapa usa */
+/* a última pasta já informada para o mesmo processo. Clicar no P abre o card completo num painel lateral */
+/* com o passo a passo: 1. pasta e minuta, 2. peça pronta, 3. intimações, 4. protocolar com o nº do evento. */
+function protUrl(u){ return /^https?:\/\//i.test(String(u||"")) ? String(u) : ""; }
+function protOrigem(u){ return /drive\.google|docs\.google/i.test(u)?"Drive":/dropbox\.com/i.test(u)?"Dropbox":"link"; }
+function protSugMini(p){
+  const P=p.prot, hoje=isoDia(); if(!(P.meta||P.pasta||P.minuta||P.fazer)) return "";
+  const late=!p.done && P.meta && P.meta<hoje;
+  return `<div class="pt-sug">${P.meta?`<span class="pt-meta${late?" late":""}" title="Data sugerida para protocolar (adiantada)">meta ${esc(fmtIso(P.meta))}</span>`:""}${protUrl(P.pasta)?`<a class="lnk" href="${esc(P.pasta)}" target="_blank" rel="noopener" data-ptv="${p.id}">Pasta do prazo</a>`:""}${protUrl(P.minuta)?`<a class="lnk" href="${esc(P.minuta)}" target="_blank" rel="noopener" data-ptv="${p.id}">Minuta</a>`:""}</div>${P.fazer?`<div class="pt-fz" title="${esc(P.fazer)}">${esc(P.fazer)}</div>`:""}`;
+}
+function protFila(p){ const sem=p&&p.prot ? p.prot.semana : protSemanaAtual(); return sem ? protDaSemana(sem) : []; }
+function protConfirmar(p, v){
+  const P=p.prot;
+  snap(); P.protEv=v; P.protEm=isoDia(); P.peca=true; if(P.intN) P.intV=P.intN;
+  p.done=true; p.doneEm=Date.now(); p.doneBy=ui.me||"?"; ui.prot.ev="";
+  const adi=p.data && P.protEm<p.data;
+  logA("protocolou "+P.cod+" ("+p.processo+")"+(v?" · evento "+v:"")+(adi?" · adiantado":""));
+  save(); render();
+  const ab=protDaSemana(P.semana).filter(x=>!x.done);
+  toast(ab.length ? P.cod+" protocolado"+(adi?" com folga":"")+". Faltam "+ab.length+". Próximo: "+ab[0].prot.cod+"." : "Semana limpa! Todos os protocolos feitos.");
+  return ab[0]||null;
+}
+function protDetHTML(p){
+  const P=p.prot, d=pzDias(p), hoje=isoDia(), F=protFila(p), i=F.indexOf(p);
+  const quando = p.done ? "protocolado" : d<0 ? "VENCIDO há "+(-d)+"d" : d===0 ? "VENCE HOJE" : d===1 ? "vence amanhã" : "vence em "+d+" dias";
+  const pasta=protUrl(P.pasta), minuta=protUrl(P.minuta);
+  const st1=!!P.vista || p.done, st2=!!P.peca || p.done, st3=(P.intN?(P.intV||0)>=P.intN:true) || p.done;
+  const passo=(n,ok,tit,corpo)=>`<li class="pd-p${ok?" ok":""}"><span class="pd-n">${ok?"✓":n}</span><div class="pd-c"><b>${tit}</b>${corpo}</div></li>`;
+  return `<div class="pd-bg" id="ptDetBg" data-pt="detX"></div><aside class="pt-det pr-${P.prio}${p.done?" ok":""}" id="ptDet" role="dialog" aria-label="Card do protocolo ${esc(P.cod||"")}">
+    <header class="pd-h"><b class="pd-cod">${esc(P.cod||"")}</b><span class="pd-q${!p.done&&d!==null&&d<=0?" crit":""}">${esc(quando)}</span>${P.corridos?`<span class="pt-tag">dias corridos</span>`:""}<span class="grow"></span>
+      <button class="lnk" data-pt="det" data-id="${(F[i-1]||{}).id||""}" ${i>0?"":"disabled"} aria-label="Anterior">‹</button><span class="muted pd-i">${i+1}/${F.length}</span><button class="lnk" data-pt="det" data-id="${(F[i+1]||{}).id||""}" ${i<F.length-1?"":"disabled"} aria-label="Próximo">›</button>
+      <button class="lnk pd-x" data-pt="detX" aria-label="Fechar">✕</button></header>
+    <div class="pd-proc"><span>${esc(p.processo)}</span><button class="btn sm" data-pt="copia" data-id="${p.id}">Copiar nº</button></div>
+    <div class="pd-meta"><span>${esc(p.partes||"")}</span><span>${esc([P.juizo, P.classe, P.evento, P.prazo?"prazo "+P.prazo:""].filter(Boolean).join(" · "))}</span>
+      <span>Vencimento <b>${esc(fmtIso(p.data))}</b>${P.meta?` · meta para protocolar <b class="${!p.done&&P.meta<hoje?"pd-late":""}">${esc(fmtIso(P.meta))}</b>`:""}</span></div>
+    ${P.obs?`<div class="pt-obs pd-obs">${esc(P.obs)}</div>`:""}
+    <div class="pd-fz"><span class="pd-l">O que fazer</span>${P.fazer?`<p>${esc(P.fazer)}</p>`:`<p class="muted">Sem sugestão escrita.</p>`}</div>
+    ${p.done ? `<div class="pt-feito pd-feito">✓ Protocolado${P.protEv?" · evento "+esc(P.protEv):""}${P.protEm?" · "+esc(fmtIso(P.protEm)):""}${p.doneBy?" · "+esc(p.doneBy):""}${protAdiantado(p)?" · adiantado":""} <button class="lnk" data-pt="desfaz" data-id="${p.id}">desfazer</button></div>` : ""}
+    <ol class="pd-passos">
+      ${passo(1, st1, "Abrir a pasta e conferir a minuta", `<div class="pd-bts">${pasta?`<a class="btn sm${st1?"":" primary"}" href="${esc(pasta)}" target="_blank" rel="noopener" data-ptv="${p.id}">Abrir pasta do prazo (${protOrigem(pasta)})</a>`:`<button class="btn sm" data-pt="sug" data-id="${p.id}">+ link da pasta</button>`}${minuta?`<a class="btn sm" href="${esc(minuta)}" target="_blank" rel="noopener" data-ptv="${p.id}">Abrir minuta</a>`:""}</div>`)}
+      ${passo(2, st2, "Peça pronta", `<div class="pd-bts"><button class="btn sm${P.peca?"":" primary"}" data-pt="peca" data-id="${p.id}">${P.peca?"✓ Peça pronta":"Marcar peça pronta"}</button><button class="lnk" data-pt="nome" data-id="${p.id}" title="Copiar o começo do nome do arquivo">${esc(protPeca(p))}</button></div>${P.pecaUrl?`<a class="lnk" href="${esc(P.pecaUrl)}" target="_blank" rel="noopener">Abrir a peça final</a>`:`<button class="lnk" data-pt="link" data-id="${p.id}">+ link da peça final</button>`}`)}
+      ${passo(3, st3, "Vincular as intimações", `<div class="pd-bts"><span class="pd-int">${P.intV||0}/${P.intN||0} vinculadas</span><button class="btn sm" data-pt="int-" data-id="${p.id}" aria-label="Menos uma">−</button><button class="btn sm${st3?"":" primary"}" data-pt="int+" data-id="${p.id}" aria-label="Mais uma">+</button></div><small class="muted">A petição vai vinculada a todas as intimações abertas do processo.</small>`)}
+      ${passo(4, p.done, "Protocolar", p.done?`<small class="muted">Feito.</small>`:`<div class="pd-bts"><input class="inp" id="ptDetEv" placeholder="Nº do evento gerado" inputmode="numeric"><button class="btn sm primary" data-pt="okDet" data-id="${p.id}">Protocolar</button></div><small class="muted">Confirma e já abre o próximo da fila.</small>`)}
+    </ol>
+    <footer class="pd-f"><button class="lnk" data-pt="sug" data-id="${p.id}">Editar sugestão (pasta, minuta, o que fazer, meta)</button></footer>
+  </aside>`;
+}
+function protDetDraw(){
+  const a=$("#ptDet"), bg=$("#ptDetBg"); const foco=document.activeElement && document.activeElement.id==="ptDetEv";
+  if(a) a.remove(); if(bg) bg.remove();
+  if(!ui.prot.det) return;
+  const p=pzAll().find(x=>x.id===ui.prot.det && x.prot); if(!p){ ui.prot.det=""; return; }
+  document.body.insertAdjacentHTML("beforeend", protDetHTML(p));
+  if(foco){ const i=$("#ptDetEv"); if(i) i.focus(); }
+}
+function protSugModal(p){
+  const P=p.prot;
+  modal("Sugestão do prazo · "+(P.cod||""), `<div class="df"><label>Link da pasta do prazo (Drive ou Dropbox)</label><input class="inp" id="psPasta" value="${esc(P.pasta||"")}" placeholder="https://drive.google.com/..."></div>
+    <div class="df"><label>Link da minuta (opcional)</label><input class="inp" id="psMin" value="${esc(P.minuta||"")}" placeholder="https://..."></div>
+    <div class="df"><label>O que fazer</label><textarea class="inp" id="psFaz" style="min-height:80px" placeholder="Ex.: impugnar o cálculo e juntar planilha atualizada">${esc(P.fazer||"")}</textarea></div>
+    <div class="df"><label>Meta para protocolar (data sugerida)</label><input class="inp" type="date" id="psMeta" value="${esc(P.meta||"")}"></div>
+    <p class="muted" style="font-size:12px;margin:0">No Drive: botão direito na pasta › Compartilhar › Copiar link. Sem CPF, senha ou código do eproc.</p>`,
+    [{label:"Cancelar"},{label:"Salvar", cls:"primary", fn:()=>{
+      const pa=($("#psPasta").value||"").trim(), mi=($("#psMin").value||"").trim();
+      if((pa && !protUrl(pa)) || (mi && !protUrl(mi))){ toast("Cole o link completo (começa com https://)."); return false; }
+      snap(); P.pasta=pa; P.minuta=mi; P.fazer=($("#psFaz").value||"").trim(); P.meta=$("#psMeta").value||"";
+      logA("atualizou a sugestão do prazo "+(P.cod||"")+" ("+p.processo+")"); save(); render(); protDetDraw();
+    }}]);
+}
+document.addEventListener("click", e=>{
+  const a=e.target.closest ? e.target.closest("a[data-ptv]") : null; if(!a) return;
+  const p=pzAll().find(x=>x.id===a.dataset.ptv); if(!p || !p.prot || p.prot.vista) return;
+  p.prot.vista=true; save(); setTimeout(()=>{ render(); protDetDraw(); }, 50);
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape" && ui.prot.det && !$("#modalRoot .modal")){ ui.prot.det=""; protDetDraw(); }
+  if(e.key==="Enter" && e.target && e.target.id==="ptDetEv"){ e.preventDefault(); const b=$('[data-pt="okDet"]'); if(b) b.click(); }
+});
 
 /* ---------- Faixa no Painel inicial (Alan e Gabriel) ---------- */
 function protFaixa(){
@@ -10467,7 +10550,7 @@ function protFaixa(){
   ph.insertAdjacentHTML("afterend", `<div class="pt-faixa${hj.length?" crit":""}" id="ptFaixa"><b>Protocolo da semana</b><span>${f}/${L.length} protocolados</span>${hj.length?`<span class="pt-fh">hoje: ${hj.map(p=>esc(p.prot.cod)).join(", ")}</span>`:""}${am.length?`<span>amanhã: ${am.map(p=>esc(p.prot.cod)).join(", ")}</span>`:""}<span class="grow"></span><button class="btn sm" data-pt="abrir">Abrir</button></div>`);
 }
 const protRenderBase = render;
-render = function(){ protRenderBase(); try{ protFaixa(); }catch(e){ console.warn("prot", e); } };
+render = function(){ protRenderBase(); try{ protFaixa(); if(ui.prot.det) protDetDraw(); }catch(e){ console.warn("prot", e); } };
 
 (function(){ const st=document.createElement("style"); st.id="ptCss"; st.textContent=
    ".pt-modos{display:flex;gap:6px;margin:0 0 12px}.pt-modo{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:13px;border-radius:99px;padding:5px 12px;cursor:pointer}.pt-modo.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg,#fff);font-weight:700}"
@@ -10495,43 +10578,52 @@ render = function(){ protRenderBase(); try{ protFaixa(); }catch(e){ console.warn
  + ".pt-radar{margin-top:12px;background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;font-size:13px;white-space:pre-wrap}.pt-radar b{display:block;margin-bottom:4px}"
  + ".pt-padrao{font-size:12px;margin-top:10px}"
  + ".pt-faixa{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13px}.pt-faixa.crit{border-left-color:var(--danger)}.pt-fh{color:var(--danger);font-weight:700}"
+ + ".pt-cod{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;padding:0;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}"
+ + ".pt-sug{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;font-size:11.5px}.pt-meta{font-weight:700;color:var(--accent)}.pt-meta.late{color:var(--danger)}"
+ + ".pt-fz{font-size:11.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}"
+ + ".pd-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:95}"
+ + ".pt-det{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);z-index:96;background:var(--surface);border-left:4px solid var(--muted);box-shadow:-18px 0 44px rgba(0,0,0,.35);padding:16px 18px;display:flex;flex-direction:column;gap:10px;overflow:auto;animation:pdIn .18s ease-out}"
+ + "@keyframes pdIn{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}"
+ + ".pt-det.pr-urg{border-left-color:var(--danger)}.pt-det.pr-alta{border-left-color:var(--warn,#d99a2b)}.pt-det.pr-media{border-left-color:#c9b227}.pt-det.ok{border-left-color:var(--ok,#2e9e5b)}"
+ + ".pd-h{display:flex;gap:8px;align-items:center}.pd-cod{font-size:22px}.pd-q{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}.pd-q.crit{color:var(--danger)}.pd-i{font-size:12px}.pd-h .lnk{font-size:18px;padding:0 4px}.pd-h .lnk:disabled{opacity:.3}"
+ + ".pd-proc{display:flex;gap:10px;align-items:center;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;flex-wrap:wrap}"
+ + ".pd-meta{display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--muted)}.pd-meta b{color:var(--fg,inherit)}.pd-late{color:var(--danger)!important}"
+ + ".pd-fz{background:var(--surface-2);border-radius:10px;padding:8px 10px}.pd-fz p{margin:2px 0 0;font-size:13.5px;white-space:pre-wrap}.pd-l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}"
+ + ".pd-passos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}"
+ + ".pd-p{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:9px 10px}.pd-p.ok{opacity:.7}"
+ + ".pd-n{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--surface-2)}.pd-p.ok .pd-n{background:var(--ok,#2e9e5b);color:#fff}"
+ + ".pd-c{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}.pd-c b{font-size:13.5px}.pd-bts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.pd-bts a.btn{text-decoration:none}.pd-bts .inp{width:150px;padding:6px 8px}"
+ + ".pd-int{font-size:13px;font-weight:700}.pd-f{margin-top:auto;padding-top:6px;border-top:1px solid var(--line);font-size:12.5px}.pd-feito{font-size:13px}"
  + "@media (max-width:1100px){.pt-quadro{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:640px){.pt-quadro{grid-template-columns:1fr}}";
  document.head.appendChild(st); })();
 /* ================= fim do Protocolo da semana ================= */
 
-/* ================= Pacote 21 · v7.5.2 · Mesa do Alan no Painel inicial (09/11/2026) ================= */
+/* ================= Pacote 21 · v7.5.2 · Mesa do Alan no Painel inicial (09/11/2026) · compacta no pacote 24 ================= */
 /* No Painel inicial do Alan (e do Gabriel em "Ver como Alan"), logo abaixo do título: */
 /*   1. AGORA: o próximo protocolo da fila (P1…Pn) com todos os botões: copiar nº, nome da peça, peça pronta, */
 /*      intimações e Protocolar com o nº do evento, sem sair do Painel. */
 /*   2. SEMANA: anel de progresso, o que vence hoje e amanhã, adiantados e a fila dos próximos. */
 /*   3. JURÍDICO: quantos casos em cada coluna, kits que chegaram nos últimos 7 dias e as tarefas dele de hoje/atrasadas. */
 /* O Gabriel, no próprio Painel, continua com a faixa curta do Protocolo da semana. */
-function maQuem(){ return ui.me==="Alan"; }
-function maAnel(pct){
-  const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
-  return `<svg class="ma-anel" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="9"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 42 42)"/><text x="42" y="47" text-anchor="middle" font-size="17" font-weight="700" fill="currentColor">${pct}%</text></svg>`;
-}
+/* Pacote 24 · v7.6.1 (09/11/2026): a Mesa virou uma faixa compacta de 2 linhas, para não tomar a tela inicial. */
+/* Linha 1: semana, barra de progresso e números. Linha 2: o próximo da fila com "Abrir e protocolar" (card completo */
+/* no painel lateral, com pasta do prazo, minuta, o que fazer e meta) e os 2 seguintes. Vale para o Alan e para o Gabriel. */
+function maQuem(){ return ui.me==="Alan" || ui.papel==="master"; }
 function maHTML(){
-  const hoje=isoDia(), sem=protSemanaAtual(), L=sem?protDaSemana(sem):[];
-  const ab=L.filter(p=>!p.done), feitos=L.length-ab.length, prox=ab[0];
-  const pct=L.length?Math.round(feitos*100/L.length):0;
-  const hj=ab.filter(p=>pzDias(p)<=0), am=ab.filter(p=>pzDias(p)===1), adi=L.filter(protAdiantado).length;
-  const B=esAtivo()?esCols("B"):[];
-  const kits=B.length?csAll().filter(c=>c.coluna===B[0].id && ((c.jur&&c.jur.t)||c.movidoEm||0)>Date.now()-7*864e5):[];
-  const tf=tfLista().filter(t=>t.resp==="Alan" && !t.done && !t.arq && ((t.dataComp&&t.dataComp<=hoje)||(t.data&&t.data<=hoje))).sort((a,b)=>(a.data||a.dataComp||"").localeCompare(b.data||b.dataComp||""));
-  const agora = prox ? `<div class="ma-c ma-agora"><div class="ma-ct">Agora <span class="muted">· protocolar em ordem</span></div>${protCard(prox)}</div>`
-    : `<div class="ma-c ma-agora ma-ok"><div class="ma-ct">Agora</div><p class="ma-limpa">${L.length?"Semana limpa! Tudo protocolado.":"Nenhuma semana de protocolo importada."}</p>${L.length?`<p class="muted">${adi} protocolo(s) adiantado(s) nesta semana.</p>`:`<button class="btn sm" data-pt="abrir">Abrir Protocolo da semana</button>`}</div>`;
-  const fila = ab.slice(prox?1:0, 7).map(p=>`<button class="ma-fl${pzDias(p)<=0?" crit":pzDias(p)===1?" warn":""}" data-pt="abrir"><b>${esc(p.prot.cod)}</b><span>${esc(pzLabel(p))}</span><small>${esc(String(p.processo).replace(/\.8\.24\.\d{4}$/,""))}</small></button>`).join("");
-  const semana = `<div class="ma-c ma-sem"><div class="ma-ct">Semana <span class="muted">${sem?esc(fmtIso(sem))+" a "+esc(fmtIso(agSoma(sem,4))):""}</span><span class="grow"></span><button class="lnk" data-pt="abrir">Abrir ›</button></div>
-    <div class="ma-semtop">${maAnel(pct)}<div class="ma-k"><span><b>${feitos}/${L.length}</b> protocolados</span><span class="${hj.length?"crit":""}"><b>${hj.length}</b> hoje / atrasado</span><span><b>${am.length}</b> amanhã</span><span title="Protocolados antes do vencimento"><b>${adi}</b> adiantado(s)</span></div></div>
-    ${fila?`<div class="ma-fila">${fila}</div>`:""}
-    ${(S.protRadar&&S.protRadar.txt)?`<details class="ma-radar"><summary>Radar da próxima semana</summary><div>${esc(S.protRadar.txt)}</div></details>`:""}</div>`;
-  const jur = `<div class="ma-c ma-jur"><div class="ma-ct">Jurídico<span class="grow"></span><button class="lnk" data-ma="jur">Abrir esteira ›</button></div>
-    <div class="ma-cols">${B.map(col=>`<div><b>${csAll().filter(c=>c.coluna===col.id).length}</b><span>${esc(col.nome)}</span></div>`).join("")}</div>
-    ${kits.length?`<div class="ma-sub">Kits novos (7 dias)</div>${kits.slice(0,4).map(c=>`<button class="ma-kit" data-act="csAbrir" data-id="${c.id}"><b>${esc(c.titulo)}</b><small>${esc(esNome(c))}</small></button>`).join("")}`:""}
-    <div class="ma-sub">Minhas tarefas de hoje ${tf.length?`<span class="count w">${tf.length}</span>`:""}</div>
-    ${tf.length?tf.slice(0,5).map(tfLi2).join(""):`<p class="muted ma-v">Nada para hoje.</p>`}</div>`;
-  return `<section class="ma" id="maMesa"><div class="ma-grid">${agora}${semana}${jur}</div></section>`;
+  const sem=protSemanaAtual(), L=sem?protDaSemana(sem):[];
+  if(!L.length) return ui.papel==="master" ? `<section class="ma2" id="maMesa"><div class="ma2-l1"><b>Protocolo da semana</b><span class="muted">nenhuma semana importada</span><span class="grow"></span><button class="lnk" data-pt="abrir">Importar ›</button></div></section>` : "";
+  const ab=L.filter(p=>!p.done), feitos=L.length-ab.length, prox=ab[0], pct=Math.round(feitos*100/L.length);
+  const hj=ab.filter(p=>pzDias(p)<=0).length, am=ab.filter(p=>pzDias(p)===1).length, adi=L.filter(protAdiantado).length;
+  const cls=p=>pzDias(p)<=0?" crit":pzDias(p)===1?" warn":"";
+  const l1=`<div class="ma2-l1"><b>Protocolo da semana</b><span class="muted">${esc(fmtIso(sem))} a ${esc(fmtIso(agSoma(sem,4)))}</span><div class="ma2-bar" title="${pct}% protocolado"><i style="width:${pct}%"></i></div><span><b>${feitos}/${L.length}</b> protocolados</span>${hj?`<span class="ma2-c"><b>${hj}</b> hoje/atrasado</span>`:""}${am?`<span><b>${am}</b> amanhã</span>`:""}<span title="Protocolados antes do vencimento"><b>${adi}</b> adiantado(s)</span><span class="grow"></span><button class="lnk" data-pt="abrir">Ver a semana ›</button></div>`;
+  if(!prox) return `<section class="ma2 limpa" id="maMesa">${l1}<div class="ma2-l2"><span class="ma2-ok">Semana limpa! Tudo protocolado.</span></div></section>`;
+  const P=prox.prot, pasta=protUrl(P.pasta);
+  const seg=ab.slice(1,3).map(p=>`<button class="ma2-ch${cls(p)}" data-pt="det" data-id="${p.id}" title="${esc(p.processo)}"><b>${esc(p.prot.cod)}</b> ${esc(pzLabel(p))}</button>`).join("");
+  const l2=`<div class="ma2-l2"><span class="ma2-lbl">Próximo</span>
+    <button class="ma2-prox${cls(prox)}" data-pt="det" data-id="${prox.id}"><b>${esc(P.cod)}</b><span class="ma2-q">${esc(pzLabel(prox))}</span><span class="ma2-pr">${esc(String(prox.processo).replace(/\.8\.24\.\d{4}$/,""))}</span><span class="ma2-pt">${esc(prox.partes||"")}</span>${P.meta?`<span class="ma2-meta">meta ${esc(fmtIso(P.meta))}</span>`:""}</button>
+    ${pasta?`<a class="btn sm" href="${esc(pasta)}" target="_blank" rel="noopener" data-ptv="${prox.id}">Pasta do prazo</a>`:""}<button class="btn sm primary" data-pt="det" data-id="${prox.id}">Abrir e protocolar</button>
+    ${seg?`<span class="ma2-dep">depois:</span>${seg}`:""}</div>`;
+  return `<section class="ma2" id="maMesa">${l1}${l2}</section>`;
 }
 function maRender(){
   if(ui.view!=="central" && ui.view!=="hoje") return;
@@ -10552,21 +10644,17 @@ document.addEventListener("click", e=>{
 });
 
 (function(){ const st=document.createElement("style"); st.id="maCss"; st.textContent=
-   ".ma{margin:0 0 16px}.ma-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}"
- + ".ma-c{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}"
- + ".ma-ct{display:flex;gap:6px;align-items:baseline;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}.ma-ct .muted{text-transform:none;letter-spacing:0;font-weight:400}"
- + ".ma-agora .pt-card{font-size:13.5px;border-width:1px 1px 1px 5px}.ma-agora .pt-cod{font-size:18px}.ma-agora .pt-proc{font-size:15px}"
- + ".ma-ok{justify-content:center}.ma-limpa{font-size:18px;font-weight:700;margin:0;color:var(--ok,#2e9e5b)}"
- + ".ma-semtop{display:flex;gap:12px;align-items:center}.ma-anel{width:84px;height:84px;flex:none}"
- + ".ma-k{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12.5px;color:var(--muted)}.ma-k b{color:var(--fg,inherit);font-size:15px}.ma-k .crit b{color:var(--danger)}"
- + ".ma-fila{display:flex;flex-direction:column;gap:4px}.ma-fl{display:grid;grid-template-columns:38px 90px minmax(0,1fr);gap:6px;align-items:baseline;text-align:left;border:1px solid var(--line);background:var(--surface-2);color:inherit;font:inherit;font-size:12.5px;border-radius:8px;padding:5px 8px;cursor:pointer}"
- + ".ma-fl.crit{border-left:3px solid var(--danger)}.ma-fl.warn{border-left:3px solid var(--warn,#d99a2b)}.ma-fl small{color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
- + ".ma-radar summary{cursor:pointer;font-size:12.5px;color:var(--muted)}.ma-radar div{white-space:pre-wrap;font-size:12.5px;margin-top:4px}"
- + ".ma-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.ma-cols div{background:var(--surface-2);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column}.ma-cols b{font-size:20px}.ma-cols span{font-size:11.5px;color:var(--muted)}"
- + ".ma-sub{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-top:4px}"
- + ".ma-kit{display:flex;flex-direction:column;text-align:left;border:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-size:12.5px;border-radius:8px;padding:5px 8px;cursor:pointer}.ma-kit small{color:var(--muted)}"
- + ".ma-v{font-size:12.5px;margin:0}"
- + "@media (max-width:1100px){.ma-grid{grid-template-columns:1fr 1fr}.ma-agora{grid-column:1/-1}}@media (max-width:640px){.ma-grid{grid-template-columns:1fr}}";
+   ".ma2{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:14px;padding:10px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px;font-size:13px}"
+ + ".ma2.limpa{border-left-color:var(--ok,#2e9e5b)}.ma2-ok{color:var(--ok,#2e9e5b);font-weight:700}"
+ + ".ma2-l1,.ma2-l2{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap}.ma2-l1 .muted{font-size:12.5px}.ma2-l1>span{color:var(--muted)}.ma2-l1 b{color:var(--fg,inherit)}.ma2-c,.ma2-c b{color:var(--danger)!important}"
+ + ".ma2-bar{width:120px;height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden}.ma2-bar i{display:block;height:100%;background:var(--accent);border-radius:99px}"
+ + ".ma2-lbl,.ma2-dep{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}"
+ + ".ma2-prox{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;border:1px solid var(--line);border-left:4px solid var(--muted);background:var(--surface-2);color:inherit;font:inherit;border-radius:10px;padding:6px 10px;cursor:pointer;text-align:left;min-width:0;max-width:100%}"
+ + ".ma2-prox.crit{border-left-color:var(--danger)}.ma2-prox.warn{border-left-color:var(--warn,#d99a2b)}.ma2-prox b{font-size:15px}.ma2-q{font-weight:700;font-size:12px;text-transform:uppercase}.ma2-prox.crit .ma2-q{color:var(--danger)}"
+ + ".ma2-pr{font-variant-numeric:tabular-nums;font-weight:600}.ma2-pt{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}.ma2-meta{color:var(--accent);font-weight:700;font-size:12px}"
+ + ".ma2-l2 a.btn{text-decoration:none}.ma2-l2 a.btn:not(.primary),.pd-bts a.btn:not(.primary){color:inherit}"
+ + ".ma2-ch{border:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-size:12px;border-radius:99px;padding:3px 10px;cursor:pointer}.ma2-ch.crit{border-color:var(--danger)}.ma2-ch.warn{border-color:var(--warn,#d99a2b)}"
+ + "@media (max-width:640px){.ma2-pt{display:none}.ma2-bar{width:80px}}";
  document.head.appendChild(st); })();
 /* ================= fim da Mesa do Alan ================= */
 
