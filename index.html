@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.5.1 · 09/11/2026";
+const MN_VER = "Mapa v7.5.2 · 09/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -8576,6 +8576,8 @@ palFilter = function(q){
 /* ================= fim do Pacote 20 ================= */
 
 /* ================= Pacote 20 · v7.5.1 · Caso: dados travados + Andamento do caso (09/11/2026) ================= */
+/* Pacote 21 · v7.5.2 (09/11/2026): "Atribuir tarefa" a uma ou mais pessoas de uma vez (cada uma recebe a sua tarefa, */
+/* agrupadas na linha do tempo com o check de cada pessoa). */
 /* Caso já criado abre com os dados travados e fechados (resumo + botão Editar dados). */
 /* Logo abaixo, um campo único "Andamento do caso" para ir dando o andamento: */
 /*   Andamento (situação do caso), Relato (quem relatou e por onde) e Pendência (atribui tarefa a alguém, com prazo). */
@@ -8587,10 +8589,12 @@ palFilter = function(q){
 const AD_QUEM = ["Evaldo","Alan","Ellen","Gabriel","Cliente","Outro"];
 const AD_CANAL = ["WhatsApp","Áudio transcrito","Ligação","Reunião","E-mail","Anotação"];
 const AD_VE = [["todos","Todos"],["socios","Só sócios"],["eu","Só eu"]];
-const AD_TIPOS = [["andamento","Andamento"],["relato","Relato"],["pend","Pendência"]];
-const AD_FILTROS = [["tudo","Tudo"],["pend","Pendências abertas"],["relato","Relatos"],["andamento","Andamentos"]];
+const AD_TIPOS = [["pend","Atribuir tarefa"],["andamento","Andamento"],["relato","Relato"]];
+const AD_PESSOAS = ["Gabriel","Alan","Evaldo","Ellen"];
+const AD_FILTROS = [["tudo","Tudo"],["pend","Tarefas abertas"],["relato","Relatos"],["andamento","Andamentos"]];
 const AD_CORTE = 420;
-const adUi = {tipo:"andamento", filtro:"tudo", ve:"todos", abertos:new Set(), edit:""};
+const adUi = {tipo:"andamento", filtro:"tudo", ve:"todos", abertos:new Set(), edit:"", para:null};
+function adPara(){ if(!adUi.para || !adUi.para.size) adUi.para=new Set([AD_PESSOAS.includes(ui.me)?ui.me:"Gabriel"]); return adUi.para; }
 
 function adSocio(){ return ui.papel==="master" || ui.papel==="socio"; }
 function adPodeVer(x){
@@ -8608,8 +8612,10 @@ function adVeTag(x){ const ve=x.ve||"todos"; return ve==="todos" ? "" : `<span c
 function adItens(c){
   const esteira = typeof esAtivo==="function" && esAtivo();
   const R=(c.registros||[]).filter(r=>r && (r.txt||r.relato) && !(esteira && r.resumo)).map(r=>({k:r.tipoAnd||(r.de?"relato":"andamento"), r, t:r.t||0, dia:r.data||""}));
-  const T=tfLista().filter(t=>t.caso===c.id).map(t=>({k:"pend", r:t, t:t.t||0, dia:t.t?isoDia(new Date(t.t)):""}));
-  return R.concat(T).filter(x=>adPodeVer(x.r)).sort((a,b)=>(b.dia||"").localeCompare(a.dia||"") || b.t-a.t);
+  const G={}, T=[];
+  tfLista().filter(t=>t.caso===c.id && adPodeVer(t)).forEach(t=>{ const g=t.grupo||t.id; if(!G[g]){ G[g]={k:"pend", r:t, L:[], t:t.t||0, dia:t.t?isoDia(new Date(t.t)):""}; T.push(G[g]); } G[g].L.push(t); });
+  T.forEach(x=>{ x.done=x.L.every(t=>t.done); });
+  return R.filter(x=>adPodeVer(x.r)).concat(T).sort((a,b)=>(b.dia||"").localeCompare(a.dia||"") || b.t-a.t);
 }
 function adTexto(r){ return r.relato || r.txt || ""; }
 function adCabReg(x){
@@ -8630,15 +8636,17 @@ function adLiReg(x, c){
       ${adPodeMexer(r)?`<button class="lnk" data-ad="edita" data-c="${c.id}" data-r="${r.id}">Editar</button><button class="lnk ad-del" data-ad="exclui" data-c="${c.id}" data-r="${r.id}">Excluir</button>`:""}</div></li>`;
 }
 function adLiPend(x, c){
-  const t=x.r; tfN(t);
-  const prazo=t.data||t.dataComp||"", df=prazo?diasAte(prazo):null, late=!t.done && df!==null && df<0;
-  return `<li class="ad-it k-pend${t.done?" feito":""}"><div class="ad-h"><span class="ad-k k-pend">Pendência</span><span class="muted">${esc(fmtT(t.t))} · ${esc(t.quem||"")} atribuiu a <b>${esc(t.resp||"")}</b></span>${adVeTag(t)}</div>
-    <label class="ad-pl"><input type="checkbox" data-ad="done" data-c="${c.id}" data-r="${t.id}" ${t.done?"checked":""}><span>${t.prio==="alta"?`<b class="ad-urg">Urgente</b> `:""}${esc(t.txt)}</span>${prazo?`<span class="ad-pz${late?" late":""}">${t.data?"fatal ":""}${esc(fmtIso(prazo))}</span>`:""}</label>
-    ${t.done&&t.doneBy?`<small class="muted">Concluída por ${esc(t.doneBy)} em ${esc(fmtT(t.doneEm))}</small>`:""}
-    <div class="ad-bt"><button class="lnk" data-ad="abreTf" data-c="${c.id}" data-r="${t.id}">Abrir tarefa</button></div></li>`;
+  const L=x.L||[x.r], t=L[0]; L.forEach(tfN);
+  const prazo=t.data||t.dataComp||"", df=prazo?diasAte(prazo):null, late=!x.done && df!==null && df<0;
+  const quem=L.map(y=>y.resp).join(", ");
+  const pessoas=L.map(y=>`<label class="ad-pp${y.done?" ok":""}" title="${y.done&&y.doneBy?"Concluída por "+esc(y.doneBy)+" em "+esc(fmtT(y.doneEm)):"Marcar como feita"}"><input type="checkbox" data-ad="done" data-c="${c.id}" data-r="${y.id}" ${y.done?"checked":""}> ${esc(y.resp)}</label>`).join("");
+  return `<li class="ad-it k-pend${x.done?" feito":""}"><div class="ad-h"><span class="ad-k k-pend">Tarefa</span><span class="muted">${esc(fmtT(t.t))} · ${esc(t.quem||"")} atribuiu a <b>${esc(quem)}</b></span>${adVeTag(t)}</div>
+    <div class="ad-pl"><span>${t.prio==="alta"?`<b class="ad-urg">Urgente</b> `:""}${esc(t.txt)}</span>${prazo?`<span class="ad-pz${late?" late":""}">${t.data?"fatal ":""}${esc(fmtIso(prazo))}</span>`:""}</div>
+    <div class="ad-pps">${pessoas}</div>
+    <div class="ad-bt">${L.length===1?`<button class="lnk" data-ad="abreTf" data-c="${c.id}" data-r="${t.id}">Abrir tarefa</button>`:`<span class="muted ad-atalho">Cada pessoa marca a sua parte</span>`}</div></li>`;
 }
 function adLista(c){
-  const L=adItens(c).filter(x=> adUi.filtro==="tudo" ? true : adUi.filtro==="pend" ? (x.k==="pend" && !x.r.done) : x.k===adUi.filtro);
+  const L=adItens(c).filter(x=> adUi.filtro==="tudo" ? true : adUi.filtro==="pend" ? (x.k==="pend" && !x.done) : x.k===adUi.filtro);
   if(!L.length) return `<p class="muted ad-vazio">${adUi.filtro==="tudo"?"Nada lançado ainda. Comece pelo primeiro andamento.":"Nada neste filtro."}</p>`;
   return `<ul class="ad-lista">${L.map(x=>x.k==="pend"?adLiPend(x,c):adLiReg(x,c)).join("")}</ul>`;
 }
@@ -8649,19 +8657,19 @@ function adCompoe(c){
   const campos = tp==="relato"
     ? `<label>Quem relatou<select class="inp" id="adDe">${AD_QUEM.map(q=>`<option ${q===eu?"selected":""}>${q}</option>`).join("")}</select></label><label>Por onde<select class="inp" id="adCanal">${AD_CANAL.map(q=>`<option>${q}</option>`).join("")}</select></label><label>Data<input class="inp" type="date" id="adData" value="${isoDia()}"></label>`
     : tp==="pend"
-    ? `<label>Quem faz<select class="inp" id="adResp">${TF_RESP.map(r=>`<option ${r===euR?"selected":""}>${r}</option>`).join("")}</select></label><label>Prazo<input class="inp" type="date" id="adPrazo"></label><label class="ad-ck"><input type="checkbox" id="adUrg"> Urgente</label>`
+    ? `<label class="ad-para">Para quem (uma ou mais)<span class="ad-pchips">${AD_PESSOAS.map(p=>`<button type="button" class="ad-chip sm${adPara().has(p)?" on":""}" data-ad="para" data-c="${c.id}" data-v="${p}">${p}</button>`).join("")}<button type="button" class="ad-chip sm" data-ad="paraTodos" data-c="${c.id}">Todos</button></span></label><label>Prazo<input class="inp" type="date" id="adPrazo"></label><label class="ad-ck"><input type="checkbox" id="adUrg"> Urgente</label>`
     : `<label>Data<input class="inp" type="date" id="adData" value="${isoDia()}"></label>`;
   const ph = tp==="relato" ? "Cole o relato (ex.: o que o Evaldo mandou no WhatsApp)…" : tp==="pend" ? "O que fazer (ex.: pesquisar bem em garantia do fiador)" : "Situação do caso, o que aconteceu, o que foi decidido…";
   return `<div class="ad-comp">
     <div class="ad-tipos">${AD_TIPOS.map(([k,n])=>`<button class="ad-chip${tp===k?" on":""}" data-ad="tipo" data-c="${c.id}" data-v="${k}">${n}</button>`).join("")}</div>
     <div class="ad-campos">${campos}<label>Quem vê<select class="inp" id="adVe">${AD_VE.map(([k,n])=>`<option value="${k}" ${adUi.ve===k?"selected":""}>${n}</option>`).join("")}</select></label></div>
     ${tp==="pend" ? `<input class="inp" id="adTx" placeholder="${ph}">` : `<textarea class="inp ad-novo" id="adTx" placeholder="${ph}"></textarea><input class="inp" id="adLink" placeholder="Link do arquivo no Dropbox (opcional · ex.: fotos dos cheques em 03_Títulos)">`}
-    <div class="ad-bt"><button class="btn sm primary" data-ad="add" data-c="${c.id}">${tp==="pend"?"Lançar pendência":"Registrar"}</button><span class="muted ad-atalho">${tp==="pend"?"Enter lança":"Ctrl+Enter registra"} · sem CPF, senha ou dado bancário</span></div>
+    <div class="ad-bt"><button class="btn sm primary" data-ad="add" data-c="${c.id}">${tp==="pend"?"Atribuir tarefa":"Registrar"}</button><span class="muted ad-atalho">${tp==="pend"?"Enter lança":"Ctrl+Enter registra"} · sem CPF, senha ou dado bancário</span></div>
   </div>`;
 }
 function adSecHTML(c){
-  const I=adItens(c), ab=I.filter(x=>x.k==="pend"&&!x.r.done).length;
-  return `<div class="cb-sec ad-sec" id="adSec"><h4>Andamento do caso ${ab?`<span class="count w">${ab} pendente${ab>1?"s":""}</span>`:""}</h4>
+  const I=adItens(c), ab=I.filter(x=>x.k==="pend"&&!x.done).length;
+  return `<div class="cb-sec ad-sec" id="adSec"><h4>Andamento do caso ${ab?`<span class="count w">${ab} tarefa${ab>1?"s":""} aberta${ab>1?"s":""}</span>`:""}</h4>
     ${adCompoe(c)}
     <div class="ad-fil">${AD_FILTROS.map(([k,n])=>`<button class="ad-chip sm${adUi.filtro===k?" on":""}" data-ad="filtro" data-c="${c.id}" data-v="${k}">${n}</button>`).join("")}</div>
     <div id="adLista">${adLista(c)}</div></div>`;
@@ -8723,12 +8731,14 @@ function adAdd(c){
   if(esSensivel(tx)){ toast("O texto parece ter CPF ou senha. Tire antes de registrar."); return; }
   const ve=($("#adVe")||{}).value||"todos"; adUi.ve="todos";
   if(adUi.tipo==="pend"){
-    const resp=$("#adResp").value, prazo=$("#adPrazo").value||"", urg=$("#adUrg").checked;
+    const para=AD_PESSOAS.filter(p=>adPara().has(p)); if(!para.length){ toast("Escolha para quem é a tarefa."); return; }
+    const prazo=$("#adPrazo").value||"", urg=$("#adUrg").checked, g=para.length>1?uid():"", agora=Date.now();
     snap();
-    tfAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", area:"", txt:tx, resp, data:"", dataComp:prazo, done:false, status:"pendente", obs:"lançada no andamento do caso", pessoa:c.pessoa||"", caso:c.id, prio:urg?"alta":"", origem:"caso", ve});
-    logA("atribuiu a "+resp+" no caso “"+c.titulo+"”: “"+tx+"”");
+    para.forEach(resp=>tfAll().push({id:uid(), t:agora, quem:ui.me||"?", area:"", txt:tx, resp, data:"", dataComp:prazo, done:false, status:"pendente", obs:"atribuída no andamento do caso"+(para.length>1?" (junto com "+para.filter(x=>x!==resp).join(", ")+")":""), pessoa:c.pessoa||"", caso:c.id, prio:urg?"alta":"", origem:"caso", ve, grupo:g}));
+    const nomes=para.join(", ").replace(/, ([^,]*)$/, " e $1");
+    logA("atribuiu a "+nomes+" no caso “"+c.titulo+"”: “"+tx+"”");
     save(); adRedesenha(c); const n=$("#adTx"); if(n) n.focus();
-    toast("Pendência lançada para "+resp+"."); return;
+    toast("Tarefa atribuída a "+nomes+"."); return;
   }
   const link=(($("#adLink")||{}).value||"").trim();
   if(link && !/^https?:\/\//i.test(link)){ toast("Cole o link completo (começa com https://)."); return; }
@@ -8744,6 +8754,8 @@ document.addEventListener("click", e=>{
   const c=csGet(b.dataset.c); if(!c) return;
   const a=b.dataset.ad, r=(c.registros||[]).find(x=>x.id===b.dataset.r);
   if(a==="tipo"){ const v=$("#adVe"); if(v) adUi.ve=v.value; adUi.tipo=b.dataset.v; adRedesenha(c); const n=$("#adTx"); if(n) n.focus(); return; }
+  if(a==="para"){ const P=adPara(), v=b.dataset.v; if(P.has(v)){ if(P.size>1) P.delete(v); } else P.add(v); b.classList.toggle("on", P.has(v)); return; }
+  if(a==="paraTodos"){ adUi.para=new Set(AD_PESSOAS); $$('[data-ad="para"]').forEach(x=>x.classList.add("on")); return; }
   if(a==="filtro"){ adUi.filtro=b.dataset.v; $$(".ad-fil .ad-chip").forEach(x=>x.classList.toggle("on", x===b)); return adRedesenha(c, true); }
   if(a==="add") return adAdd(c);
   if(a==="editaDados"){ const f=$("#modalRoot .cb-form"), d=$("#adDados"); if(f) f.classList.remove("ad-oculto"); if(d) d.remove(); const t=$("#csfTit"); if(t) t.focus(); return; }
@@ -8793,9 +8805,11 @@ document.addEventListener("keydown", e=>{
  + ".ad-k{font-weight:700}.ad-ve{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:0 7px;color:var(--muted)}"
  + ".ad-tx{white-space:pre-wrap;font-size:13.5px;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}"
  + ".ad-tx.corta{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}"
- + ".ad-pl{display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:14px;cursor:pointer}.ad-pl span:nth-child(2){flex:1}"
- + ".ad-it.feito .ad-pl span:nth-child(2){text-decoration:line-through}"
+ + ".ad-pl{display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:14px;cursor:pointer}.ad-pl span:first-child{flex:1}"
+ + ".ad-it.feito .ad-pl span:first-child{text-decoration:line-through}"
  + ".ad-urg{color:var(--danger)}.ad-pz{font-size:12px;color:var(--muted);white-space:nowrap}.ad-pz.late{color:var(--danger);font-weight:700}"
+ + ".ad-campos label.ad-para{grid-column:span 2}.ad-pchips{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0}"
+ + ".ad-pps{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}.ad-pp{display:flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}.ad-pp.ok{text-decoration:line-through;color:var(--muted)}"
  + ".ad-del{color:var(--danger)}.ad-vazio{font-size:13px;margin:8px 0 0}"
  + "@media (max-width:640px){.ad-dg,.ad-campos{grid-template-columns:1fr 1fr}}";
  document.head.appendChild(st); })();
@@ -8954,6 +8968,649 @@ render = function(){ es7RenderBase(); try{ if(esAtivo() && !S.esteiraV7 && souMa
  + "@media (max-width:760px){.es7-saidas{grid-template-columns:1fr}.es7-st{writing-mode:horizontal-tb;transform:none;text-align:left}}";
  document.head.appendChild(st); })();
 /* ================= fim da Esteira v7 ================= */
+
+/* ================= Pacote 21 · v7.5.2 · Arquivos no Mapa: print no chat e Word/PDF em Documentos (09/11/2026) ================= */
+/* Pasta privada "mapa-arquivos" no Supabase Storage (SQL supabase-v7-5-2-arquivos.sql, rodar antes de publicar). */
+/* Chat: Print Screen + Ctrl+V na caixa do chat (ou botão Imagem) envia o print reduzido; aparece em miniatura e abre grande. */
+/* Documentos: além do link, dá para enviar o arquivo Word ou PDF (até 10 MB), ex.: Ficha de Atendimento em branco. */
+/* O arquivo enviado vira um link interno (prefixo AQ_PREF) que abre por link temporário de 1 hora. */
+/* Sigilo: modelos e formulários do escritório; documento de cliente com CPF continua no Dropbox. */
+const AQ_BUCKET = "mapa-arquivos";
+const AQ_PREF = "https://arquivo.mapa-mp/";
+const AQ_MAX = 10*1024*1024;
+const AQ_DOC_TIPOS = ["application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+const aqCache = {};
+
+function aqDemo(){ return (typeof r2Demo==="function" && r2Demo()) || typeof SB==="undefined" || !SB || !SB.storage; }
+function aqDemoDb(){ try{ return JSON.parse(sessionStorage.getItem("demo-arq")||"{}"); }catch(e){ return {}; } }
+function aqLimpaNome(n){ return String(n||"arquivo").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9._-]+/g,"-").replace(/-+/g,"-").slice(-80); }
+function aqCaminho(pasta, nome){ return pasta+"/"+isoDia().slice(0,7)+"/"+uid()+"-"+aqLimpaNome(nome); }
+function aqDataUrl(blob){ return new Promise((ok,erro)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=erro; r.readAsDataURL(blob); }); }
+async function aqEnviar(blob, pasta, nome, tipo){
+  const path=aqCaminho(pasta, nome);
+  if(aqDemo()){ const db=aqDemoDb(); db[path]=await aqDataUrl(blob); try{ sessionStorage.setItem("demo-arq", JSON.stringify(db)); }catch(e){ throw new Error("demo cheio"); } return path; }
+  const r=await SB.storage.from(AQ_BUCKET).upload(path, blob, {contentType:tipo||blob.type||"application/octet-stream", upsert:false});
+  if(r.error) throw r.error;
+  return path;
+}
+async function aqLink(path){
+  const c=aqCache[path]; if(c && c.ate>Date.now()) return c.url;
+  let url="";
+  if(aqDemo()) url=aqDemoDb()[path]||"";
+  else { const r=await SB.storage.from(AQ_BUCKET).createSignedUrl(path, 3600); if(r.error) throw r.error; url=r.data.signedUrl; }
+  aqCache[path]={url, ate:Date.now()+50*60*1000};
+  return url;
+}
+function aqAbrir(path){
+  const w=window.open("", "_blank");
+  aqLink(path).then(u=>{ if(!u){ if(w) w.close(); toast("Arquivo não encontrado."); return; } if(w) w.location.href=u; else location.href=u; }).catch(()=>{ if(w) w.close(); toast("Não consegui abrir o arquivo. Confira a internet e tente de novo."); });
+}
+/* Reduz o print para no máximo 1600 px e JPEG (fica em torno de 150–300 KB). */
+function aqReduzir(file){
+  return new Promise((ok,erro)=>{
+    const img=new Image(), u=URL.createObjectURL(file);
+    img.onload=()=>{ const k=Math.min(1, 1600/Math.max(img.width, img.height)); const cv=document.createElement("canvas"); cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+      const g=cv.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,cv.width,cv.height); g.drawImage(img,0,0,cv.width,cv.height); URL.revokeObjectURL(u);
+      cv.toBlob(b=>b?ok(b):erro(new Error("imagem")), "image/jpeg", 0.82); };
+    img.onerror=()=>{ URL.revokeObjectURL(u); erro(new Error("imagem")); };
+    img.src=u;
+  });
+}
+
+/* ---------- Chat: colar print ---------- */
+const AQ_MARCA = /^⟦print:([^⟧]+)⟧\s*/;
+async function aqChatPrint(file){
+  if(!file || !/^image\//.test(file.type)){ toast("Cole ou escolha uma imagem."); return; }
+  const t=$("#chatTxt"); const leg=t?(t.value||"").trim():"";
+  if(leg && esSensivel(leg)){ toast("A legenda parece ter CPF ou senha. Tire do texto."); return; }
+  toast("Enviando o print…");
+  try{
+    const b=await aqReduzir(file);
+    const path=await aqEnviar(b, "chat", "print.jpg", "image/jpeg");
+    const r=await chatRpc("chat_enviar", {p_para:ui.chat.aba, p_texto:"⟦print:"+path+"⟧"+(leg?" "+leg:"")});
+    if(!r || r.error || (r.data && r.data.erro)) throw new Error("chat");
+    if(t) t.value="";
+    chatBuscar();
+  }catch(e){ toast("Não consegui enviar o print. Tente de novo."); }
+}
+document.addEventListener("paste", e=>{
+  const t=e.target; if(!t || t.id!=="chatTxt" || !e.clipboardData) return;
+  const it=[...e.clipboardData.items].find(i=>i.kind==="file" && /^image\//.test(i.type)); if(!it) return;
+  e.preventDefault(); aqChatPrint(it.getAsFile());
+});
+const aqChatPintarBase = chatPintar;
+chatPintar = function(){
+  aqChatPintarBase();
+  const p=$("#chatPanel"); if(!p) return;
+  if(!p.querySelector("#aqChatImg")){
+    const comp=p.querySelector(".ch-comp"); if(comp){ comp.insertAdjacentHTML("beforeend", `<label class="btn sm aq-chbt" title="Enviar imagem (ou cole um print com Ctrl+V)">Imagem<input type="file" id="aqChatImg" accept="image/*" hidden></label>`); }
+    const tx=p.querySelector("#chatTxt"); if(tx) tx.placeholder="Escreva… (Enter envia · cole um print com Ctrl+V)";
+  }
+  p.querySelectorAll(".ch-b > span").forEach(s=>{
+    const m=(s.textContent||"").match(AQ_MARCA); if(!m || s.dataset.aq) return;
+    s.dataset.aq="1"; const leg=s.textContent.replace(AQ_MARCA,"");
+    s.innerHTML=`<button type="button" class="aq-thumb" data-aqp="${esc(m[1])}" title="Abrir o print"><span>carregando print…</span></button>${leg?`<span class="aq-leg">${esc(leg)}</span>`:""}`;
+    aqLink(m[1]).then(u=>{ const b=s.querySelector(".aq-thumb"); if(b && u){ b.innerHTML=`<img src="${u}" alt="print">`; const box=p.querySelector(".ch-list"); if(box) box.scrollTop=box.scrollHeight; } }).catch(()=>{ const b=s.querySelector(".aq-thumb span"); if(b) b.textContent="print indisponível"; });
+  });
+};
+const aqChatNotifBase = chatNotificar;
+chatNotificar = function(m){ aqChatNotifBase(Object.assign({}, m, {texto:String(m.texto||"").replace(AQ_MARCA, "📷 print ")})); };
+document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="aqChatImg" && t.files && t.files[0]){ aqChatPrint(t.files[0]); t.value=""; } });
+
+/* ---------- Documentos: enviar Word ou PDF ---------- */
+const aqDocModalBase = docModal;
+docModal = function(d, pre){
+  aqDocModalBase(d, pre);
+  const u=$("#dcUrl"); if(!u || $("#aqDocFile")) return;
+  const df=u.closest(".df");
+  df.insertAdjacentHTML("afterend", `<div class="df cb-span aq-up"><label>Ou envie o arquivo (Word ou PDF, até 10 MB)</label><input class="inp" type="file" id="aqDocFile" accept=".pdf,.doc,.docx,${AQ_DOC_TIPOS.join(",")}"><small class="muted" id="aqDocMsg">Para modelos e formulários do escritório (ex.: Ficha de Atendimento). Documento de cliente com CPF continua no Dropbox.</small></div>`);
+  if(String(u.value||"").startsWith(AQ_PREF)){ u.readOnly=true; const m=$("#aqDocMsg"); if(m) m.textContent="Este documento é um arquivo guardado no Mapa."; }
+};
+document.addEventListener("change", async e=>{
+  const t=e.target; if(!t || t.id!=="aqDocFile" || !t.files || !t.files[0]) return;
+  const f=t.files[0], msg=$("#aqDocMsg"), ok=$("#modalRoot .mfoot .btn.primary");
+  const ext=(f.name.split(".").pop()||"").toLowerCase();
+  if(!AQ_DOC_TIPOS.includes(f.type) && !["pdf","doc","docx"].includes(ext)){ toast("Envie um arquivo Word (.doc, .docx) ou PDF."); t.value=""; return; }
+  if(f.size>AQ_MAX){ toast("O arquivo passa de 10 MB. Guarde no Dropbox e cole o link."); t.value=""; return; }
+  if(msg) msg.textContent="Enviando…"; if(ok) ok.disabled=true;
+  try{
+    const tipo=f.type || (ext==="pdf"?"application/pdf":ext==="doc"?"application/msword":AQ_DOC_TIPOS[2]);
+    const path=await aqEnviar(f, "docs", f.name, tipo);
+    const u=$("#dcUrl"); if(u){ u.value=AQ_PREF+path; u.readOnly=true; }
+    const n=$("#dcNome"); if(n && !n.value.trim()) n.value=f.name.replace(/\.[^.]+$/,"");
+    if(msg) msg.textContent="Arquivo enviado: "+f.name+". Agora clique em "+(ok?ok.textContent:"Adicionar")+".";
+  }catch(x){ if(msg) msg.textContent="Não consegui enviar. Tente de novo."; toast("Não consegui enviar o arquivo."); }
+  if(ok) ok.disabled=false;
+});
+const aqDocOrigemBase = docOrigem;
+docOrigem = function(u){ return String(u||"").startsWith(AQ_PREF) ? "Arquivo no Mapa" : aqDocOrigemBase(u); };
+document.addEventListener("click", e=>{
+  const th=e.target.closest ? e.target.closest(".aq-thumb[data-aqp]") : null;
+  if(th){ e.preventDefault(); aqAbrir(th.dataset.aqp); return; }
+  const a=e.target.closest ? e.target.closest("a[href]") : null;
+  if(a && a.getAttribute("href").startsWith(AQ_PREF)){ e.preventDefault(); e.stopPropagation(); aqAbrir(a.getAttribute("href").slice(AQ_PREF.length)); }
+}, true);
+const aqViewDocsBase = viewDocumentos;
+viewDocumentos = function(){
+  return aqViewDocsBase().replace("Os arquivos ficam no Drive ou no Dropbox. Aqui guardamos o <b>link</b>, o tipo e a quem pertence, para abrir em um clique sem lotar o banco.",
+    "Guarde o <b>link</b> do Drive ou do Dropbox, ou <b>envie o arquivo</b> Word ou PDF (até 10 MB) — bom para modelos e formulários, como a Ficha de Atendimento. Documento de cliente com CPF continua no Dropbox.");
+};
+R2_VIEWS.documentos = viewDocumentos;
+
+(function(){ const st=document.createElement("style"); st.id="aqCss"; st.textContent=
+   ".aq-chbt{cursor:pointer;align-self:flex-end}"
+ + ".aq-thumb{display:block;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:0;cursor:zoom-in;overflow:hidden;max-width:220px;min-height:40px;color:var(--muted);font:inherit;font-size:12px}"
+ + ".aq-thumb span{display:block;padding:10px}.aq-thumb img{display:block;max-width:220px;max-height:180px;object-fit:cover}"
+ + ".aq-leg{display:block;margin-top:4px}.aq-up small{display:block;margin-top:4px;font-size:12px}";
+ document.head.appendChild(st); })();
+/* ================= fim dos Arquivos no Mapa ================= */
+
+/* ================= Pacote 21 · v7.5.2 · Ficha básica (ideia da Ellen, aprovada pelo Gabriel em 09/11/2026) ================= */
+/* A ficha completa (nome completo, CPF, nascimento, endereço e relato) fica no JURICHAT. */
+/* No Mapa só se marca o que já foi pego, sem escrever os dados: 5 marcações no cadastro do caso. */
+/* Botões: "Copiar pedido para o WhatsApp" (mensagem de primeiro contato pedindo os dados) e "Imprimir ficha" */
+/* (abre a Ficha de Atendimento guardada em Documentos como Modelo; se não houver, imprime uma ficha em branco). */
+/* O cartão da esteira de Atendimento mostra "ficha x/5" enquanto faltar algo. */
+const FB_ITENS = [["nome","Nome completo"],["cpf","CPF"],["nasc","Nascimento"],["end","Endereço"],["relato","Relato"]];
+function fbOk(c){ return Array.isArray(c.ficha) ? c.ficha : []; }
+function fbHTML(c){
+  const ok=fbOk(c);
+  return `<div class="fb-row" id="fbRow"><span class="fb-t" title="Os dados ficam no Jurichat; aqui só marcamos o que já foi pego">Ficha básica no Jurichat <b>${ok.length}/${FB_ITENS.length}</b></span>
+    <span class="fb-its">${FB_ITENS.map(([k,n])=>`<button type="button" class="fb-it${ok.includes(k)?" on":""}" data-fb="tg" data-c="${c.id}" data-k="${k}">${ok.includes(k)?"✓ ":""}${n}</button>`).join("")}</span>
+    <span class="fb-acts"><button type="button" class="lnk" data-fb="zap" data-c="${c.id}">Copiar pedido para o WhatsApp</button><button type="button" class="lnk" data-fb="imp" data-c="${c.id}">Imprimir ficha</button></span></div>`;
+}
+const fbDadosBase = adDadosHTML;
+adDadosHTML = function(c){ const h=fbDadosBase(c); const i=h.lastIndexOf("</div>"); return h.slice(0,i)+fbHTML(c)+h.slice(i); };
+function fbMensagem(c){
+  const n=esPrimeiro(c);
+  return "Olá"+(n?", "+n:"")+"! Aqui é do escritório M&P Advocacia. Para darmos início ao seu atendimento, por favor me envie:\n\n"
+    +"• Nome completo\n• CPF\n• Data de nascimento\n• Endereço completo (com CEP)\n• Um breve relato do que aconteceu\n\n"
+    +"Seus dados ficam guardados com sigilo. Qualquer dúvida, estou à disposição.";
+}
+function fbImprimirBranco(){
+  const w=window.open("", "_blank"); if(!w){ toast("Libere as janelas do navegador para imprimir."); return; }
+  const lin=(r)=>`<div class="l"><span>${r}</span><i></i></div>`;
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ficha de Atendimento — M&P</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:28px 34px;font-size:13px}
+    h1{font-size:19px;margin:0}.sub{color:#555;margin:2px 0 16px;font-size:12px}
+    .l{display:flex;gap:8px;align-items:flex-end;margin:12px 0}.l span{white-space:nowrap;font-weight:bold}.l i{flex:1;border-bottom:1px solid #333;height:16px}
+    .g{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.box{border:1px solid #333;height:260px;margin-top:6px}
+    .r{margin-top:18px;font-weight:bold}.ass{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}.ass div{border-top:1px solid #333;padding-top:4px;text-align:center;font-size:12px}
+    .rod{margin-top:22px;font-size:10.5px;color:#555}@media print{body{margin:14mm}}</style></head><body>
+    <h1>Ficha de Atendimento</h1><p class="sub">M&P Advocacia · Martins Pedron Martinischen &amp; Novello · Itaiópolis/SC</p>
+    ${lin("Nome completo")}<div class="g">${lin("CPF")}${lin("RG")}${lin("Data de nascimento")}${lin("Estado civil")}${lin("Profissão")}${lin("Telefone / WhatsApp")}</div>
+    ${lin("E-mail")}${lin("Endereço")}<div class="g">${lin("Cidade / UF")}${lin("CEP")}</div>${lin("Como conheceu o escritório")}
+    <p class="r">Relato do cliente</p><div class="box"></div>
+    <div class="g">${lin("Data")}${lin("Atendido por")}</div>
+    <div class="ass"><div>Assinatura do cliente</div><div>M&P Advocacia</div></div>
+    <p class="rod">Os dados desta ficha são usados apenas para o atendimento jurídico e guardados com sigilo (Lei 13.709/2018 · LGPD). Depois de passada para o Jurichat, esta folha é arquivada na pasta do cliente.</p>
+    <script>setTimeout(function(){window.print();},300);<\/script></body></html>`);
+  w.document.close();
+}
+function fbImprimir(){
+  const mod=(typeof docAll==="function"?docAll():[]).filter(d=>/ficha/i.test(d.nome||"") && (d.tipo==="Modelo" || /atendimento/i.test(d.nome||""))).sort((a,b)=>(b.t||0)-(a.t||0))[0];
+  if(mod && mod.url){ if(typeof AQ_PREF!=="undefined" && mod.url.startsWith(AQ_PREF)) aqAbrir(mod.url.slice(AQ_PREF.length)); else window.open(mod.url, "_blank", "noopener"); toast("Abrindo a "+mod.nome+"."); return; }
+  fbImprimirBranco();
+}
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest("[data-fb]") : null; if(!b) return;
+  e.preventDefault();
+  const c=csGet(b.dataset.c); if(!c) return;
+  if(b.dataset.fb==="tg"){
+    snap(); const L=fbOk(c).filter(x=>x!==b.dataset.k); const on=!fbOk(c).includes(b.dataset.k); if(on) L.push(b.dataset.k); c.ficha=L;
+    logA((on?"marcou":"desmarcou")+" “"+(FB_ITENS.find(x=>x[0]===b.dataset.k)||[0,""])[1]+"” da ficha básica no caso “"+c.titulo+"”");
+    save(); const r=$("#fbRow"); if(r) r.outerHTML=fbHTML(c); return;
+  }
+  if(b.dataset.fb==="zap") return copyText(fbMensagem(c), "Pedido de dados copiado. Cole no WhatsApp do cliente.");
+  if(b.dataset.fb==="imp") return fbImprimir();
+});
+const fbCardBase = esCard;
+esCard = function(c, ativo){
+  const h=fbCardBase(c, ativo);
+  if(!ativo) return h;
+  const col=esColDe(c); if((col.esteira||"A")!=="A" || col.fim || ["RET","FECH"].includes(col.k)) return h;
+  const n=fbOk(c).length; if(n>=FB_ITENS.length) return h;
+  return h.replace('<span class="grow"></span>', `<span class="es-pz fb-pz" title="Ficha básica no Jurichat">ficha ${n}/${FB_ITENS.length}</span><span class="grow"></span>`);
+};
+
+(function(){ const st=document.createElement("style"); st.id="fbCss"; st.textContent=
+   ".fb-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}"
+ + ".fb-t{font-size:12px;color:var(--muted)}.fb-t b{color:inherit}"
+ + ".fb-its{display:flex;gap:5px;flex-wrap:wrap}.fb-it{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:12px;border-radius:99px;padding:3px 9px;cursor:pointer}"
+ + ".fb-it.on{border-color:var(--accent);color:inherit;background:var(--accent-soft,rgba(95,183,189,.16))}"
+ + ".fb-acts{display:flex;gap:12px;margin-left:auto;font-size:12.5px}";
+ document.head.appendChild(st); })();
+/* ================= fim da Ficha básica ================= */
+
+/* ================= Pacote 21 · v7.5.2 · Esteira MP Grupo · Negócios (09/11/2026) ================= */
+/* Terceira aba em Atendimentos e casos, para casos que não são atendimento jurídico nem processo: */
+/* levantamento de crédito com imóveis em garantia, ajuda na venda de imóvel e outros negócios do MP Grupo. */
+/* Colunas: 1. Entrada · 2. Documentos e análise · 3. Em andamento · Concluído · Não seguiu. */
+/* Criada automaticamente na 1ª abertura do master (com Desfazer). O caso "Levantamento de crédito" que estava */
+/* no Jurídico vai para 2. Documentos e análise. O cadastro, o Andamento e as tarefas funcionam igual aos outros casos. */
+/* Mover entre abas: faixa "Passar para" embaixo de cada aba (arrastar o cartão) e, no caso, Editar dados › Coluna */
+/* com as colunas separadas por aba. Entrar ou sair de Negócios não passa pelas travas da esteira de Atendimento. */
+const NEG_COLS = [
+  {k:"N1", esteira:"C", nome:"1. Entrada", dono:"Gabriel", portao:[], dica:"Chegou a demanda de negócio (crédito, venda de imóvel…). Abrir a pasta no Dropbox ou Drive e registrar no Andamento o que o cliente quer."},
+  {k:"N2", esteira:"C", nome:"2. Documentos e análise", dono:"Ellen · Gabriel", portao:[], dica:"Juntar matrículas, certidões e documentos; o Gabriel analisa a viabilidade do negócio."},
+  {k:"N3", esteira:"C", nome:"3. Em andamento", dono:"Gabriel · Evaldo", portao:[], dica:"Negociação com financeira, comprador ou parceiro. Registrar cada passo no Andamento e atribuir as tarefas."},
+  {k:"N4", esteira:"C", nome:"Concluído", dono:"Gabriel", fim:true, portao:[], dica:"Negócio fechado."},
+  {k:"N5", esteira:"C", nome:"Não seguiu", dono:"Gabriel", fim:true, portao:[], dica:"Histórico para retomar no futuro."}
+];
+if(!ES_ABAS.some(a=>a[0]==="C")) ES_ABAS.push(["C","MP Grupo · Negócios","Gabriel + Evaldo"]);
+function negAtivo(){ return esAtivo() && funil().some(f=>f.esteira==="C"); }
+
+function negCriar(){
+  if(!esAtivo() || negAtivo() || S.esteiraNeg || !souMasterReal()) return;
+  snap();
+  const novas=NEG_COLS.map(p=>Object.assign({id:uid()}, JSON.parse(JSON.stringify(p))));
+  S.funil=funil().concat(novas); S.esteiraNeg=1;
+  const n2=novas[1];
+  csAll().filter(c=>/levantamento de cr[eé]dito|venda (de|do) im[oó]vel/i.test(c.titulo||"") && esColDe(c).esteira!=="C").forEach(c=>{ c.coluna=n2.id; c.movidoEm=Date.now(); logA("levou o caso “"+c.titulo+"” para MP Grupo · Negócios"); });
+  logA("criou a esteira MP Grupo · Negócios");
+  save(); render();
+  toast("Esteira MP Grupo · Negócios criada.", ()=>{ undo(); render(); });
+}
+const negRenderBase = render;
+render = function(){ negRenderBase(); try{ if(esAtivo() && S.esteiraV7 && !S.esteiraNeg && souMasterReal() && !ui.negAgendado){ ui.negAgendado=true; setTimeout(()=>{ ui.negAgendado=false; negCriar(); }, 0); } }catch(e){ console.warn("neg", e); } };
+
+/* ---------- Tela da aba Negócios ---------- */
+const negViewBase = viewCasos;
+viewCasos = function(){
+  if(ui.es.aba!=="C" || !negAtivo()) return negViewBase();
+  ui.es.aba="A";
+  let h;
+  try{ h=negViewBase(); } finally { ui.es.aba="C"; }
+  const F=esCols("C"), A0=(esCols("A")[0]||{}).id;
+  const q=(ui.cs.busca||"").toLowerCase();
+  const L=csAll().filter(c=>F.some(f=>f.id===c.coluna)).filter(c=>{
+    if(q && ![c.titulo, esNome(c), (c.etiquetas||[]).join(" ")].join(" ").toLowerCase().includes(q)) return false;
+    if(ui.cs.resp){ const cl=F.find(f=>f.id===c.coluna)||{}; if(c.resp!==ui.cs.resp && !String(cl.dono||"").includes(ui.cs.resp)) return false; }
+    return true; });
+  const kb=`<div class="kb">${F.map(col=>{ const it=L.filter(c=>c.coluna===col.id).sort((a,b)=>(b.etiquetas||[]).includes("Urgente")-(a.etiquetas||[]).includes("Urgente")||(a.movidoEm||a.t)-(b.movidoEm||b.t));
+    return `<section class="kb-col${col.fim?" neg-fim":""}" data-drop="cs" data-col="${col.id}"><header title="${esc(col.dica||"")}"><span class="es-ch">${esc(col.nome)}<small class="es-dono">${esc(col.dono||"")}</small></span><span class="count">${it.length}</span><button class="lnk" data-act="csNovo" data-col="${col.id}" title="Novo caso nesta coluna">+</button></header><div class="kb-list">${it.map(c=>esCard(c, true)).join("")}</div></section>`; }).join("")}</div>`;
+  const i0=h.indexOf('<div class="kb">'), i1=h.lastIndexOf('<p class="muted es-ver">');
+  if(i0>=0) h=h.slice(0,i0)+kb+"\n    "+(i1>i0?h.slice(i1):"");
+  h=h.replace(/<button class="es-tab on"/g, '<button class="es-tab"').replace('<button class="es-tab" data-es="aba" data-v="C"', '<button class="es-tab on" data-es="aba" data-v="C"');
+  h=h.replace(/<p>Do primeiro contato ao fechamento\.[^<]*<\/p>/, "<p>Negócios do MP Grupo: levantamento de crédito, venda de imóvel e outros. Arraste o cartão quando a etapa andar.</p>");
+  if(A0 && F[0]) h=h.replace(`data-act="csNovo" data-col="${A0}"`, `data-act="csNovo" data-col="${F[0].id}"`);
+  return h;
+};
+/* ---------- Mover entre Negócios e as outras abas (sem as travas do Atendimento) ---------- */
+const negMoverBase = esMover;
+esMover = function(c, destId){
+  c=csGet(c.id)||c;
+  const de=esColDe(c), para=funil().find(f=>f.id===destId);
+  if(!para || para.id===de.id) return;
+  if((de.esteira==="C") === (para.esteira==="C")) return negMoverBase(c, destId);
+  snap();
+  c.coluna=para.id; c.movidoEm=Date.now();
+  if(para.esteira==="B" && typeof esPassouJur==="function") esPassouJur(c, de);
+  logA("moveu o caso “"+c.titulo+"” para "+(para.esteira==="C"?"MP Grupo · Negócios › ":"")+para.nome);
+  save(); render();
+  if($("#esSec") && typeof esRefresh==="function") esRefresh(c);
+  toast("Caso movido para "+(para.esteira==="C"?"MP Grupo · Negócios › ":"")+para.nome+".");
+};
+function negDrop(col, tit, sub){ const n=csAll().filter(c=>c.coluna===col.id).length; return `<section class="kb-col es7-drop neg-drop" data-drop="cs" data-col="${col.id}"><b>${esc(tit)}</b><span class="muted">${n} caso(s) · ${esc(sub)}</span></section>`; }
+function negFaixa(itens){ return `<div class="es7-saidas neg-saidas"><div class="es7-st">Passar para</div>${itens.join("")}</div>`; }
+const negViewFaixas = viewCasos;
+viewCasos = function(){
+  let h=negViewFaixas();
+  if(!negAtivo()) return h;
+  const aba=ui.es.aba==="C"?"C":ui.es.aba==="B"?"B":"A";
+  const N1=esCols("C")[0], B1=esCols("B")[0];
+  const fim=h.lastIndexOf('<p class="muted es-ver">'); if(fim<0) return h;
+  if(aba==="A" && N1){
+    const i=h.lastIndexOf("</div>", fim);
+    if(h.indexOf('class="es7-saidas"')>=0 && i>0) return h.slice(0,i)+negDrop(N1, "MP Grupo · Negócios", "crédito, venda de imóvel…")+h.slice(i);
+  }
+  if(aba==="B" && N1) return h.slice(0,fim)+negFaixa([negDrop(N1, "MP Grupo · Negócios · "+N1.nome.replace(/^\d+\.\s*/,""), "solte aqui o que não é processo (crédito, venda de imóvel…)")])+h.slice(fim);
+  if(aba==="C" && B1) return h.slice(0,fim)+negFaixa([negDrop(B1, "Jurídico · "+B1.nome, "quando o negócio virar processo (Alan)")])+h.slice(fim);
+  return h;
+};
+/* ---------- No caso, Editar dados › Coluna separada por aba ---------- */
+const negCsModalBase = csModal;
+csModal = function(c, pre){
+  negCsModalBase(c, pre);
+  const sel=$("#csfCol"); if(!sel || !negAtivo()) return;
+  const v=sel.value, F=funil();
+  sel.innerHTML=ES_ABAS.map(([k,n])=>{ const L=F.filter(f=>(f.esteira||"A")===k); return L.length?`<optgroup label="${esc(n)}">${L.map(f=>`<option value="${f.id}" ${f.id===v?"selected":""}>${esc(f.nome)}</option>`).join("")}</optgroup>`:""; }).join("");
+};
+/* A aba escolhida fica guardada no aparelho (a tela antiga só aceitava A ou B). */
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest('[data-es="aba"][data-v="C"]') : null; if(!b) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  ui.es.aba="C"; try{ localStorage.setItem("mapa-es-aba","C"); }catch(x){} render();
+}, true);
+
+(function(){ const st=document.createElement("style"); st.id="negCss"; st.textContent=
+   ".kb-col.neg-fim{opacity:.85}"
+ + ".es7-saidas{grid-template-columns:auto repeat(auto-fit,minmax(220px,1fr))}"
+ + ".neg-drop{border-color:color-mix(in srgb,#c9a227 55%,transparent)}";
+ document.head.appendChild(st); })();
+/* ================= fim da Esteira Negócios ================= */
+
+/* ================= Pacote 21 · v7.5.2 · Protocolo da semana (09/11/2026) ================= */
+/* Em Prazos, nova visão "Protocolo da semana" para o Alan (o Gabriel vê tudo): */
+/*   - Importar a semana: colar ou escolher o CSV/JSON gerado pelo Claude a partir do painel do eproc. */
+/*   - Quadro por dia (Seg a Sex) com P1…Pn, prioridade, contagem regressiva e número do processo para copiar. */
+/*   - Em cada processo: Peça pronta (com link da peça), Intimações vinculadas x/n e Protocolar (nº do evento). */
+/*   - Barra da semana: protocolados, intimações vinculadas e "adiantados" (protocolados antes do dia do vencimento), */
+/*     ligados à meta de ter uma semana de prazos adiantados. Semana toda protocolada = "Semana limpa". */
+/*   - Radar da próxima semana (texto livre) e faixa no Painel inicial com o que vence hoje. */
+/* Usa os mesmos itens de Prazos (S.prazos) com o campo "prot"; marcar Protocolado cumpre o prazo. */
+/* Sigilo: partes entram só com primeiro nome e iniciais (empresas e órgãos ficam com o nome). Nunca código do eproc. */
+ui.prot = {modo:(function(){ try{ return localStorage.getItem("mapa-pz-modo")||"semana"; }catch(e){ return "semana"; } })(), semana:"", ev:""};
+const PROT_PRIO = {URGENTE:"urg", ALTA:"alta", MEDIA:"media", "MÉDIA":"media", BAIXA:"baixa"};
+const PROT_DIAS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+function protPeca(p){ const n=String(p.prot.cod||"").replace(/\D/g,""); return (n?"P"+n.padStart(2,"0"):"P")+"_"+String(p.processo||"").replace(/\.8\.24\.\d{4}$/,"")+"_"; }
+function protItens(){ return pzAll().filter(p=>p.prot); }
+function protNome(n){
+  n=String(n||"").trim(); if(!n) return "";
+  if(/\bs\.\s?a\.?|\b(ltda|eireli|me|epp|uni[aã]o|fazenda|mpsc|mp|minist[eé]rio|munic[ií]pio|estado|detran|celesc|inss|caixa|banco|posto|turismo|distribui[cç][aã]o)\b/i.test(n)) return n;
+  const w=n.split(/\s+/).filter(x=>!/^(d[aeo]s?|e)$/i.test(x));
+  return w.length<2 ? w[0] : w[0]+" "+w.slice(1).map(x=>x[0].toUpperCase()+".").join(" ");
+}
+function protSegunda(iso){ const d=lmIsoDate(iso); const w=d.getDay(); d.setDate(d.getDate()-(w===0?6:w-1)); return isoDia(d); }
+function protSemanas(){ return [...new Set(protItens().map(p=>p.prot.semana))].filter(Boolean).sort(); }
+function protSemanaAtual(){
+  const S0=protSemanas(); if(!S0.length) return "";
+  if(ui.prot.semana && S0.includes(ui.prot.semana)) return ui.prot.semana;
+  const aberta=S0.filter(s=>protItens().some(p=>p.prot.semana===s && !p.done));
+  return aberta.length ? aberta[0] : S0[S0.length-1];
+}
+function protDaSemana(s){ return protItens().filter(p=>p.prot.semana===s).sort((a,b)=>(a.data||"").localeCompare(b.data||"") || (Number(String(a.prot.cod).replace(/\D/g,""))||0)-(Number(String(b.prot.cod).replace(/\D/g,""))||0)); }
+function protAdiantado(p){ return p.done && p.prot.protEm && p.data && p.prot.protEm < p.data; }
+
+/* ---------- Importar ---------- */
+function protLer(txt){
+  txt=String(txt||"").trim(); if(!txt) return [];
+  if(txt[0]==="[" || txt[0]==="{"){ const j=JSON.parse(txt); return Array.isArray(j)?j:[j]; }
+  const linhas=txt.split(/\r?\n/).filter(l=>l.trim());
+  const sep=linhas[0].includes(";")?";":",";
+  const cab=linhas[0].split(sep).map(x=>x.trim().toLowerCase());
+  return linhas.slice(1).map(l=>{ const v=l.split(sep); const o={}; cab.forEach((k,i)=>o[k]=(v[i]||"").trim()); return o; });
+}
+function protImportar(lista){
+  let novos=0, atual=0;
+  const sem=lista.length ? protSegunda(lista.map(o=>o.vencimento).filter(Boolean).sort()[0]||isoDia()) : protSegunda(isoDia());
+  lista.forEach(o=>{
+    if(!o.processo || !o.vencimento) return;
+    const partes=[protNome(o.autor_exequente), protNome(o.reu_executado)].filter(Boolean).join(" x ");
+    const obs=o.observacao||"";
+    const dados={cod:o.id||"", prio:PROT_PRIO[String(o.prioridade||"").toUpperCase()]||"media", juizo:o.juizo||"", classe:o.classe||"", evento:o.evento||"", prazo:o.prazo||"", intN:Number(o.intimacoes_vincular)||0, obs, corridos:/corrid|penal|criminal/i.test(obs+" "+(o.classe||"")), semana:sem};
+    let p=pzAll().find(x=>x.processo===o.processo && x.data===o.vencimento);
+    if(p){ p.prot=Object.assign({intV:0}, p.prot||{}, dados); atual++; }
+    else {
+      p={id:uid(), t:Date.now(), quem:ui.me||"?", processo:o.processo, partes, pub:"", tipo:"prazo", data:o.vencimento, hora:"", texto:[o.classe, o.evento, o.prazo?"prazo "+o.prazo:"", obs].filter(Boolean).join(" · "), resp:o.responsavel||"Alan", done:/protocol/i.test(o.status||""), conferido:true, enviado:true, prot:Object.assign({intV:0}, dados)};
+      pzAll().push(p); novos++;
+    }
+  });
+  return {novos, atual, sem};
+}
+function protImportarModal(){
+  modal("Importar a semana de protocolo", `<p class="muted" style="margin:0 0 8px">Cole aqui o conteúdo do <b>CSV</b> ou do <b>JSON</b> que o Claude gerou do painel do eproc, ou escolha o arquivo. As partes entram só com primeiro nome e iniciais.</p>
+    <input class="inp" type="file" id="protArq" accept=".csv,.json,.txt,text/csv,application/json" style="margin-bottom:8px">
+    <textarea class="inp" id="protTxt" style="min-height:200px;font-family:monospace;font-size:12px" placeholder="id;prioridade;vencimento;processo;juizo;autor_exequente;reu_executado;classe;evento;prazo;intimacoes_vincular;observacao;responsavel;status"></textarea>
+    <div class="df" style="margin-top:8px"><label>Radar da próxima semana (opcional)</label><textarea class="inp" id="protRadar" style="min-height:70px" placeholder="SEG 16/11: … · TER 17/11: … · Audiência 24/11 às 11h">${esc((S.protRadar||{}).txt||"")}</textarea></div>`,
+    [{label:"Cancelar"},{label:"Importar", cls:"primary", fn:()=>{
+      let L=[]; try{ L=protLer($("#protTxt").value); }catch(e){ toast("Não consegui ler. Confira se colou o CSV ou o JSON inteiro."); return false; }
+      const rad=($("#protRadar").value||"").trim();
+      if(!L.length && !rad){ toast("Cole o CSV ou o JSON da semana."); return false; }
+      snap(); const r=protImportar(L); if(rad) S.protRadar={txt:rad, em:Date.now(), quem:ui.me||"?"};
+      ui.prot.semana=r.sem; ui.prot.modo="semana";
+      logA("importou o protocolo da semana de "+fmtIso(r.sem)+" ("+r.novos+" novos, "+r.atual+" atualizados)");
+      save(); render(); toast("Semana importada: "+r.novos+" novo(s), "+r.atual+" atualizado(s).");
+    }}], true);
+}
+document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="protArq" && t.files && t.files[0]){ const r=new FileReader(); r.onload=()=>{ const x=$("#protTxt"); if(x) x.value=String(r.result||"").replace(/^﻿/,""); }; r.readAsText(t.files[0], "utf-8"); } });
+
+/* ---------- Tela ---------- */
+function protCard(p){
+  const P=p.prot, d=pzDias(p), hoje=isoDia();
+  const quando = p.done ? "protocolado" : d<0 ? "VENCIDO há "+(-d)+"d" : d===0 ? "VENCE HOJE" : d===1 ? "amanhã" : "em "+d+" dias";
+  const nPeca=protPeca(p);
+  const ev=ui.prot.ev===p.id;
+  return `<div class="pt-card pr-${P.prio}${p.done?" ok":""}${!p.done&&d!==null&&d<=0?" hoje":""}" id="pt-${p.id}">
+    <div class="pt-h"><b class="pt-cod">${esc(P.cod||"")}</b><span class="pt-q">${esc(quando)}</span>${P.corridos?`<span class="pt-tag">dias corridos</span>`:""}<span class="grow"></span><span class="pt-j" title="Juízo">${esc(P.juizo||"")}</span></div>
+    <div class="pt-proc"><span>${esc(p.processo)}</span><button class="lnk" data-pt="copia" data-id="${p.id}" title="Copiar o número para colar no eproc">copiar</button></div>
+    <div class="pt-partes">${esc(p.partes||"")}</div>
+    <div class="pt-cl">${esc([P.classe, P.evento, P.prazo?"prazo "+P.prazo:""].filter(Boolean).join(" · "))}</div>
+    ${P.obs?`<div class="pt-obs">${esc(P.obs)}</div>`:""}
+    ${p.done ? `<div class="pt-feito">✓ Protocolado${P.protEv?" · evento "+esc(P.protEv):""}${P.protEm?" · "+esc(fmtIso(P.protEm)):""}${p.doneBy?" · "+esc(p.doneBy):""}${protAdiantado(p)?` · <b>${diasAte(p.data)-diasAte(P.protEm)} dia(s) adiantado</b>`:""}<button class="lnk" data-pt="desfaz" data-id="${p.id}">desfazer</button></div>`
+    : `<div class="pt-passos">
+        <button class="pt-st${P.peca?" on":""}" data-pt="peca" data-id="${p.id}" title="Peça pronta para protocolar">${P.peca?"✓ ":""}Peça pronta</button>
+        <span class="pt-int" title="Intimações vinculadas">Intimações <b>${P.intV||0}/${P.intN||0}</b><button class="lnk" data-pt="int-" data-id="${p.id}">−</button><button class="lnk" data-pt="int+" data-id="${p.id}">+</button></span>
+        <button class="lnk" data-pt="nome" data-id="${p.id}" title="Copiar o começo do nome do arquivo da peça">${esc(nPeca)}</button>
+      </div>
+      ${P.pecaUrl?`<a class="lnk pt-link" href="${esc(P.pecaUrl)}" target="_blank" rel="noopener">Abrir a peça</a>`:`<button class="lnk pt-link" data-pt="link" data-id="${p.id}">+ link da peça (Dropbox)</button>`}
+      ${ev?`<div class="pt-ev"><input class="inp" id="ptEv" placeholder="Nº do evento gerado" inputmode="numeric"><button class="btn sm primary" data-pt="ok" data-id="${p.id}">Confirmar</button><button class="lnk" data-pt="cancela" data-id="${p.id}">cancelar</button></div>`
+          :`<button class="btn sm primary pt-prot" data-pt="prot" data-id="${p.id}">Protocolar</button>`}`}
+  </div>`;
+}
+function protView(){
+  const sem=protSemanaAtual();
+  const topo=`<div class="phead"><div><div class="crumb">Gestão › Prazos</div><h1>Protocolo da semana</h1><p>Prazos da semana do eproc, por dia, para o Alan protocolar em ordem (P1 → Pn). Marque a peça, as intimações vinculadas e o número do evento.</p></div>
+    <div class="row" style="gap:8px">${protSemanas().length>1?`<select class="inp" id="ptSem" style="width:auto">${protSemanas().map(s=>`<option value="${s}" ${s===sem?"selected":""}>Semana de ${esc(fmtIso(s))}</option>`).join("")}</select>`:""}<button class="btn primary" data-pt="importar">Importar semana</button></div></div>
+    <div class="pt-modos"><button class="pt-modo on" data-pt="modo" data-v="semana">Protocolo da semana</button><button class="pt-modo" data-pt="modo" data-v="lista">Prazos e publicações</button></div>`;
+  if(!sem) return topo+`<div class="empty">Nenhuma semana importada ainda. Clique em <b>Importar semana</b> e cole o CSV ou o JSON gerado do painel do eproc.</div>`;
+  const L=protDaSemana(sem).filter(p=>ui.papel==="master" || adSocio() || p.resp===ui.me || ui.me==="Alan");
+  const feitos=L.filter(p=>p.done).length, intN=L.reduce((s,p)=>s+(p.prot.intN||0),0), intV=L.reduce((s,p)=>s+Math.min(p.prot.intV||0,p.prot.intN||0)+(p.done?Math.max(0,(p.prot.intN||0)-(p.prot.intV||0)):0),0);
+  const adi=L.filter(protAdiantado).length, hoje=L.filter(p=>!p.done && pzDias(p)<=0);
+  const prox=L.find(p=>!p.done);
+  const pct=L.length?Math.round(feitos*100/L.length):0;
+  const dias=[0,1,2,3,4].map(i=>agSoma(sem,i));
+  const fora=L.filter(p=>p.data<sem || p.data>dias[4]);
+  const col=(iso,titulo)=>{ const it=L.filter(p=>p.data===iso); const d=lmIsoDate(iso); return `<section class="pt-col${iso===isoDia()?" hj":""}"><header><b>${titulo||PROT_DIAS[d.getDay()]+" "+esc(fmtIso(iso))}</b><span class="count">${it.filter(p=>!p.done).length}/${it.length}</span></header>${it.map(protCard).join("")||`<p class="muted pt-nada">—</p>`}</section>`; };
+  const limpa=L.length && feitos===L.length;
+  return topo+`
+    <div class="pt-barra${limpa?" limpa":""}">
+      <div class="pt-bt"><b>${limpa?"Semana limpa! Tudo protocolado.":feitos+" de "+L.length+" protocolados"}</b><span class="muted">Semana de ${esc(fmtIso(sem))} a ${esc(fmtIso(dias[4]))} · responsável ${esc((L[0]||{}).resp||"Alan")} · supervisão Gabriel</span></div>
+      <div class="pt-prog"><i style="width:${pct}%"></i></div>
+      <div class="pt-kpis"><span><b>${hoje.length}</b> vence(m) hoje ou atrasado(s)</span><span><b>${intV}/${intN}</b> intimações vinculadas</span><span title="Protocolados antes do dia do vencimento — rumo à semana de prazos adiantados"><b>${adi}</b> adiantado(s)</span>${prox?`<button class="lnk" data-pt="ir" data-id="${prox.id}">Próximo: ${esc(prox.prot.cod)} · ${esc(pzLabel(prox))} ›</button>`:""}</div>
+    </div>
+    <div class="pt-quadro">${dias.map(iso=>col(iso)).join("")}</div>
+    ${fora.length?`<section class="pt-col pt-fora"><header><b>Fora da semana</b><span class="count">${fora.length}</span></header>${fora.map(protCard).join("")}</section>`:""}
+    ${(S.protRadar&&S.protRadar.txt)?`<div class="pt-radar"><b>Radar da próxima semana</b><div>${esc(S.protRadar.txt)}</div></div>`:""}
+    <p class="muted pt-padrao">Padrão: protocolar na ordem P1 → Pn · nome da peça <b>P03_5001644-40.2026_RecursoInominado.pdf</b> · vincular a petição a <b>todas</b> as intimações abertas do processo · depois, Protocolar com o nº do evento.</p>`;
+}
+const protViewBase = viewPrazos2;
+viewPrazos2 = function(){
+  if(ui.prot.modo==="semana") return protView();
+  const h=protViewBase();
+  return h.replace('<div class="tb">', `<div class="pt-modos"><button class="pt-modo" data-pt="modo" data-v="semana">Protocolo da semana</button><button class="pt-modo on" data-pt="modo" data-v="lista">Prazos e publicações</button></div><div class="tb">`);
+};
+document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="ptSem"){ ui.prot.semana=t.value; render(); } });
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest("[data-pt]") : null; if(!b) return;
+  e.preventDefault();
+  const a=b.dataset.pt, p=b.dataset.id ? pzAll().find(x=>x.id===b.dataset.id) : null;
+  if(a==="modo"){ ui.prot.modo=b.dataset.v; try{ localStorage.setItem("mapa-pz-modo", ui.prot.modo); }catch(x){} return render(); }
+  if(a==="importar") return protImportarModal();
+  if(a==="abrir"){ ui.prot.modo="semana"; return go("prazos"); }
+  if(!p) return;
+  const P=p.prot;
+  if(a==="copia") return copyText(p.processo, "Número do processo copiado.");
+  if(a==="nome") return copyText(protPeca(p), "Começo do nome da peça copiado.");
+  if(a==="ir"){ const el=$("#pt-"+p.id); if(el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.classList.add("pisca"); setTimeout(()=>el.classList.remove("pisca"),1600); } return; }
+  if(a==="peca"){ snap(); P.peca=!P.peca; logA((P.peca?"marcou peça pronta":"desmarcou peça pronta")+" em "+P.cod+" "+p.processo); save(); return render(); }
+  if(a==="int+"||a==="int-"){ snap(); P.intV=Math.max(0, Math.min(P.intN||99, (P.intV||0)+(a==="int+"?1:-1))); save(); return render(); }
+  if(a==="link"){ const u=prompt("Cole o link da peça no Dropbox ("+P.cod+")"); if(!u) return; if(!/^https?:\/\//i.test(u)){ toast("Cole o link completo (começa com https://)."); return; } snap(); P.pecaUrl=u.trim(); P.peca=true; save(); return render(); }
+  if(a==="prot"){ ui.prot.ev=p.id; render(); setTimeout(()=>{ const i=$("#ptEv"); if(i) i.focus(); },30); return; }
+  if(a==="cancela"){ ui.prot.ev=""; return render(); }
+  if(a==="ok"){
+    const v=(($("#ptEv")||{}).value||"").trim();
+    snap(); P.protEv=v; P.protEm=isoDia(); P.peca=true; if(P.intN) P.intV=P.intN;
+    p.done=true; p.doneEm=Date.now(); p.doneBy=ui.me||"?"; ui.prot.ev="";
+    const adi=p.data && P.protEm<p.data;
+    logA("protocolou "+P.cod+" ("+p.processo+")"+(v?" · evento "+v:"")+(adi?" · adiantado":""));
+    save(); render();
+    const resta=protDaSemana(P.semana).filter(x=>!x.done).length;
+    toast(resta ? P.cod+" protocolado"+(adi?" com folga":"")+". Faltam "+resta+"." : "Semana limpa! Todos os protocolos feitos."); return;
+  }
+  if(a==="desfaz"){ snap(); p.done=false; p.doneEm=0; p.doneBy=""; delete P.protEm; delete P.protEv; save(); return render(); }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="ptEv"){ e.preventDefault(); const b=$('[data-pt="ok"]'); if(b) b.click(); } });
+
+/* ---------- Faixa no Painel inicial (Alan e Gabriel) ---------- */
+function protFaixa(){
+  if(ui.view!=="central" && ui.view!=="hoje") return;
+  if(!(ui.papel==="master" || ui.me==="Alan")) return;
+  const c=$("#content"); if(!c || $("#ptFaixa")) return;
+  const sem=protSemanaAtual(); if(!sem) return;
+  const L=protDaSemana(sem); if(!L.length) return;
+  const f=L.filter(p=>p.done).length, hj=L.filter(p=>!p.done && pzDias(p)<=0), am=L.filter(p=>!p.done && pzDias(p)===1);
+  const ph=c.querySelector(".phead"); if(!ph) return;
+  ph.insertAdjacentHTML("afterend", `<div class="pt-faixa${hj.length?" crit":""}" id="ptFaixa"><b>Protocolo da semana</b><span>${f}/${L.length} protocolados</span>${hj.length?`<span class="pt-fh">hoje: ${hj.map(p=>esc(p.prot.cod)).join(", ")}</span>`:""}${am.length?`<span>amanhã: ${am.map(p=>esc(p.prot.cod)).join(", ")}</span>`:""}<span class="grow"></span><button class="btn sm" data-pt="abrir">Abrir</button></div>`);
+}
+const protRenderBase = render;
+render = function(){ protRenderBase(); try{ protFaixa(); }catch(e){ console.warn("prot", e); } };
+
+(function(){ const st=document.createElement("style"); st.id="ptCss"; st.textContent=
+   ".pt-modos{display:flex;gap:6px;margin:0 0 12px}.pt-modo{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:13px;border-radius:99px;padding:5px 12px;cursor:pointer}.pt-modo.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg,#fff);font-weight:700}"
+ + ".pt-barra{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}"
+ + ".pt-barra.limpa{border-color:var(--ok,#2e9e5b);background:color-mix(in srgb,var(--ok,#2e9e5b) 14%,var(--surface))}"
+ + ".pt-bt{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}.pt-bt b{font-size:17px}.pt-bt .muted{font-size:12.5px}"
+ + ".pt-prog{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}.pt-prog i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}"
+ + ".pt-kpis{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.pt-kpis b{color:var(--fg,inherit)}"
+ + ".pt-quadro{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}"
+ + ".pt-col{background:var(--surface-2);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px}.pt-col.hj{outline:2px solid var(--accent)}"
+ + ".pt-col header{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:2px 4px}.pt-nada{text-align:center;margin:8px 0}"
+ + ".pt-fora{margin-top:10px}"
+ + ".pt-card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:12.5px}"
+ + ".pt-card.pr-urg{border-left-color:var(--danger)}.pt-card.pr-alta{border-left-color:var(--warn,#d99a2b)}.pt-card.pr-media{border-left-color:#c9b227}.pt-card.ok{opacity:.65;border-left-color:var(--ok,#2e9e5b)}"
+ + ".pt-card.hoje{box-shadow:0 0 0 2px color-mix(in srgb,var(--danger) 45%,transparent)}.pt-card.pisca{animation:ptp 1.5s}@keyframes ptp{0%,100%{transform:none}30%{transform:scale(1.03)}}"
+ + ".pt-h{display:flex;gap:6px;align-items:center}.pt-cod{font-size:14px}.pt-q{font-size:11.5px;font-weight:700;color:var(--muted)}.pt-card.hoje .pt-q{color:var(--danger)}"
+ + ".pt-tag{font-size:10.5px;border:1px solid var(--line);border-radius:99px;padding:0 6px}.pt-j{font-size:10.5px;color:var(--muted)}"
+ + ".pt-proc{display:flex;gap:6px;align-items:baseline;font-variant-numeric:tabular-nums;font-weight:600;flex-wrap:wrap}.pt-partes{color:var(--muted)}.pt-cl{font-size:12px}"
+ + ".pt-obs{font-size:11.5px;color:var(--warn,#d99a2b);font-weight:600}"
+ + ".pt-passos{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin-top:2px}.pt-st{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:11.5px;border-radius:99px;padding:2px 8px;cursor:pointer}.pt-st.on{border-color:var(--ok,#2e9e5b);color:inherit}"
+ + ".pt-int{font-size:11.5px;color:var(--muted);display:flex;gap:4px;align-items:center}.pt-int b{color:inherit}.pt-passos .lnk{font-size:11px}"
+ + ".pt-link{font-size:11.5px;align-self:flex-start}.pt-prot{align-self:flex-start;margin-top:2px}"
+ + ".pt-ev{display:flex;gap:6px;align-items:center}.pt-ev .inp{width:130px;padding:5px 8px}"
+ + ".pt-feito{font-size:11.5px;color:var(--ok,#2e9e5b);display:flex;gap:6px;flex-wrap:wrap;align-items:baseline}"
+ + ".pt-radar{margin-top:12px;background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;font-size:13px;white-space:pre-wrap}.pt-radar b{display:block;margin-bottom:4px}"
+ + ".pt-padrao{font-size:12px;margin-top:10px}"
+ + ".pt-faixa{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13px}.pt-faixa.crit{border-left-color:var(--danger)}.pt-fh{color:var(--danger);font-weight:700}"
+ + "@media (max-width:1100px){.pt-quadro{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:640px){.pt-quadro{grid-template-columns:1fr}}";
+ document.head.appendChild(st); })();
+/* ================= fim do Protocolo da semana ================= */
+
+/* ================= Pacote 21 · v7.5.2 · Mesa do Alan no Painel inicial (09/11/2026) ================= */
+/* No Painel inicial do Alan (e do Gabriel em "Ver como Alan"), logo abaixo do título: */
+/*   1. AGORA: o próximo protocolo da fila (P1…Pn) com todos os botões: copiar nº, nome da peça, peça pronta, */
+/*      intimações e Protocolar com o nº do evento, sem sair do Painel. */
+/*   2. SEMANA: anel de progresso, o que vence hoje e amanhã, adiantados e a fila dos próximos. */
+/*   3. JURÍDICO: quantos casos em cada coluna, kits que chegaram nos últimos 7 dias e as tarefas dele de hoje/atrasadas. */
+/* O Gabriel, no próprio Painel, continua com a faixa curta do Protocolo da semana. */
+function maQuem(){ return ui.me==="Alan"; }
+function maAnel(pct){
+  const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
+  return `<svg class="ma-anel" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="9"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 42 42)"/><text x="42" y="47" text-anchor="middle" font-size="17" font-weight="700" fill="currentColor">${pct}%</text></svg>`;
+}
+function maHTML(){
+  const hoje=isoDia(), sem=protSemanaAtual(), L=sem?protDaSemana(sem):[];
+  const ab=L.filter(p=>!p.done), feitos=L.length-ab.length, prox=ab[0];
+  const pct=L.length?Math.round(feitos*100/L.length):0;
+  const hj=ab.filter(p=>pzDias(p)<=0), am=ab.filter(p=>pzDias(p)===1), adi=L.filter(protAdiantado).length;
+  const B=esAtivo()?esCols("B"):[];
+  const kits=B.length?csAll().filter(c=>c.coluna===B[0].id && ((c.jur&&c.jur.t)||c.movidoEm||0)>Date.now()-7*864e5):[];
+  const tf=tfLista().filter(t=>t.resp==="Alan" && !t.done && !t.arq && ((t.dataComp&&t.dataComp<=hoje)||(t.data&&t.data<=hoje))).sort((a,b)=>(a.data||a.dataComp||"").localeCompare(b.data||b.dataComp||""));
+  const agora = prox ? `<div class="ma-c ma-agora"><div class="ma-ct">Agora <span class="muted">· protocolar em ordem</span></div>${protCard(prox)}</div>`
+    : `<div class="ma-c ma-agora ma-ok"><div class="ma-ct">Agora</div><p class="ma-limpa">${L.length?"Semana limpa! Tudo protocolado.":"Nenhuma semana de protocolo importada."}</p>${L.length?`<p class="muted">${adi} protocolo(s) adiantado(s) nesta semana.</p>`:`<button class="btn sm" data-pt="abrir">Abrir Protocolo da semana</button>`}</div>`;
+  const fila = ab.slice(prox?1:0, 7).map(p=>`<button class="ma-fl${pzDias(p)<=0?" crit":pzDias(p)===1?" warn":""}" data-pt="abrir"><b>${esc(p.prot.cod)}</b><span>${esc(pzLabel(p))}</span><small>${esc(String(p.processo).replace(/\.8\.24\.\d{4}$/,""))}</small></button>`).join("");
+  const semana = `<div class="ma-c ma-sem"><div class="ma-ct">Semana <span class="muted">${sem?esc(fmtIso(sem))+" a "+esc(fmtIso(agSoma(sem,4))):""}</span><span class="grow"></span><button class="lnk" data-pt="abrir">Abrir ›</button></div>
+    <div class="ma-semtop">${maAnel(pct)}<div class="ma-k"><span><b>${feitos}/${L.length}</b> protocolados</span><span class="${hj.length?"crit":""}"><b>${hj.length}</b> hoje / atrasado</span><span><b>${am.length}</b> amanhã</span><span title="Protocolados antes do vencimento"><b>${adi}</b> adiantado(s)</span></div></div>
+    ${fila?`<div class="ma-fila">${fila}</div>`:""}
+    ${(S.protRadar&&S.protRadar.txt)?`<details class="ma-radar"><summary>Radar da próxima semana</summary><div>${esc(S.protRadar.txt)}</div></details>`:""}</div>`;
+  const jur = `<div class="ma-c ma-jur"><div class="ma-ct">Jurídico<span class="grow"></span><button class="lnk" data-ma="jur">Abrir esteira ›</button></div>
+    <div class="ma-cols">${B.map(col=>`<div><b>${csAll().filter(c=>c.coluna===col.id).length}</b><span>${esc(col.nome)}</span></div>`).join("")}</div>
+    ${kits.length?`<div class="ma-sub">Kits novos (7 dias)</div>${kits.slice(0,4).map(c=>`<button class="ma-kit" data-act="csAbrir" data-id="${c.id}"><b>${esc(c.titulo)}</b><small>${esc(esNome(c))}</small></button>`).join("")}`:""}
+    <div class="ma-sub">Minhas tarefas de hoje ${tf.length?`<span class="count w">${tf.length}</span>`:""}</div>
+    ${tf.length?tf.slice(0,5).map(tfLi2).join(""):`<p class="muted ma-v">Nada para hoje.</p>`}</div>`;
+  return `<section class="ma" id="maMesa"><div class="ma-grid">${agora}${semana}${jur}</div></section>`;
+}
+function maRender(){
+  if(ui.view!=="central" && ui.view!=="hoje") return;
+  const c=$("#content"); if(!c) return;
+  const v=$("#maMesa"); if(v) v.remove();
+  if(!maQuem()) return;
+  const f=$("#ptFaixa"); if(f) f.remove();
+  const ph=c.querySelector(".phead"); if(!ph) return;
+  ph.insertAdjacentHTML("afterend", maHTML());
+}
+const maFaixaBase = protFaixa;
+protFaixa = function(){ if(maQuem()) return; maFaixaBase(); };
+const maRenderBase = render;
+render = function(){ maRenderBase(); try{ maRender(); }catch(e){ console.warn("mesa", e); } };
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest('[data-ma="jur"]') : null; if(!b) return;
+  e.preventDefault(); ui.es.aba="B"; try{ localStorage.setItem("mapa-es-aba","B"); }catch(x){} go("casos");
+});
+
+(function(){ const st=document.createElement("style"); st.id="maCss"; st.textContent=
+   ".ma{margin:0 0 16px}.ma-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}"
+ + ".ma-c{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}"
+ + ".ma-ct{display:flex;gap:6px;align-items:baseline;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}.ma-ct .muted{text-transform:none;letter-spacing:0;font-weight:400}"
+ + ".ma-agora .pt-card{font-size:13.5px;border-width:1px 1px 1px 5px}.ma-agora .pt-cod{font-size:18px}.ma-agora .pt-proc{font-size:15px}"
+ + ".ma-ok{justify-content:center}.ma-limpa{font-size:18px;font-weight:700;margin:0;color:var(--ok,#2e9e5b)}"
+ + ".ma-semtop{display:flex;gap:12px;align-items:center}.ma-anel{width:84px;height:84px;flex:none}"
+ + ".ma-k{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12.5px;color:var(--muted)}.ma-k b{color:var(--fg,inherit);font-size:15px}.ma-k .crit b{color:var(--danger)}"
+ + ".ma-fila{display:flex;flex-direction:column;gap:4px}.ma-fl{display:grid;grid-template-columns:38px 90px minmax(0,1fr);gap:6px;align-items:baseline;text-align:left;border:1px solid var(--line);background:var(--surface-2);color:inherit;font:inherit;font-size:12.5px;border-radius:8px;padding:5px 8px;cursor:pointer}"
+ + ".ma-fl.crit{border-left:3px solid var(--danger)}.ma-fl.warn{border-left:3px solid var(--warn,#d99a2b)}.ma-fl small{color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
+ + ".ma-radar summary{cursor:pointer;font-size:12.5px;color:var(--muted)}.ma-radar div{white-space:pre-wrap;font-size:12.5px;margin-top:4px}"
+ + ".ma-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.ma-cols div{background:var(--surface-2);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column}.ma-cols b{font-size:20px}.ma-cols span{font-size:11.5px;color:var(--muted)}"
+ + ".ma-sub{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-top:4px}"
+ + ".ma-kit{display:flex;flex-direction:column;text-align:left;border:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-size:12.5px;border-radius:8px;padding:5px 8px;cursor:pointer}.ma-kit small{color:var(--muted)}"
+ + ".ma-v{font-size:12.5px;margin:0}"
+ + "@media (max-width:1100px){.ma-grid{grid-template-columns:1fr 1fr}.ma-agora{grid-column:1/-1}}@media (max-width:640px){.ma-grid{grid-template-columns:1fr}}";
+ document.head.appendChild(st); })();
+/* ================= fim da Mesa do Alan ================= */
+
+/* ================= Pacote 21 · v7.5.2 · Trocar de tela pelo nome (só o master, 09/11/2026) ================= */
+/* Clicar no nome (canto superior direito) abre um menu: Minha tela (Gabriel), Tela do Alan, do Evaldo e da Ellen, */
+/* e Minha conta. Usa o "Ver como" que já existia: mostra a tela da pessoa sem gravar nada, com a faixa "Voltar". */
+/* Para os outros (Alan, Evaldo, Ellen), clicar no nome continua abrindo Minha conta. */
+const TT_PESSOAS = [["Alan","sócio · jurídico e protocolos"],["Evaldo","sócio"],["Ellen","equipe · atendimento"]];
+function ttMaster(){ return (ui.vcReal ? ui.vcReal.papel : ui.papel)==="master"; }
+function ttFechar(){ const m=$("#ttMenu"); if(m) m.remove(); }
+function ttAbrir(btn){
+  ttFechar();
+  const eu=ui.vcReal ? ui.vcReal.me : ui.me, atual=ui.verComo||"";
+  const it=(nome, sub, v, on)=>`<button type="button" class="tt-it${on?" on":""}" data-tt="${esc(v)}"><span class="av tt-av">${esc((nome||"?")[0])}</span><span class="tt-tx"><b>${esc(nome)}</b><small>${esc(sub)}</small></span>${on?`<span class="tt-ok">✓</span>`:""}</button>`;
+  const r=btn.getBoundingClientRect();
+  document.body.insertAdjacentHTML("beforeend", `<div class="tt-menu" id="ttMenu" role="menu" style="top:${Math.round(r.bottom+6)}px;right:${Math.max(8,Math.round(window.innerWidth-r.right))}px">
+    <div class="tt-h">Ver a tela de</div>
+    ${it(eu||"Gabriel", "minha tela", "", !atual)}
+    ${TT_PESSOAS.map(([n,s])=>it(n, s, n, atual===n)).join("")}
+    <div class="tt-sep"></div>
+    <button type="button" class="tt-it tt-conta" data-tt="__conta"><span class="tt-tx"><b>Minha conta</b><small>senha, sair</small></span></button>
+    <p class="tt-nota">Na tela de outra pessoa nada é gravado.</p></div>`);
+}
+document.addEventListener("click", e=>{
+  const w=e.target.closest ? e.target.closest('[data-act="who"]') : null;
+  if(w && ttMaster() && w.closest(".top")){ e.preventDefault(); e.stopImmediatePropagation(); if($("#ttMenu")) ttFechar(); else ttAbrir(w); return; }
+  const o=e.target.closest ? e.target.closest("[data-tt]") : null;
+  if(o){ e.preventDefault(); e.stopImmediatePropagation(); const v=o.dataset.tt; ttFechar();
+    if(v==="__conta"){ if(ui.vcReal) vcSair(); whoModal(false); return; }
+    if(!v){ if(ui.vcReal) vcSair(); return; }
+    vcEntrar(v); return; }
+  if($("#ttMenu") && !(e.target.closest && e.target.closest("#ttMenu"))) ttFechar();
+}, true);
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && $("#ttMenu")) ttFechar(); });
+window.addEventListener("resize", ttFechar);
+
+(function(){ const st=document.createElement("style"); st.id="ttCss"; st.textContent=
+   ".tt-menu{position:fixed;z-index:120;min-width:250px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.35);padding:6px;display:flex;flex-direction:column;gap:2px}"
+ + ".tt-h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;padding:6px 8px 4px}"
+ + ".tt-it{display:flex;gap:10px;align-items:center;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:7px 8px;border-radius:10px;cursor:pointer}"
+ + ".tt-it:hover,.tt-it.on{background:var(--accent-soft,rgba(95,183,189,.16))}.tt-av{flex:none;width:30px;height:30px;display:grid;place-items:center;font-weight:700}"
+ + ".tt-tx{display:flex;flex-direction:column;flex:1;min-width:0}.tt-tx small{color:var(--muted);font-size:11.5px}.tt-ok{color:var(--accent);font-weight:700}"
+ + ".tt-sep{height:1px;background:var(--line);margin:4px 2px}.tt-nota{font-size:11px;color:var(--muted);margin:2px 8px 4px}"
+ + ".top [data-act=\"who\"]{cursor:pointer}";
+ document.head.appendChild(st); })();
+/* ================= fim do Trocar de tela ================= */
 
 /* ================= INÍCIO ================= */
 render();
