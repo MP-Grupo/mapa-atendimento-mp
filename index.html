@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.5 · 05/11/2026";
+const MN_VER = "Mapa v7.5.1 · 09/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -8361,6 +8361,599 @@ function crmMenu(){
 const crmRenderBase = render;
 render = function(){ crmRenderBase(); try{ crmMenu(); if(typeof mnAplicar==="function") mnAplicar(); }catch(e){ console.warn("crm", e); } };
 /* ================= fim do Pacote 18 ================= */
+
+/* ================= Pacote 20 · v7.5.1 · Busca por aproximação (09/11/2026) ================= */
+/* Todo campo de Pessoa/Cliente vira busca digitável: escrever "Bueno" já mostra "Luiz Gustavo Bueno". */
+/* Acha por qualquer parte do nome, sem acento, sem maiúscula e com 1 ou 2 letras erradas. */
+/* Vale para: caso, tarefa, compromisso, processo administrativo, documento, agenda e "Virar pendência". */
+/* Em Pessoas, a busca da lista também passa a achar sem acento e com erro de digitação. */
+/* No topo, o Buscar… (Ctrl K) passa a achar as fichas de Pessoas e os casos. */
+/* O select original continua no formulário (escondido) e recebe o valor: nada muda na gravação. */
+const BP_SELECTS = ["csfPes","tf2Pes","evPes","adPes","dcPes","agMPes"];
+const BP_TEXTOS = ["cxPvCli"];
+const BP_MAX = 8;
+
+function bpNorm(t){ return String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim(); }
+function bpLev(a,b,teto){
+  if(Math.abs(a.length-b.length)>teto) return teto+1;
+  let ant=[]; for(let j=0;j<=b.length;j++) ant[j]=j;
+  for(let i=1;i<=a.length;i++){
+    const cur=[i]; let menor=i;
+    for(let j=1;j<=b.length;j++){
+      const c=Math.min(ant[j]+1, cur[j-1]+1, ant[j-1]+(a[i-1]===b[j-1]?0:1));
+      cur[j]=c; if(c<menor) menor=c;
+    }
+    if(menor>teto) return teto+1;
+    ant=cur;
+  }
+  return ant[b.length];
+}
+/* Nota de 0 (não serve) para cima. Cada palavra digitada precisa casar com alguma palavra do nome. */
+function bpNotaPalavra(t, w){
+  if(w===t) return 5;
+  if(w.startsWith(t)) return 4;
+  if(t.length>=3 && w.includes(t)) return 3;
+  const teto = t.length>=7 ? 2 : t.length>=4 ? 1 : 0;
+  if(!teto) return 0;
+  if(bpLev(t, w, teto)<=teto) return 2;
+  if(w.length>t.length && bpLev(t, w.slice(0,t.length), teto)<=teto) return 1;
+  return 0;
+}
+function bpNota(nome, q){
+  const n=bpNorm(nome), k=bpNorm(q); if(!n || !k) return 0;
+  if(n===k) return 100;
+  const ws=n.split(" "), ts=k.split(" ");
+  let soma=0;
+  for(const t of ts){
+    let best=0; for(const w of ws){ const s=bpNotaPalavra(t,w); if(s>best) best=s; }
+    if(!best) return 0;
+    soma+=best;
+  }
+  if(n.startsWith(k)) soma+=6; else if(n.includes(k)) soma+=3;
+  return soma;
+}
+function bpAchar(lista, q, nomeDe){
+  const L=[];
+  lista.forEach(x=>{ const s=bpNota(nomeDe(x), q); if(s) L.push({x, s}); });
+  return L.sort((a,b)=>(b.s-a.s) || agCmpNome(nomeDe(a.x), nomeDe(b.x))).map(r=>r.x);
+}
+/* Destaca em negrito o trecho do nome que casou (quando casou de forma exata). */
+function bpRealce(nome, q){
+  const n=String(nome||""), base=bpNorm(n).length===n.length ? bpNorm(n) : null;
+  const ts=bpNorm(q).split(" ").filter(t=>t.length>=2);
+  if(!base || !ts.length) return esc(n);
+  const marca=new Array(n.length).fill(false);
+  ts.forEach(t=>{ let i=base.indexOf(t); while(i>=0){ for(let j=i;j<i+t.length;j++) marca[j]=true; i=base.indexOf(t, i+t.length); } });
+  let out="", dentro=false;
+  for(let i=0;i<n.length;i++){
+    if(marca[i] && !dentro){ out+="<b>"; dentro=true; }
+    if(!marca[i] && dentro){ out+="</b>"; dentro=false; }
+    out+=esc(n[i]);
+  }
+  return out+(dentro?"</b>":"");
+}
+function bpPessoaSub(p){
+  const parts=[p.papel||"", p.cidade||""].filter(Boolean);
+  if(p.provisoria) parts.push("a completar");
+  return parts.join(" · ");
+}
+
+/* ---------- Caixa de sugestões (comum aos dois tipos de campo) ---------- */
+function bpMontar(inp, opts){
+  const box=document.createElement("div"); box.className="bp-list"; box.hidden=true;
+  inp.insertAdjacentElement("afterend", box);
+  inp.setAttribute("autocomplete","off");
+  let itens=[], ativo=-1;
+  const fechar=()=>{ box.hidden=true; ativo=-1; };
+  const pintar=()=>{ box.querySelectorAll(".bp-it").forEach((el,i)=>el.classList.toggle("on", i===ativo)); const a=box.querySelector(".bp-it.on"); if(a) a.scrollIntoView({block:"nearest"}); };
+  const abrir=()=>{
+    const q=inp.value.trim();
+    itens = q ? bpAchar(psAll(), q, p=>p.nome).slice(0, BP_MAX) : (opts.vazio ? opts.vazio() : []);
+    const total = q ? bpAchar(psAll(), q, p=>p.nome).length : 0;
+    if(!itens.length && !q){ fechar(); return; }
+    ativo = itens.length ? 0 : -1;
+    box.innerHTML = itens.map((p,i)=>`<button type="button" class="bp-it" data-i="${i}"><span class="bp-av">${esc(inic(p.nome))}</span><span class="bp-tx"><span class="bp-nm">${bpRealce(p.nome, q)}</span><small>${esc(bpPessoaSub(p))}</small></span></button>`).join("")
+      + (q && !itens.length ? `<div class="bp-nada">Ninguém parecido com “${esc(q)}”.${opts.semAchar?" "+opts.semAchar:""}</div>` : "")
+      + (total>BP_MAX ? `<div class="bp-nada">Mais ${total-BP_MAX} parecido(s) — escreva mais uma parte do nome.</div>` : "");
+    box.hidden=false; pintar();
+  };
+  const escolher=i=>{ const p=itens[i]; if(!p) return; opts.escolher(p); fechar(); };
+  inp.addEventListener("input", abrir);
+  inp.addEventListener("focus", ()=>{ if(opts.abrirNoFoco) { inp.select(); abrir(); } });
+  inp.addEventListener("blur", ()=>setTimeout(()=>{ fechar(); if(opts.aoSair) opts.aoSair(); }, 160));
+  inp.addEventListener("keydown", e=>{
+    if(box.hidden) { if(e.key==="ArrowDown"){ e.preventDefault(); abrir(); } return; }
+    if(e.key==="ArrowDown"){ e.preventDefault(); e.stopPropagation(); if(itens.length){ ativo=(ativo+1)%itens.length; pintar(); } }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); e.stopPropagation(); if(itens.length){ ativo=(ativo-1+itens.length)%itens.length; pintar(); } }
+    else if(e.key==="Enter"){ if(ativo>=0){ e.preventDefault(); e.stopPropagation(); escolher(ativo); } }
+    else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); fechar(); }
+  });
+  box.addEventListener("mousedown", e=>{ const b=e.target.closest(".bp-it"); if(!b) return; e.preventDefault(); escolher(+b.dataset.i); });
+}
+
+/* ---------- Select de Pessoa → campo digitável ---------- */
+function bpTextoDoSelect(sel){ const o=sel.options[sel.selectedIndex]; return o && o.value ? o.textContent : ""; }
+function bpSelect(sel){
+  if(!sel || sel.dataset.bp) return;
+  sel.dataset.bp="1";
+  const wrap=document.createElement("div"); wrap.className="bp-wrap"; if(sel.style.flex) wrap.style.flex=sel.style.flex;
+  sel.insertAdjacentElement("beforebegin", wrap);
+  wrap.appendChild(sel);
+  sel.classList.add("bp-oculto"); sel.tabIndex=-1;
+  const inp=document.createElement("input"); inp.className="inp bp-in"; inp.type="text";
+  inp.placeholder="Digite parte do nome (ex.: Bueno)";
+  inp.value=bpTextoDoSelect(sel);
+  wrap.insertBefore(inp, sel);
+  const limpa=document.createElement("button"); limpa.type="button"; limpa.className="bp-x"; limpa.title="Tirar a pessoa"; limpa.textContent="×";
+  wrap.insertBefore(limpa, sel);
+  const sync=()=>{ inp.value=bpTextoDoSelect(sel); wrap.classList.toggle("tem", !!sel.value); };
+  sync();
+  bpMontar(inp, {
+    abrirNoFoco:true,
+    escolher:p=>{ if(![...sel.options].some(o=>o.value===p.id)) sel.insertAdjacentHTML("beforeend", `<option value="${p.id}">${esc(p.nome)}</option>`); sel.value=p.id; sel.dispatchEvent(new Event("change",{bubbles:true})); sync(); },
+    aoSair:()=>{ if(!inp.value.trim() && sel.value){ sel.value=""; sel.dispatchEvent(new Event("change",{bubbles:true})); } sync(); },
+    semAchar:sel.id==="csfPes" ? "Use o botão Nova para cadastrar." : "Cadastre em Gestão › Pessoas."
+  });
+  limpa.addEventListener("mousedown", e=>{ e.preventDefault(); sel.value=""; sel.dispatchEvent(new Event("change",{bubbles:true})); sync(); inp.focus(); });
+  sel.addEventListener("change", sync);
+}
+
+/* ---------- Campo de texto de cliente (Virar pendência) → sugestões ---------- */
+function bpTexto(inp){
+  if(!inp || inp.dataset.bp) return;
+  inp.dataset.bp="1";
+  const wrap=document.createElement("div"); wrap.className="bp-wrap bp-wrap-tx";
+  inp.insertAdjacentElement("beforebegin", wrap); wrap.appendChild(inp);
+  inp.placeholder="Nome do cliente — digite parte (ex.: Bueno)";
+  bpMontar(inp, { escolher:p=>{ inp.value=p.nome; }, semAchar:"Se gravar assim, vira ficha nova “a completar”." });
+}
+
+function bpVarre(raiz){
+  const r=raiz||document;
+  BP_SELECTS.forEach(id=>{ const el=r.querySelector ? r.querySelector("#"+id) : null; if(el && el.tagName==="SELECT") bpSelect(el); });
+  BP_TEXTOS.forEach(id=>{ const el=r.querySelector ? r.querySelector("#"+id) : null; if(el && el.tagName==="INPUT") bpTexto(el); });
+}
+(function(){
+  let pend=false;
+  const obs=new MutationObserver(()=>{ if(pend) return; pend=true; requestAnimationFrame(()=>{ pend=false; try{ bpVarre(document); }catch(e){ console.warn("bp", e); } }); });
+  const ligar=()=>{ if(document.body) obs.observe(document.body, {childList:true, subtree:true}); };
+  if(document.body) ligar(); else document.addEventListener("DOMContentLoaded", ligar);
+})();
+
+/* ---------- Pessoas › busca da lista (sem acento e com erro de digitação) ---------- */
+const bpViewPessoasBase = viewPessoas;
+viewPessoas = function(){
+  const q=String(ui.ps.busca||"").trim();
+  if(!q) return bpViewPessoasBase();
+  const base=psAll;
+  const porNome=bpAchar(base().filter(p=>!ui.ps.papel||p.papel===ui.ps.papel), q, p=>p.nome);
+  const ql=q.toLowerCase();
+  const porOutros=base().filter(p=>(!ui.ps.papel||p.papel===ui.ps.papel) && !porNome.includes(p) && [p.tel,p.email,p.cidade,p.doc].join(" ").toLowerCase().includes(ql));
+  const achados=porNome.concat(porOutros);
+  let html;
+  ui.ps.busca="";
+  psAll = function(){ return achados; };
+  try{ html=bpViewPessoasBase(); }
+  finally{ psAll=base; ui.ps.busca=q; }
+  html=html.replace('id="psBusca" placeholder="Buscar por nome, telefone, e-mail ou cidade" value=""', 'id="psBusca" placeholder="Buscar por nome, telefone, e-mail ou cidade" value="'+esc(q)+'"');
+  if(!achados.length) html=html.replace(/<div class="empty">[\s\S]*?<\/div>$/, `<div class="empty">Ninguém parecido com “${esc(q)}”.</div>`);
+  return html;
+};
+
+/* ---------- Buscar… (Ctrl K) no topo: passa a achar Pessoas e casos, por aproximação ---------- */
+/* Antes só procurava nos fluxos antigos; os clientes importados do Juridiq ficam em Pessoas. */
+const bpPalBase = palFilter;
+palFilter = function(q){
+  bpPalBase(q);
+  const k=String(q||"").trim(); if(k.length<2) return;
+  const extra=[];
+  bpAchar(psAll(), k, p=>p.nome).slice(0,8).forEach(p=>{
+    extra.push({t:p.nome, k:"Ficha · "+(p.papel||"Pessoa"), go:()=>{ ui.psId=p.id; ui.psAba="geral"; closePal(); go("pessoa"); }});
+  });
+  bpAchar(csAll().filter(c=>!c.lixo), k, c=>(c.titulo||"")+" "+psNome(c.pessoa)).slice(0,5).forEach(c=>{
+    extra.push({t:"Caso "+(c.titulo||"sem título")+(c.pessoa?" · "+psNome(c.pessoa):""), k:"Atendimentos e casos", go:()=>{ closePal(); csModal(c); }});
+  });
+  const vistos=new Set(extra.map(x=>bpNorm(x.t)));
+  palItems=extra.concat(palItems.filter(x=>!vistos.has(bpNorm(String(x.t).replace(/^Cliente /,""))))).slice(0,50);
+  palSel=0; drawPal();
+};
+
+(function(){ const st=document.createElement("style"); st.id="bpCss"; st.textContent=
+   ".bp-wrap{position:relative;display:block;min-width:0}"
+ + ".bp-wrap .bp-oculto{display:none!important}"
+ + ".bp-wrap .bp-in{width:100%;padding-right:30px}"
+ + ".bp-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px;display:none}"
+ + ".bp-wrap.tem .bp-x{display:block}.bp-x:hover{color:var(--danger)}"
+ + ".bp-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:80;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.28);max-height:300px;overflow:auto;padding:4px}"
+ + ".bp-wrap-tx .bp-list{top:calc(100% + 4px)}"
+ + ".bp-it{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;padding:7px 9px;border-radius:9px;cursor:pointer}"
+ + ".bp-it.on,.bp-it:hover{background:var(--accent-soft,rgba(95,183,189,.18))}"
+ + ".bp-av{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--surface-2);border:1px solid var(--line)}"
+ + ".bp-tx{display:flex;flex-direction:column;min-width:0}.bp-nm{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bp-nm b{color:var(--accent);font-weight:700}"
+ + ".bp-tx small{font-size:11.5px;color:var(--muted)}"
+ + ".bp-nada{font-size:12.5px;color:var(--muted);padding:8px 10px}";
+ document.head.appendChild(st); })();
+/* ================= fim do Pacote 20 ================= */
+
+/* ================= Pacote 20 · v7.5.1 · Caso: dados travados + Andamento do caso (09/11/2026) ================= */
+/* Caso já criado abre com os dados travados e fechados (resumo + botão Editar dados). */
+/* Logo abaixo, um campo único "Andamento do caso" para ir dando o andamento: */
+/*   Andamento (situação do caso), Relato (quem relatou e por onde) e Pendência (atribui tarefa a alguém, com prazo). */
+/* Tudo cai numa linha do tempo, com filtro e "Quem vê" em cada lançamento: Todos, Só sócios ou Só eu. */
+/* "Quem vê" é filtro de tela (o master vê tudo; quem recebe a pendência sempre a vê); volta para Todos a cada lançamento. */
+/* Não é cofre: nada de CPF, senha ou dado bancário. */
+/* Substitui as linhas antigas "Registros" e "Tarefas do caso"; registros antigos entram na linha do tempo. */
+/* Relato/andamento aceita link do Dropbox (ex.: fotos dos cheques em 03_Títulos): no Mapa fica só o link. */
+const AD_QUEM = ["Evaldo","Alan","Ellen","Gabriel","Cliente","Outro"];
+const AD_CANAL = ["WhatsApp","Áudio transcrito","Ligação","Reunião","E-mail","Anotação"];
+const AD_VE = [["todos","Todos"],["socios","Só sócios"],["eu","Só eu"]];
+const AD_TIPOS = [["andamento","Andamento"],["relato","Relato"],["pend","Pendência"]];
+const AD_FILTROS = [["tudo","Tudo"],["pend","Pendências abertas"],["relato","Relatos"],["andamento","Andamentos"]];
+const AD_CORTE = 420;
+const adUi = {tipo:"andamento", filtro:"tudo", ve:"todos", abertos:new Set(), edit:""};
+
+function adSocio(){ return ui.papel==="master" || ui.papel==="socio"; }
+function adPodeVer(x){
+  const ve=x.ve||"todos";
+  if(ui.papel==="master") return true;
+  if(x.resp && x.resp===ui.me) return true;
+  if(ve==="socios") return adSocio();
+  if(ve==="eu") return x.quem===ui.me;
+  return true;
+}
+function adPodeMexer(x){ return ui.papel==="master" || (x.quem && x.quem===ui.me); }
+function adVeTag(x){ const ve=x.ve||"todos"; return ve==="todos" ? "" : `<span class="ad-ve">${ve==="socios"?"só sócios":"só "+esc(x.quem||"eu")}</span>`; }
+
+/* ---------- Itens da linha do tempo ---------- */
+function adItens(c){
+  const esteira = typeof esAtivo==="function" && esAtivo();
+  const R=(c.registros||[]).filter(r=>r && (r.txt||r.relato) && !(esteira && r.resumo)).map(r=>({k:r.tipoAnd||(r.de?"relato":"andamento"), r, t:r.t||0, dia:r.data||""}));
+  const T=tfLista().filter(t=>t.caso===c.id).map(t=>({k:"pend", r:t, t:t.t||0, dia:t.t?isoDia(new Date(t.t)):""}));
+  return R.concat(T).filter(x=>adPodeVer(x.r)).sort((a,b)=>(b.dia||"").localeCompare(a.dia||"") || b.t-a.t);
+}
+function adTexto(r){ return r.relato || r.txt || ""; }
+function adCabReg(x){
+  const r=x.r, dia=r.data?fmtIsoAno(r.data):fmtT(r.t);
+  let tit = x.k==="relato" ? (r.de ? (["Cliente","Outro"].includes(r.de) ? "Relato de "+r.de.toLowerCase() : "Relato "+(r.de==="Ellen"?"da ":"do ")+r.de) : "Relato") : "Andamento";
+  return `<span class="ad-k k-${x.k}">${esc(tit)}</span><span class="muted">${esc(dia)}${r.canal?" · "+esc(r.canal):""}${r.quem?" · lançado por "+esc(r.quem):""}${r.editadoEm?" · editado":""}</span>${adVeTag(r)}`;
+}
+function adLiReg(x, c){
+  const r=x.r, tx=adTexto(r), longo=tx.length>AD_CORTE, aberto=adUi.abertos.has(r.id);
+  if(adUi.edit===r.id){
+    return `<li class="ad-it k-${x.k}"><div class="ad-h">${adCabReg(x)}</div><textarea class="inp ad-ed" id="adEd">${esc(tx)}</textarea>
+      <div class="ad-bt"><button class="btn sm primary" data-ad="salvarEd" data-c="${c.id}" data-r="${r.id}">Salvar</button><button class="btn sm" data-ad="cancelaEd" data-c="${c.id}">Cancelar</button></div></li>`;
+  }
+  return `<li class="ad-it k-${x.k}"><div class="ad-h">${adCabReg(x)}</div>
+    <div class="ad-tx${longo&&!aberto?" corta":""}">${esc(tx)}</div>
+    <div class="ad-bt">${r.link?`<a class="lnk" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir arquivo</a>`:""}${longo?`<button class="lnk" data-ad="abre" data-c="${c.id}" data-r="${r.id}">${aberto?"Ver menos":"Ver tudo"}</button>`:""}
+      <button class="lnk" data-ad="copia" data-c="${c.id}" data-r="${r.id}">Copiar</button>
+      ${adPodeMexer(r)?`<button class="lnk" data-ad="edita" data-c="${c.id}" data-r="${r.id}">Editar</button><button class="lnk ad-del" data-ad="exclui" data-c="${c.id}" data-r="${r.id}">Excluir</button>`:""}</div></li>`;
+}
+function adLiPend(x, c){
+  const t=x.r; tfN(t);
+  const prazo=t.data||t.dataComp||"", df=prazo?diasAte(prazo):null, late=!t.done && df!==null && df<0;
+  return `<li class="ad-it k-pend${t.done?" feito":""}"><div class="ad-h"><span class="ad-k k-pend">Pendência</span><span class="muted">${esc(fmtT(t.t))} · ${esc(t.quem||"")} atribuiu a <b>${esc(t.resp||"")}</b></span>${adVeTag(t)}</div>
+    <label class="ad-pl"><input type="checkbox" data-ad="done" data-c="${c.id}" data-r="${t.id}" ${t.done?"checked":""}><span>${t.prio==="alta"?`<b class="ad-urg">Urgente</b> `:""}${esc(t.txt)}</span>${prazo?`<span class="ad-pz${late?" late":""}">${t.data?"fatal ":""}${esc(fmtIso(prazo))}</span>`:""}</label>
+    ${t.done&&t.doneBy?`<small class="muted">Concluída por ${esc(t.doneBy)} em ${esc(fmtT(t.doneEm))}</small>`:""}
+    <div class="ad-bt"><button class="lnk" data-ad="abreTf" data-c="${c.id}" data-r="${t.id}">Abrir tarefa</button></div></li>`;
+}
+function adLista(c){
+  const L=adItens(c).filter(x=> adUi.filtro==="tudo" ? true : adUi.filtro==="pend" ? (x.k==="pend" && !x.r.done) : x.k===adUi.filtro);
+  if(!L.length) return `<p class="muted ad-vazio">${adUi.filtro==="tudo"?"Nada lançado ainda. Comece pelo primeiro andamento.":"Nada neste filtro."}</p>`;
+  return `<ul class="ad-lista">${L.map(x=>x.k==="pend"?adLiPend(x,c):adLiReg(x,c)).join("")}</ul>`;
+}
+
+/* ---------- Bloco "Andamento do caso" ---------- */
+function adCompoe(c){
+  const tp=adUi.tipo, eu=AD_QUEM.includes(ui.me)?ui.me:"Gabriel", euR=TF_RESP.includes(ui.me)?ui.me:TF_RESP[0];
+  const campos = tp==="relato"
+    ? `<label>Quem relatou<select class="inp" id="adDe">${AD_QUEM.map(q=>`<option ${q===eu?"selected":""}>${q}</option>`).join("")}</select></label><label>Por onde<select class="inp" id="adCanal">${AD_CANAL.map(q=>`<option>${q}</option>`).join("")}</select></label><label>Data<input class="inp" type="date" id="adData" value="${isoDia()}"></label>`
+    : tp==="pend"
+    ? `<label>Quem faz<select class="inp" id="adResp">${TF_RESP.map(r=>`<option ${r===euR?"selected":""}>${r}</option>`).join("")}</select></label><label>Prazo<input class="inp" type="date" id="adPrazo"></label><label class="ad-ck"><input type="checkbox" id="adUrg"> Urgente</label>`
+    : `<label>Data<input class="inp" type="date" id="adData" value="${isoDia()}"></label>`;
+  const ph = tp==="relato" ? "Cole o relato (ex.: o que o Evaldo mandou no WhatsApp)…" : tp==="pend" ? "O que fazer (ex.: pesquisar bem em garantia do fiador)" : "Situação do caso, o que aconteceu, o que foi decidido…";
+  return `<div class="ad-comp">
+    <div class="ad-tipos">${AD_TIPOS.map(([k,n])=>`<button class="ad-chip${tp===k?" on":""}" data-ad="tipo" data-c="${c.id}" data-v="${k}">${n}</button>`).join("")}</div>
+    <div class="ad-campos">${campos}<label>Quem vê<select class="inp" id="adVe">${AD_VE.map(([k,n])=>`<option value="${k}" ${adUi.ve===k?"selected":""}>${n}</option>`).join("")}</select></label></div>
+    ${tp==="pend" ? `<input class="inp" id="adTx" placeholder="${ph}">` : `<textarea class="inp ad-novo" id="adTx" placeholder="${ph}"></textarea><input class="inp" id="adLink" placeholder="Link do arquivo no Dropbox (opcional · ex.: fotos dos cheques em 03_Títulos)">`}
+    <div class="ad-bt"><button class="btn sm primary" data-ad="add" data-c="${c.id}">${tp==="pend"?"Lançar pendência":"Registrar"}</button><span class="muted ad-atalho">${tp==="pend"?"Enter lança":"Ctrl+Enter registra"} · sem CPF, senha ou dado bancário</span></div>
+  </div>`;
+}
+function adSecHTML(c){
+  const I=adItens(c), ab=I.filter(x=>x.k==="pend"&&!x.r.done).length;
+  return `<div class="cb-sec ad-sec" id="adSec"><h4>Andamento do caso ${ab?`<span class="count w">${ab} pendente${ab>1?"s":""}</span>`:""}</h4>
+    ${adCompoe(c)}
+    <div class="ad-fil">${AD_FILTROS.map(([k,n])=>`<button class="ad-chip sm${adUi.filtro===k?" on":""}" data-ad="filtro" data-c="${c.id}" data-v="${k}">${n}</button>`).join("")}</div>
+    <div id="adLista">${adLista(c)}</div></div>`;
+}
+function adDadosHTML(c){
+  const col=(funil().find(x=>x.id===c.coluna)||{}).nome || "";
+  const et=(c.etiquetas||[]).map(e=>`<span class="tag">${esc(e)}</span>`).join(" ");
+  const lin=(k,v)=>v?`<div><span>${k}</span><b title="${esc(v)}">${esc(v)}</b></div>`:"";
+  return `<div class="ad-dados" id="adDados"><div class="ad-dh"><span class="ad-cad">Cadastro</span><span class="grow"></span><button class="btn sm" data-ad="editaDados" data-c="${c.id}">Editar dados</button></div>
+    <div class="ad-dg">${lin("Pessoa", c.pessoa?psNome(c.pessoa):(c.rotulo||""))}${lin("Coluna", col)}${lin("Responsável", c.resp)}${lin("Área", c.area)}</div>
+    ${et?`<div class="ad-et">${et}</div>`:""}</div>`;
+}
+function adMontar(c){
+  const root=$("#modalRoot .modal"); if(!root || !c || !c.id) return;
+  const velho=root.querySelector("#csReg"); if(velho){ const s=velho.closest(".cb-sec"); if(s) s.remove(); }
+  root.querySelectorAll(".cb-sec > h4").forEach(h=>{ if(h.textContent.trim()==="Tarefas do caso") h.parentNode.remove(); });
+  ["#adSec","#adDados"].forEach(s=>{ const ja=root.querySelector(s); if(ja) ja.remove(); });
+  const f=root.querySelector(".cb-form"); if(!f) return;
+  f.insertAdjacentHTML("afterend", adSecHTML(c));
+  if(!adUi.abrirForm){ f.classList.add("ad-oculto"); f.insertAdjacentHTML("beforebegin", adDadosHTML(c)); }
+  adUi.abrirForm=false;
+  const h3=root.querySelector("h3"); if(h3 && c.titulo) h3.textContent="Caso · "+c.titulo;
+}
+function adRedesenha(c, soLista){
+  if(soLista){ const l=$("#adLista"); if(l){ l.innerHTML=adLista(c); return; } }
+  const s=$("#adSec"); if(!s) return;
+  s.insertAdjacentHTML("afterend", adSecHTML(c)); s.remove();
+}
+const adCsModalBase = csModal;
+csModal = function(c, pre){ adCsModalBase(c, pre); try{ if(c && c.id) adMontar(csGet(c.id)||c); else adNovoExtra(); }catch(e){ console.warn("ad", e); } };
+/* ---------- Caso novo: já sai com a pasta e o primeiro andamento (ex.: "chegaram as matrículas") ---------- */
+function adNovoExtra(){
+  const root=$("#modalRoot .modal"); if(!root) return;
+  const f=root.querySelector(".cb-form"); if(!f || root.querySelector("#adNovoTx")) return;
+  f.insertAdjacentHTML("afterend", `<div class="cb-sec ad-novo-caso"><h4>Pasta e primeiro andamento <span class="muted" style="font-weight:400">(opcional)</span></h4>
+    <input class="inp" id="adNovoPasta" placeholder="Link da pasta do cliente (Dropbox ou Drive)">
+    <textarea class="inp ad-novo" id="adNovoTx" style="min-height:70px" placeholder="O que chegou e o que fazer. Ex.: chegaram 2 matrículas (casa e terreno) para levantamento de crédito; imóveis vão em garantia."></textarea></div>`);
+  const pasta=root.querySelector("#adNovoPasta"), tx=root.querySelector("#adNovoTx");
+  const bt=root.querySelector(".mfoot .btn.primary"); if(!bt) return;
+  const antes=Date.now()-1;
+  bt.addEventListener("click", ()=>{
+    const v=(tx.value||"").trim(), link=(pasta.value||"").trim();
+    if(!v && !link) return;
+    setTimeout(()=>{
+      const c=csAll().filter(x=>(x.t||0)>=antes && x.quem===(ui.me||"?")).sort((a,b)=>b.t-a.t)[0]; if(!c) return;
+      if(link && /^https?:\/\//i.test(link)) c.pastaUrl=link;
+      if(v && !esSensivel(v)) (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:v, tipoAnd:"andamento", data:isoDia(), link:/^https?:\/\//i.test(link)?link:"", ve:"todos"});
+      save(); render();
+    }, 0);
+  });
+}
+const adCsModalEsBase = csModalEs;
+csModalEs = function(c){ adCsModalEsBase(c); try{ adMontar(csGet(c.id)||c); }catch(e){ console.warn("ad", e); } };
+
+/* ---------- Gravar ---------- */
+function adAdd(c){
+  const i=$("#adTx"); const tx=(i&&i.value||"").trim();
+  if(!tx){ if(i) i.focus(); toast(adUi.tipo==="pend"?"Escreva o que fazer.":"Escreva ou cole o texto."); return; }
+  if(esSensivel(tx)){ toast("O texto parece ter CPF ou senha. Tire antes de registrar."); return; }
+  const ve=($("#adVe")||{}).value||"todos"; adUi.ve="todos";
+  if(adUi.tipo==="pend"){
+    const resp=$("#adResp").value, prazo=$("#adPrazo").value||"", urg=$("#adUrg").checked;
+    snap();
+    tfAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", area:"", txt:tx, resp, data:"", dataComp:prazo, done:false, status:"pendente", obs:"lançada no andamento do caso", pessoa:c.pessoa||"", caso:c.id, prio:urg?"alta":"", origem:"caso", ve});
+    logA("atribuiu a "+resp+" no caso “"+c.titulo+"”: “"+tx+"”");
+    save(); adRedesenha(c); const n=$("#adTx"); if(n) n.focus();
+    toast("Pendência lançada para "+resp+"."); return;
+  }
+  const link=(($("#adLink")||{}).value||"").trim();
+  if(link && !/^https?:\/\//i.test(link)){ toast("Cole o link completo (começa com https://)."); return; }
+  const r={id:uid(), t:Date.now(), quem:ui.me||"?", txt:tx, tipoAnd:adUi.tipo, data:($("#adData")||{}).value||isoDia(), link, ve};
+  if(adUi.tipo==="relato"){ r.relato=tx; r.de=$("#adDe").value; r.canal=$("#adCanal").value; }
+  snap(); (c.registros=c.registros||[]).push(r);
+  logA((adUi.tipo==="relato"?"registrou relato":"registrou andamento")+" no caso “"+c.titulo+"”");
+  save(); adRedesenha(c); toast(adUi.tipo==="relato"?"Relato registrado.":"Andamento registrado.");
+}
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest("[data-ad]") : null; if(!b) return;
+  if(b.tagName!=="INPUT") e.preventDefault();
+  const c=csGet(b.dataset.c); if(!c) return;
+  const a=b.dataset.ad, r=(c.registros||[]).find(x=>x.id===b.dataset.r);
+  if(a==="tipo"){ const v=$("#adVe"); if(v) adUi.ve=v.value; adUi.tipo=b.dataset.v; adRedesenha(c); const n=$("#adTx"); if(n) n.focus(); return; }
+  if(a==="filtro"){ adUi.filtro=b.dataset.v; $$(".ad-fil .ad-chip").forEach(x=>x.classList.toggle("on", x===b)); return adRedesenha(c, true); }
+  if(a==="add") return adAdd(c);
+  if(a==="editaDados"){ const f=$("#modalRoot .cb-form"), d=$("#adDados"); if(f) f.classList.remove("ad-oculto"); if(d) d.remove(); const t=$("#csfTit"); if(t) t.focus(); return; }
+  if(a==="done"){ const t=tfAll().find(x=>x.id===b.dataset.r); if(!t) return; tfN(t); snap(); const v=!t.done; t.status=v?"concluida":"pendente"; t.done=v; t.doneEm=v?Date.now():0; t.doneBy=v?(ui.me||"?"):""; if(v) logA("concluiu a tarefa “"+t.txt+"”"); save(); adRedesenha(c); return; }
+  if(a==="abreTf"){ const t=tfAll().find(x=>x.id===b.dataset.r); if(t){ closeModal(); tfModal2(t); } return; }
+  if(a==="abre" && r){ if(adUi.abertos.has(r.id)) adUi.abertos.delete(r.id); else adUi.abertos.add(r.id); return adRedesenha(c, true); }
+  if(a==="copia" && r) return copyText(adTexto(r), "Texto copiado.");
+  if(a==="edita" && r && adPodeMexer(r)){ adUi.edit=r.id; adRedesenha(c, true); const t=$("#adEd"); if(t){ t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
+  if(a==="cancelaEd"){ adUi.edit=""; return adRedesenha(c, true); }
+  if(a==="salvarEd" && r && adPodeMexer(r)){
+    const tx=(($("#adEd")||{}).value||"").trim(); if(!tx){ toast("Ficou vazio. Use Excluir para tirar."); return; }
+    if(esSensivel(tx)){ toast("O texto parece ter CPF ou senha. Tire antes de salvar."); return; }
+    snap(); r.antes=(r.antes||[]).concat([{em:Date.now(), quem:ui.me||"?", txt:adTexto(r)}]); r.txt=tx; if(r.relato) r.relato=tx; r.editadoEm=Date.now(); adUi.edit="";
+    logA("editou um lançamento no caso “"+c.titulo+"”"); save(); adRedesenha(c, true); toast("Atualizado."); return;
+  }
+  if(a==="exclui" && r && adPodeMexer(r)){
+    if(b.dataset.ok!=="1"){ b.dataset.ok="1"; b.textContent="Confirmar exclusão"; setTimeout(()=>{ if(b.isConnected){ b.dataset.ok=""; b.textContent="Excluir"; } }, 4000); return; }
+    snap(); c.registros=c.registros.filter(x=>x.id!==r.id); logA("excluiu um lançamento do caso “"+c.titulo+"”"); save(); adRedesenha(c);
+    toast("Excluído.", ()=>{ undo(); render(); const cc=csGet(c.id); if(cc) csModalEs(cc); }); return;
+  }
+});
+document.addEventListener("keydown", e=>{
+  const t=e.target; if(!t || t.id!=="adTx" || e.key!=="Enter") return;
+  if(t.tagName==="INPUT" || e.ctrlKey || e.metaKey){ e.preventDefault(); const b=$('[data-ad="add"]'); if(b) b.click(); }
+});
+
+(function(){ const st=document.createElement("style"); st.id="adCss"; st.textContent=
+   ".cb-form.ad-oculto{display:none}"
+ + ".ad-dados{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px}"
+ + ".ad-dh{display:flex;gap:10px;align-items:center}.ad-cad{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}"
+ + ".ad-dg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;margin-top:6px}"
+ + ".ad-dg div{display:flex;flex-direction:column;min-width:0}.ad-dg span{font-size:11.5px;color:var(--muted)}.ad-dg b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
+ + ".ad-et{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}"
+ + ".ad-sec h4 .count{margin-left:6px}"
+ + ".ad-comp{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}"
+ + ".ad-tipos,.ad-fil{display:flex;gap:6px;flex-wrap:wrap}.ad-fil{margin:12px 0 4px}"
+ + ".ad-chip{border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:13px;border-radius:99px;padding:5px 12px;cursor:pointer}"
+ + ".ad-chip.sm{font-size:12px;padding:3px 10px}.ad-chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg,#fff);font-weight:700}"
+ + ".ad-campos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}"
+ + ".ad-campos label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}.ad-campos label.ad-ck{flex-direction:row;align-items:center;gap:6px;padding-bottom:10px;color:inherit}"
+ + ".ad-novo,.ad-ed{width:100%;min-height:96px;resize:vertical;line-height:1.45}"
+ + ".ad-bt{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:4px}.ad-atalho{font-size:12px}"
+ + ".ad-lista{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}"
+ + ".ad-it{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:10px;padding:9px 11px}"
+ + ".ad-it.k-relato{border-left-color:var(--accent)}.ad-it.k-andamento{border-left-color:var(--idea,#8b6fd6)}.ad-it.k-pend{border-left-color:var(--warn,#d99a2b)}.ad-it.feito{opacity:.6}"
+ + ".ad-h{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;font-size:13px}.ad-h .muted{font-size:12px}"
+ + ".ad-k{font-weight:700}.ad-ve{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:0 7px;color:var(--muted)}"
+ + ".ad-tx{white-space:pre-wrap;font-size:13.5px;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}"
+ + ".ad-tx.corta{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}"
+ + ".ad-pl{display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:14px;cursor:pointer}.ad-pl span:nth-child(2){flex:1}"
+ + ".ad-it.feito .ad-pl span:nth-child(2){text-decoration:line-through}"
+ + ".ad-urg{color:var(--danger)}.ad-pz{font-size:12px;color:var(--muted);white-space:nowrap}.ad-pz.late{color:var(--danger);font-weight:700}"
+ + ".ad-del{color:var(--danger)}.ad-vazio{font-size:13px;margin:8px 0 0}"
+ + "@media (max-width:640px){.ad-dg,.ad-campos{grid-template-columns:1fr 1fr}}";
+ document.head.appendChild(st); })();
+/* ================= fim do Andamento do caso ================= */
+
+/* ================= Pacote 20 · v7.5.1 · Esteira de atendimento v7 (09/11/2026) ================= */
+/* Nova esteira de Atendimento, definida pelo Gabriel em 09/11/2026: */
+/*   1. Contato · 2. Agendamento e consulta · 3. Viabilidade · 4. Retorno · 5. Fechamento */
+/* Viabilidade: o caso fica aqui até chegarem TODOS os documentos. Marcou "Todos os documentos recebidos": */
+/* conta o prazo (estudo até D0 + 5 úteis, retorno até D0 + 7 úteis), cria as tarefas e o caso vai sozinho para Retorno. */
+/* Fechamento: fechou (honorários, procuração e contrato) → arrasta para o Jurídico; não fechou → arrasta para Não fechou. */
+/* Abaixo das 5 colunas fica a faixa "Passar para": Jurídico · Em produção e Não fechou, para a Ellen arrastar sem trocar de aba. */
+/* Migração automática na 1ª abertura do master (com Desfazer). A esteira do Jurídico não muda. */
+/* Corrige o arrastar dos cartões de caso e de tarefa (o "cs:id" era sobrescrito pelo arrastar dos fluxos). */
+const ES7_A = [
+  {k:"CTT", esteira:"A", nome:"1. Contato", dono:"Ellen", portao:[], dica:"Chegou pelo WhatsApp ou no escritório e ainda não agendou. Registre no Andamento o que a pessoa quer e passe para Agendamento quando marcar o horário."},
+  {k:"AGC", esteira:"A", nome:"2. Agendamento e consulta", dono:"Ellen · Gabriel", portao:["Sinal de R$ 100,00 recebido no Pix","Consulta feita e saldo pago"], dica:"A Ellen agenda e manda a chave Pix ou o link do Asaas; o horário só fica confirmado com o sinal. O Gabriel faz a consulta (gravar no iPad e mandar para a Ellen)."},
+  {k:"VIAB", esteira:"A", nome:"3. Viabilidade", dono:"Ellen", d0:true, trava:true, portao:["Todos os documentos recebidos"], dica:"Cobrar os documentos da lista do caso. Só sai daqui quando chegarem todos: aí começa a contar o prazo do retorno (7 dias úteis) e o caso vai sozinho para Retorno."},
+  {k:"RET", esteira:"A", nome:"4. Retorno", dono:"Gabriel · Ellen", portao:[], dica:"O Gabriel estuda (até 5 dias úteis) e a Ellen agenda o retorno em até 7 dias úteis depois dos documentos. Viável: proposta abatendo os R$ 250,00. Não viável: parecer por escrito."},
+  {k:"FECH", esteira:"A", nome:"5. Fechamento", dono:"Ellen", trava:true, passa:true, portao:["Honorários iniciais pagos","Procuração assinada","Contrato assinado"], dica:"Fechou: honorários, procuração e contrato → arraste para o Jurídico. Não fechou: arraste para Não fechou (o histórico fica para follow-up)."},
+  {k:"NC", esteira:"A", nome:"Não fechou", dono:"Ellen", fim:true, portao:[], dica:"Histórico na pasta do cliente para follow-up futuro."}
+];
+const ES7_VER = "v7 · 09/11/2026";
+const ES7_ALIAS = {AG:"CTT", CONS:"AGC", DOC:"VIAB", CONTR:"FECH"};
+function es7(){ return !!S.esteiraV7 && esAtivo(); }
+
+/* Chaves antigas (AG, DOC, CONTR…) usadas em outras telas apontam para as novas. */
+const es7KBase = esK;
+esK = function(k){ if(S.esteiraV7 && ES7_ALIAS[k]) k=ES7_ALIAS[k]; return es7KBase(k); };
+
+/* ---------- Migração (master, uma vez) ---------- */
+function es7Migrar(){
+  if(!esAtivo() || S.esteiraV7 || !souMasterReal()) return;
+  snap();
+  const F=funil(), velhaK={}; F.forEach(f=>{ if(f.k) velhaK[f.k]=f; });
+  const novas=ES7_A.map(p=>{ const o=Object.assign({}, JSON.parse(JSON.stringify(p))); const reuso=(p.k==="RET"||p.k==="NC") ? velhaK[p.k] : null; o.id=reuso ? reuso.id : uid(); return o; });
+  const nk={}; novas.forEach(f=>{ nk[f.k]=f; });
+  const B=F.filter(f=>f.esteira==="B");
+  const destino=c=>{
+    const o=F.find(f=>f.id===c.coluna); if(!o) return nk.CTT;
+    if(o.esteira==="B") return o;
+    if(o.k==="AG"||o.k==="CONS") return nk.AGC;
+    if(o.k==="DOC") return c.d0 ? nk.RET : nk.VIAB;
+    if(o.k==="VIAB"||o.k==="RET") return nk.RET;
+    if(o.k==="CONTR") return nk.FECH;
+    if(o.k==="NC") return nk.NC;
+    return nk.CTT;
+  };
+  csAll().forEach(c=>{
+    const ch=(c.chk && typeof c.chk==="object") ? c.chk : {};
+    const pega=k=>velhaK[k] && Array.isArray(ch[velhaK[k].id]) ? ch[velhaK[k].id] : [];
+    const novoChk={};
+    B.forEach(b=>{ if(Array.isArray(ch[b.id])) novoChk[b.id]=ch[b.id]; });
+    novoChk[nk.AGC.id]=pega("AG").concat(pega("CONS"));
+    novoChk[nk.FECH.id]=pega("CONTR");
+    novoChk[nk.VIAB.id]=c.d0 ? ["Todos os documentos recebidos"] : [];
+    const d=destino(c); if(d.id!==c.coluna){ c.coluna=d.id; }
+    c.chk=novoChk;
+  });
+  S.funil=novas.concat(B); S.esteiraV7=1;
+  logA("atualizou a esteira de Atendimento: Contato, Agendamento e consulta, Viabilidade, Retorno e Fechamento");
+  save(); render();
+  toast("Esteira de Atendimento atualizada.", ()=>{ undo(); render(); });
+}
+const es7AtivarBase = esAtivar;
+esAtivar = function(){ es7AtivarBase(); if(esAtivo() && !S.esteiraV7) es7Migrar(); };
+
+/* ---------- Cartão: prazos e documentos ---------- */
+const es7CardBase = esCard;
+esCard = function(c, ativo){
+  let h=es7CardBase(c, ativo);
+  if(!es7() || !ativo) return h;
+  const col=esColDe(c), hoje=isoDia(), pz=[];
+  if(col.k==="VIAB"){ const D=esDocs(c); if(D.length) pz.push(`<span class="es-pz" title="Documentos recebidos">docs ${D.filter(d=>d.ok).length}/${D.length}</span>`); else pz.push(`<span class="es-pz" title="Monte a lista de documentos no caso">sem lista de docs</span>`); }
+  if(col.k==="RET" && c.d0){
+    pz.push(`<span class="es-pz${c.viabAte<hoje?" late":""}" title="Estudo: D0 + 5 dias úteis">estudo ${esc(fmtIso(c.viabAte))}</span>`);
+    pz.push(`<span class="es-pz${c.retornoAte<hoje?" late":""}" title="Retorno: D0 + 7 dias úteis">retorno ${esc(fmtIso(c.retornoAte))}</span>`);
+  }
+  h=h.replace(/<div class="es-pzs">[\s\S]*?<\/div>\s*/, "");
+  if(pz.length) h=h.replace(/(<span class="kb-p">[\s\S]*?<\/span>|<\/b>)(\s*<div class="kb-f">)/, `$1<div class="es-pzs">${pz.join("")}</div>$2`);
+  return h;
+};
+
+/* ---------- Quadro: 5 colunas + faixa "Passar para" ---------- */
+const es7ViewBase = viewCasos;
+viewCasos = function(){
+  let h=es7ViewBase();
+  if(!es7()) return h;
+  h=h.replace("Esteiras "+esc(ES_VER), "Esteiras "+esc(ES7_VER));
+  if((ui.es.aba==="B"?"B":"A")!=="A") return h;
+  const nc=esK("NC"), B1=esCols("B")[0];
+  if(nc) h=h.replace(new RegExp('<section[^>]*data-col="'+nc.id+'"[^>]*>[\\s\\S]*?</section>'), "");
+  h=h.replace("Da chegada do cliente à contratação. Arraste o cartão quando a etapa terminar.", "Do primeiro contato ao fechamento. Arraste o cartão quando a etapa terminar; no fim, arraste para o Jurídico ou para Não fechou.");
+  const q=(ui.cs.busca||"").toLowerCase();
+  const filtra=c=>!q || [c.titulo, esNome(c), (c.etiquetas||[]).join(" ")].join(" ").toLowerCase().includes(q);
+  const ncL=nc ? csAll().filter(c=>c.coluna===nc.id && filtra(c)).sort((a,b)=>(b.movidoEm||b.t)-(a.movidoEm||a.t)) : [];
+  const b1n=B1 ? csAll().filter(c=>c.coluna===B1.id).length : 0;
+  const faixa=`<div class="es7-saidas"><div class="es7-st">Passar para</div>
+    ${B1?`<section class="kb-col es7-drop es7-jur" data-drop="cs" data-col="${B1.id}" title="Só passa com honorários, procuração e contrato marcados no Fechamento"><b>Jurídico · ${esc(B1.nome)}</b><span class="muted">Alan · ${b1n} caso(s) · solte aqui o cartão do Fechamento</span><button class="lnk" data-es="aba" data-v="B">Abrir esteira do Jurídico ›</button></section>`:""}
+    ${nc?`<section class="kb-col es7-drop es7-nc" data-drop="cs" data-col="${nc.id}"><b>Não fechou</b><span class="muted">${ncL.length} caso(s) · histórico para follow-up</span>${ncL.length?`<details><summary class="lnk">Ver</summary><div class="kb-list">${ncL.map(c=>esCard(c, true)).join("")}</div></details>`:""}</section>`:""}
+  </div>`;
+  const ver=h.lastIndexOf('<p class="muted es-ver">');
+  return ver>=0 ? h.slice(0,ver)+faixa+h.slice(ver) : h+faixa;
+};
+
+/* ---------- Mover: entrar em Viabilidade cria a tarefa de registrar o atendimento ---------- */
+const es7MoverBase = esMover;
+esMover = function(c, destId){
+  const de=esColDe(csGet(c.id)||c);
+  es7MoverBase(c, destId);
+  if(!es7()) return;
+  const c2=csGet(c.id)||c, para=funil().find(f=>f.id===destId);
+  if(para && para.k==="VIAB" && de.k!=="VIAB" && c2.coluna===para.id){ esTarefaRegistro(c2); save(); }
+};
+/* ---------- Viabilidade: todos os documentos → prazos + vai para Retorno ---------- */
+const es7MarcarBase = esMarcar;
+esMarcar = function(c, col, item, on){
+  es7MarcarBase(c, col, item, on);
+  if(!es7() || col.k!=="VIAB") return;
+  const c2=csGet(c.id)||c, ret=esK("RET");
+  if(c2.d0 && ret && c2.coluna===col.id){ esMover(c2, ret.id); toast("Todos os documentos recebidos: estudo até "+fmtIso(c2.viabAte)+", retorno até "+fmtIso(c2.retornoAte)+". O caso foi para Retorno."); }
+};
+/* ---------- Botões da etapa dentro do caso ---------- */
+const es7SecBase = esSecHTML;
+esSecHTML = function(c){
+  let h=es7SecBase(c);
+  if(!es7()) return h;
+  const col=esColDe(c), nc=esK("NC"), fe=esK("FECH");
+  if(col.k==="RET"){
+    h=h.replace("Viável e aceitou → Contratação", "Viável → Fechamento").replace("Não viável ou recusou → Não contratou", "Não viável → Não fechou");
+  }
+  if(col.k==="FECH" && nc){
+    h=h.replace(/(<div class="es-acoes">[\s\S]*?)(<\/div>)/, `$1<button class="btn sm" data-es="ir" data-id="${c.id}" data-col="${nc.id}">Não fechou</button>$2`);
+    h=h.replace("Passar ao jurídico</button>", "Fechou → passar ao Jurídico</button>");
+  }
+  if(col.k==="VIAB") h=h.replace(/<p class="es-trava">[\s\S]*?<\/p>/, '<p class="es-trava">Trava: só sai da Viabilidade quando chegarem todos os documentos.</p>');
+  return h;
+};
+/* ---------- Correção do arrastar: o arrastar dos fluxos sobrescrevia o "cs:id" do cartão e o drop não achava o caso ---------- */
+document.addEventListener("dragstart", e=>{
+  const s=e.target && e.target.closest ? e.target.closest('[data-drag="cs"],[data-drag="tf"]') : null; if(!s || !e.dataTransfer) return;
+  e.dataTransfer.setData("text/plain", s.dataset.drag+":"+s.dataset.id);
+  try{ dragKind=null; dragId=null; }catch(x){}
+});
+/* ---------- Migração automática quando o master abre o sistema ---------- */
+const es7RenderBase = render;
+render = function(){ es7RenderBase(); try{ if(esAtivo() && !S.esteiraV7 && souMasterReal() && !ui.es7Agendado){ ui.es7Agendado=true; setTimeout(()=>{ ui.es7Agendado=false; es7Migrar(); }, 0); } }catch(e){ console.warn("es7", e); } };
+
+(function(){ const st=document.createElement("style"); st.id="es7Css"; st.textContent=
+   ".es7-saidas{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch;margin-top:12px}"
+ + ".es7-st{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;text-align:center}"
+ + ".es7-drop{min-height:86px;border:2px dashed var(--line);gap:4px}.es7-drop b{font-size:14px}.es7-drop .muted{font-size:12.5px}"
+ + ".es7-drop.over{border-color:var(--accent);background:var(--accent-soft,rgba(95,183,189,.15))}"
+ + ".es7-jur{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}.es7-nc details summary{cursor:pointer;margin-top:4px}"
+ + ".es7-drop .lnk{align-self:flex-start;margin-top:2px}"
+ + "@media (max-width:760px){.es7-saidas{grid-template-columns:1fr}.es7-st{writing-mode:horizontal-tb;transform:none;text-align:left}}";
+ document.head.appendChild(st); })();
+/* ================= fim da Esteira v7 ================= */
 
 /* ================= INÍCIO ================= */
 render();
