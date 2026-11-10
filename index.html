@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.7 · 09/11/2026";
+const MN_VER = "Mapa v7.8 · 10/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -9561,6 +9561,11 @@ render = function(){
 /* 7. Importar planilha (CSV ou Excel) em 3 passos. 8. Relatórios: por categoria, saldo mensal, detalhado, em aberto e inadimplentes (Excel ou PDF). */
 /* Ficou de fora por decisão do Gabriel (09/11/2026): Asaas, boleto, link de pagamento, simulador de venda e timesheet. */
 /* Regra do Mapa: pessoa só com primeiro nome + inicial (o sistema encurta sozinho). */
+/* Pacote 27 · v7.8 (10/11/2026): novo lançamento igual ao do Juridiq (Receita, Despesa, Transferência; juros ou multa; */
+/* mês do resultado; já pago/a pagar com pagamento parcial; conta fixa anual a diária sem data para acabar; parcelado */
+/* com período, 1ª parcela e entrada; anexos por link; vínculos com pessoa, caso e parceiro). Na lista: ✓ marca como pago, */
+/* menu ⋯ (pagar, pagar em partes, visualizar, editar, excluir) e seleção em lote. DRE por competência ou por caixa. */
+/* Topo do Financeiro: botões + Receita / − Despesa / ⇄ Transferir e linha rápida em campos (sai a barra de texto com #códigos). */
 
 const FL_FORMAS = ["Pix","Transferência","Dinheiro","Boleto","Cartão","Cheque","Débito automático"];
 const FL_XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
@@ -9577,6 +9582,7 @@ finNorm = function(d){
   d = flNormBase(d);
   if(!Array.isArray(d.tit)) d.tit = [];
   if(!Array.isArray(d.bancos)) d.bancos = [];
+  if(!d.series || typeof d.series!=="object") d.series = {};
   if(!d.meta || typeof d.meta!=="object") d.meta = {fat:0, res:0, pro:0, pix:""};
   if(!d.meta.timbre || typeof d.meta.timbre!=="object") d.meta.timbre = {nome:"M&P Advocacia", sub:"Martins Pedron Martinischen & Novello", doc:"", end:"Itaiópolis/SC", fone:"", resp:"Gabriel Linzmeier Pedron · OAB/SC 53.800"};
   d.tit.forEach(t=>{ if(!Array.isArray(t.hist)) t.hist = []; });
@@ -9691,12 +9697,14 @@ function flChipSt(r){
 }
 function flTotais(rows){
   const s={inV:0, inP:0, outV:0, outP:0};
-  rows.forEach(r=>{ if(r.tipo==="in"){ s.inV+=r.v; s.inP+=r.pago; } else { s.outV+=r.v; s.outP+=r.pago; } });
+  rows.forEach(r=>{ if(r.cat==="Transferência") return; if(r.tipo==="in"){ s.inV+=r.v; s.inP+=r.pago; } else { s.outV+=r.v; s.outP+=r.pago; } });
   return s;
 }
 
 /* ---------- aba Lançamentos ---------- */
+let FL_SEL = new Set();
 function flAbaLanc(){
+  flSeriesGarantir();
   const u=flUi(), D0=finHoje(), ym=flYmAtual(), hoje=finIso(D0), em7=finIso(finAddD(D0,7));
   const mes = flLinhasMes(ym), T = flTotais(mes);
   let rows = u.lf==="vencidos" ? flLinhas(v=>v<hoje).filter(r=>r.st==="vencido"||r.st==="parcialV")
@@ -9716,22 +9724,28 @@ function flAbaLanc(){
     <div class="fin-meta-n"><span>${de}</span><span>${l2} <b>${finBrl(v2)}</b></span></div></section>`;
   const lista = rows.length ? rows.map(r=>{
     const dd = finDiff(finD(r.venc), D0), quando = r.st==="pago" ? "" : dd<0 ? `<small class="fin-neg">há ${-dd} dia${dd===-1?"":"s"}</small>` : dd===0 ? `<small>hoje</small>` : dd<=30 ? `<small class="muted">em ${dd} dia${dd===1?"":"s"}</small>` : "";
-    const tags = [r.parc?`<span class="fin-c neutral">${esc(r.parc)}</span>`:"", r.fixo&&!r.parc?`<span class="fin-c neutral">fixo</span>`:"", r.k==="rec"?`<span class="fin-c idea">honorário</span>`:"", r.k==="pagar"?`<span class="fin-c idea">obra</span>`:""].join("");
-    const ac = r.st==="pago" ? "" : `<button class="btn sm ${r.st==="vencido"||r.st==="parcialV"?"primary":""}" data-fl="pg" data-k="${r.k}" data-id="${esc(r.id)}">${r.tipo==="in"?"Receber":"Pagar"}</button>`;
-    return `<tr class="${r.st==="pago"?"fl-ok":""}">
+    let tags = [r.parc?`<span class="fin-c neutral">${esc(r.parc)}</span>`:"", r.fixo&&!r.parc?`<span class="fin-c neutral">fixo</span>`:"", r.k==="rec"?`<span class="fin-c idea">honorário</span>`:"", r.k==="pagar"?`<span class="fin-c idea">obra</span>`:""].join("");
+    const key=r.k+"|"+r.id, pode = r.st!=="pago" && !(r.k==="rec" && r.kk>0), apaga = r.k==="tit" || r.k==="lanc";
+    const editavel = r.k!=="lanc" || !r.o.trPar;
+    const ac = `<div class="fl-acts-c">${pode?`<button class="fl-ok-b" data-fl="rapido" data-k="${r.k}" data-id="${esc(r.id)}" title="Marcar como ${r.tipo==="in"?"recebido":"pago"} (valor em aberto, hoje)" aria-label="Marcar como ${r.tipo==="in"?"recebido":"pago"}">✓</button>`:`<span class="fl-ok-b vazio"></span>`}
+      <button class="fl-mais" data-fl="menu" aria-label="Mais ações" aria-haspopup="menu">⋯</button>
+      <div class="fl-mn" role="menu">${pode?`<button role="menuitem" data-fl="rapido" data-k="${r.k}" data-id="${esc(r.id)}">Marcar como ${r.tipo==="in"?"recebido":"pago"}</button><button role="menuitem" data-fl="pg" data-k="${r.k}" data-id="${esc(r.id)}">${r.tipo==="in"?"Receber":"Pagar"} em partes</button>`:""}<button role="menuitem" data-fl="det" data-k="${r.k}" data-id="${esc(r.id)}">Visualizar</button>${editavel?`<button role="menuitem" data-fl="editarK" data-k="${r.k}" data-id="${esc(r.id)}">Editar</button>`:""}${apaga?`<button role="menuitem" class="fin-neg" data-fl="apagarK" data-k="${r.k}" data-id="${esc(r.id)}">Excluir</button>`:""}</div></div>`;
+    if(r.k==="lanc" && r.o.trPar) tags += `<span class="fin-c neutral">transferência</span>`;
+    return `<tr class="${r.st==="pago"?"fl-ok":""} ${FL_SEL.has(key)?"fl-sel":""}">
+      <td class="fl-ck"><input type="checkbox" data-flsel="${esc(key)}" ${FL_SEL.has(key)?"checked":""} aria-label="Selecionar ${esc(r.desc)}"></td>
       <td><button class="fin-link fl-desc" data-fl="det" data-k="${r.k}" data-id="${esc(r.id)}"><span class="fin-pt ${r.tipo==="in"?"in":"out"}"></span><span><b>${esc(r.desc)}</b>${tags}<small>${esc(r.cat||"Sem categoria")}${r.pessoa?" · "+esc(r.pessoa):""}${finUi().cx==="tudo"?" · "+(FIN_CX[r.cx]||r.cx):""}</small></span></button></td>
       <td class="nw">${finFd(finD(r.venc))}<br>${quando}</td>
       <td>${flChipSt(r)}</td>
       <td class="fl-hide">${esc(flBancoNome(r.conta)||"—")}</td>
       <td class="r nw"><b class="${r.tipo==="in"?"fin-pos":"fin-neg"}">${r.tipo==="in"?"+":"−"} ${finBrl(r.v)}</b>${r.pago>0 && r.resta>0?`<br><small class="muted">pago ${finBrl(r.pago)}</small>`:""}</td>
-      <td class="r nw">${ac}</td></tr>`;
-  }).join("") : `<tr><td colspan="6" class="muted">Nenhum lançamento ${u.lf==="vencidos"?"vencido":u.lf==="7d"?"vencendo nos próximos 7 dias":"neste filtro"}.</td></tr>`;
+      <td class="r nw fl-acts">${ac}</td></tr>`;
+  }).join("") : `<tr><td colspan="7" class="muted">Nenhum lançamento ${u.lf==="vencidos"?"vencido":u.lf==="7d"?"vencendo nos próximos 7 dias":"neste filtro"}.</td></tr>`;
   const F2 = flTotais(rows);
   const titulo = u.lf==="vencidos" ? "Vencidos (todos os meses)" : u.lf==="7d" ? "A vencer nos próximos 7 dias" : flYmLabel(ym);
   return `<div class="fin-grid">
     <section class="fin-card s12 fl-top"><div class="fin-ch">
       <div class="fin-seg"><button data-fl="mes" data-v="-1" aria-label="Mês anterior">‹</button><button data-fl="mes" data-v="0" aria-pressed="${u.lm===0}">${esc(flYmLabel(ym))}</button><button data-fl="mes" data-v="1" aria-label="Próximo mês">›</button></div>
-      <span class="grow"></span><button class="btn" data-fl="importar">Importar planilha</button><button class="btn primary" data-fl="novo" data-v="out">${ic("plus",14)} Novo lançamento</button></div>
+      <span class="grow"></span><button class="btn" data-fl="importar">Importar planilha</button><button class="btn primary" data-fl="novo" data-v="in">${ic("plus",14)} Novo lançamento</button></div>
       <div class="fin-ch"><div class="fin-seg fl-filtros">${filtros}</div><span class="grow"></span>
       <input class="inp fl-busca" id="flBusca" placeholder="Buscar descrição, pessoa…" value="${esc(u.lq)}" aria-label="Buscar lançamento">
       <select class="inp fin-sel fl-cat" id="flCat" aria-label="Categoria"><option value="">Todas as categorias</option>${cats.map(c=>`<option ${u.lc===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div></section>
@@ -9739,8 +9753,9 @@ function flAbaLanc(){
     ${card("Despesas", "out", pOut, T.outP, "pago de "+finBrl0(T.outV), "a pagar", T.outV-T.outP)}
     <section class="fin-card s4 fl-sum"><div class="fin-ch"><span class="fin-lbl">Resultado · ${esc(flYmLabel(ym))}</span></div><span class="fin-kv ${real>=0?"fin-pos":"fin-neg"}">${finBrl(real)}</span><span class="muted fin-mini">realizado até agora</span>
       <div class="fin-meta-n"><span>previsto no fim do mês</span><b class="${prev>=0?"fin-pos":"fin-neg"}">${finBrl(prev)}</b></div><span class="muted fin-mini">se tudo do mês for pago e recebido</span></section>
-    <section class="fin-card s12"><div class="fin-ch"><h2>${esc(titulo)}</h2><span class="grow"></span><span class="muted fin-mini">Clique no lançamento para ver o detalhe, pagar em partes e ver o histórico.</span></div>
-      <div class="fin-tbl"><table class="fl-tbl"><thead><tr><th>Lançamento</th><th>Vencimento</th><th>Situação</th><th class="fl-hide">Conta</th><th class="r">Valor</th><th class="r">Ação</th></tr></thead><tbody>${lista}</tbody></table></div>
+    <section class="fin-card s12"><div class="fin-ch"><h2>${esc(titulo)}</h2><span class="grow"></span><span class="muted fin-mini">Clique no lançamento para ver o detalhe. ✓ marca como pago; ⋯ tem as outras ações.</span></div>
+      ${FL_SEL.size?`<div class="fl-bulk"><b>${FL_SEL.size} lançamento${FL_SEL.size===1?"":"s"} selecionado${FL_SEL.size===1?"":"s"}</b><span class="grow"></span><button class="btn sm" data-fl="selLimpar">Limpar seleção</button><button class="btn sm" data-fl="selPagar">✓ Marcar como pago</button><button class="btn sm danger" data-fl="selApagar">Apagar</button></div>`:""}
+      <div class="fin-tbl"><table class="fl-tbl"><thead><tr><th class="fl-ck"><input type="checkbox" id="flSelTodos" aria-label="Selecionar todos desta página" ${rows.length && rows.every(r=>FL_SEL.has(r.k+"|"+r.id))?"checked":""}></th><th>Lançamento</th><th>Vencimento</th><th>Situação</th><th class="fl-hide">Conta</th><th class="r">Valor</th><th class="r">Ação</th></tr></thead><tbody>${lista}</tbody></table></div>
       <div class="fl-foot"><span>${rows.length} lançamento${rows.length===1?"":"s"}</span><span>Entradas <b class="fin-pos">+ ${finBrl(F2.inV)}</b></span><span>Saídas <b class="fin-neg">− ${finBrl(F2.outV)}</b></span><span>Saldo <b>${finBrl(F2.inV-F2.outV)}</b></span></div></section>
   </div>`;
 }
@@ -9785,11 +9800,11 @@ function flDetHtml(r){
     pgs = flPgs(o).map(l=>({id:l.id, v:Math.abs(l.v), d:l.d, forma:l.forma||"", conta:l.conta||"", obs:l.obs||"", est:true}));
     hist = (o.hist||[]).slice().reverse();
     criado = o.criado ? flFd(o.criado) : "";
-    acoes = `<button class="btn" data-fl="editar" data-id="${o.id}">Editar</button><button class="btn danger" data-fl="excluir" data-id="${o.id}">Excluir</button>`;
+    acoes = `<button class="btn" data-fl="editar" data-id="${o.id}">Editar</button>${o.fixo && FIN.d.series && FIN.d.series[o.fixo] && FIN.d.series[o.fixo].ativo?`<button class="btn" data-fl="pararSerie" data-id="${o.id}">Parar de repetir</button>`:""}<button class="btn danger" data-fl="excluir" data-id="${o.id}">Excluir</button>`;
   } else if(r.k==="lanc"){
     pgs = [{id:o.id, v:Math.abs(o.v), d:o.d, forma:o.forma||"", conta:o.conta||"", obs:o.obs||"", est:false}];
     hist = [{t:finD(o.d).getTime(), txt:o.imp?"Importado da planilha":o.conc?"Lançado pela conciliação do extrato":"Lançado como pago"}];
-    acoes = `<button class="btn" data-fl="lancBase" data-id="${o.id}">Editar ou excluir</button>`;
+    acoes = o.trPar ? `<button class="btn danger" data-fl="trExcluir" data-id="${o.id}">Excluir transferência</button>` : `<button class="btn" data-fl="lancBase" data-id="${o.id}">Editar ou excluir</button>`;
   } else if(r.k==="rec"){
     pgs = FIN.d.lanc.filter(l=>l.recId===o.id).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,8).map(l=>({id:l.id, v:Math.abs(l.v), d:l.d, forma:l.forma||"", conta:l.conta||"", obs:l.desc, est:false}));
     hist = (o.cob||[]).slice().reverse().map(c=>({t:finD(c.d).getTime(), txt:c.t}));
@@ -9816,7 +9831,8 @@ function flDetHtml(r){
       <div class="fin-ch"><span class="fin-c ${ent?"ok":"danger"}">${ent?"Entrada":"Saída"}</span><span class="muted">${esc(flFd(r.venc))}</span><span class="grow"></span><button class="fl-x" data-fl="fechar" aria-label="Fechar">×</button></div>
       <div class="fl-gv ${ent?"fin-pos":"fin-neg"}">${ent?"+":"−"} ${finBrl(r.v)}</div>
       <h3>${esc(r.desc)}</h3>${recibo}</div>
-    <div class="fl-sec">${flLinha("Categoria", esc(r.cat||"Sem categoria"))}${flLinha("Caixa", esc(FIN_CX[r.cx]||r.cx))}${flLinha("Conta", esc(flBancoNome(r.conta)||"—"))}${r.pessoa?flLinha(r.k==="pagar"?"Fornecedor":"Pessoa", esc(r.pessoa)):""}${r.k==="tit"&&o.rateio?flLinha("Rateio", esc(o.rateio)):""}${r.k==="tit"&&o.etapa&&finEtapa(o.etapa)?flLinha("Etapa da obra", esc(finEtapa(o.etapa).n)):""}${r.k==="tit"&&o.obs?flLinha("Anotação", esc(o.obs)):""}</div>
+    <div class="fl-sec">${flLinha("Categoria", esc(r.cat||"Sem categoria"))}${flLinha("Caixa", esc(FIN_CX[r.cx]||r.cx))}${flLinha("Conta", esc(flBancoNome(r.conta)||"—"))}${r.pessoa?flLinha(r.k==="pagar"?"Fornecedor":"Pessoa", esc(r.pessoa)):""}${r.k==="tit"&&o.rateio?flLinha("Rateio", esc(o.rateio)):""}${r.k==="tit"&&o.etapa&&finEtapa(o.etapa)?flLinha("Etapa da obra", esc(finEtapa(o.etapa).n)):""}${o.jm?flLinha("Juros ou multa", finBrl(o.jm)):""}${r.k==="tit"&&o.comp&&o.comp!==o.venc.slice(0,7)?flLinha("Mês do resultado", esc(flYmLabel(o.comp))):""}${o.vinc&&o.vinc.caso?flLinha("Caso ou processo", esc(o.vinc.caso.n)):""}${o.parceiro?flLinha("Parceiro", esc(o.parceiro)):""}${o.fixo&&FIN.d.series&&FIN.d.series[o.fixo]?flLinha("Repete", esc(flPerNome(FIN.d.series[o.fixo].per,true))+(FIN.d.series[o.fixo].ativo?"":" (encerrada)")):""}${r.k==="tit"&&o.obs?flLinha("Anotação", esc(o.obs)):""}</div>
+    ${(o.anexos||[]).length?`<div class="fl-sec"><span class="fin-lbl">Anexos</span><div class="fin-list">${o.anexos.map(a=>`<a class="fin-li" href="${esc(a.url)}" target="_blank" rel="noopener"><span class="fin-ico neutral">⧉</span><span class="fin-tx"><b>${esc(a.n)}</b><small>abrir</small></span></a>`).join("")}</div></div>`:""}
     <div class="fl-sec"><span class="fin-lbl">Situação</span><div class="row fin-gap">${st}</div></div>
     <div class="fl-sec fl-2">${flLinha("Vencimento", esc(flFd(r.venc)))}${flLinha(ent?"Recebido em":"Pago em", ultPg?esc(flFd(ultPg)):(ent?"Não recebido":"Não pago"))}${flLinha("Pago até agora", finBrl(r.pago))}${flLinha("Em aberto", `<b class="${r.resta>0?"fin-neg":""}">${finBrl(r.resta)}</b>`)}${criado?flLinha("Criado em", esc(criado)):""}</div>
     <div class="fl-sec"><span class="fin-lbl">${r.k==="rec"?"Recebimentos deste honorário":"Pagamentos"}</span>${pgs.length?`<div class="fin-list">${pgs.map(p=>`<div class="fin-li"><div class="fin-tx"><b>${finBrl(p.v)}</b><small>${esc(flFd(p.d))}${p.forma?" · "+esc(p.forma):""}${p.conta?" · "+esc(flBancoNome(p.conta)):""}${p.obs?" · "+esc(p.obs):""}</small></div>${p.est?`<button class="btn sm" data-fl="estornar" data-id="${p.id}">Estornar</button>`:""}</div>`).join("")}</div>`:`<p class="muted fin-mini">Nenhum pagamento registrado.</p>`}</div>
@@ -9827,9 +9843,14 @@ function flDetHtml(r){
 
 /* ---------- pagar / receber ---------- */
 function flRecReceber(r, v, d, forma, conta, obs){
+  let x={};
+  finMuda(F=>{ x=flRecCore(F, r, v, d, forma, conta, obs); });
+  return x;
+}
+function flRecCore(F, r, v, d, forma, conta, obs){
   const vp=finVp(r), ja=Number(r.parcialV)||0, resta=flRound(vp-ja), pt=r.mensal?"mês":((r.pagas||0)+1)+"/"+(r.parc||1), parcial = v < resta-0.004;
   let nR=0;
-  finMuda(F=>{
+  (()=>{
     F.lanc.push({id:uid(), d, desc:"Honorários "+r.cli+" · "+pt+(parcial?" (parcial)":""), v, cx:"esc", cat:"Honorários", nf:r.nf?"pend":undefined, forma, conta, obs, recId:r.id, pessoa:r.cli});
     nR = flRepasses(F, r.rateio, v, r.cli+" · "+pt+(parcial?" (parcial)":""));
     r.cob.push({d, t:"Recebido "+finBrl(v)+" ("+pt+(parcial?", parcial":"")+")"});
@@ -9838,7 +9859,7 @@ function flRecReceber(r, v, d, forma, conta, obs){
     if(r.mensal) r.prox = r.prox ? finIso(finAddM(finD(r.prox),1)) : "";
     else { r.pagas=(r.pagas||0)+1; r.prox = r.pagas<(r.parc||1) && r.prox ? finIso(finAddM(finD(r.prox),1)) : ""; }
     r.aguarda=""; r.promessa="";
-  });
+  })();
   return {parcial, nR};
 }
 const flReceberBase = finReceber;
@@ -9890,97 +9911,290 @@ function flEstornar(id){
   toast("Pagamento estornado.", ()=>finMuda(F2=>{ F2.lanc.push(JSON.parse(bk)); if(t) t.hist.push({t:Date.now(), txt:"Estorno desfeito"}); }));
 }
 
-/* ---------- novo / editar lançamento ---------- */
+/* ---------- novo / editar lançamento (mesmo formulário do Juridiq, com os ajustes da M&P) ---------- */
+/* Receita · Despesa · Transferência. Valor, juros ou multa, descrição, vencimento, conta, categoria, mês do resultado. */
+/* Pagamento: já recebido/pago (data e forma) ou a receber/pagar (com pagamento parcial). Repetir ou parcelar: */
+/* conta fixa (anual a diária, sem data para acabar) ou parcelado (quantas parcelas, a cada período, 1ª parcela, entrada). */
+/* Anotações e anexos (links do Dropbox/Drive). Vínculos: cliente ou pessoa, caso ou processo, parceiro. */
+const FL_PER = [["ano","Ano","Anual"],["semestre","Semestre","Semestral"],["trimestre","Trimestre","Trimestral"],["bimestre","Bimestre","Bimestral"],["mes","Mês","Mensal"],["quinzena","Quinzena","Quinzenal"],["semana","Semana","Semanal"],["dia","Dia","Diária"]];
+let FL_NV = null;
+function flAddPer(iso, per, k){
+  const d=finD(iso); if(!d) return iso;
+  const m={ano:12, semestre:6, trimestre:3, bimestre:2, mes:1}[per];
+  if(m) return finIso(finAddM(d, m*k));
+  const n={quinzena:15, semana:7, dia:1}[per]||30;
+  return finIso(finAddD(d, n*k));
+}
+function flPerNome(per, adj){ const p=FL_PER.find(x=>x[0]===per); return p ? (adj?p[2]:p[1]) : per; }
 function flCatOpts(cx, tipo, sel){
   const L=finCatsDo(cx==="grupo"?"grupo":"esc", tipo);
   if(sel && !L.includes(sel)) L.unshift(sel);
-  return L.map(c=>`<option ${c===sel?"selected":""}>${esc(c)}</option>`).join("");
+  return `<option value="">Sem categoria</option>`+L.map(c=>`<option ${c===sel?"selected":""}>${esc(c)}</option>`).join("");
 }
-function flNovoSync(){
-  const t=($("#flNT")||{}).value, x=($("#flNX")||{}).value, r=($("#flNR")||{}).value||"unica";
-  const c=$("#flNC"); if(c){ const sel=c.value; c.innerHTML=flCatOpts(x, t, ""); if([...c.options].some(o=>o.value===sel)) c.value=sel; else if(x!=="grupo") c.value=finSugCat(($("#flND")||{}).value||"", t==="in"?1:-1, ""); }
-  const b=$("#flNB"); if(b){ const sel=b.value; b.innerHTML=flBancoOpts(x, sel); }
-  const vis=(id, on)=>{ const el=$("#"+id); if(el) el.style.display = on ? "" : "none"; };
-  vis("flNNw", r==="parc"); vis("flNVtw", r==="parc"); vis("flNEw", x==="grupo"); vis("flNRatw", t==="in" && x==="esc"); vis("flNNfw", t==="in" && x==="esc"); vis("flNJaw", r==="unica");
-  const dica=$("#flNDica");
-  if(dica) dica.textContent = r==="fixo" ? (t==="out" ? "Despesa fixa vira conta fixa: repete todo mês, sem data para acabar (fica em Contas e orçamento)." : "Receita fixa: cria os próximos 12 meses; dá para parar quando quiser.") : r==="parc" ? "Cria uma parcela por mês a partir do vencimento (1/n, 2/n…)." : "";
+function flBuscaPessoa(q){
+  const L=(typeof psAll==="function" ? psAll() : []).filter(p=>p && p.nome);
+  if(!q) return [];
+  if(typeof bpAchar==="function") return bpAchar(L, q, p=>p.nome).slice(0,6);
+  const k=finNormTxt(q).trim(); return L.filter(p=>finNormTxt(p.nome).includes(k)).slice(0,6);
+}
+function flBuscaCaso(q){
+  const L=(typeof csAll==="function" ? csAll() : []).filter(c=>c && c.titulo);
+  if(!q) return [];
+  const nome=c=>c.titulo+(c.processo?" "+c.processo:"");
+  if(typeof bpAchar==="function") return bpAchar(L, q, nome).slice(0,6);
+  const k=finNormTxt(q).trim(); return L.filter(c=>finNormTxt(nome(c)).includes(k)).slice(0,6);
+}
+function flParceiros(){
+  const s=new Set(["Alan","Evaldo","Dra. Luci","Rafael (AZCT)"]);
+  FIN.d.rec.forEach(r=>flRateio(r.rateio).forEach(x=>s.add(x[0])));
+  FIN.d.tit.forEach(t=>{ if(t.parceiro) s.add(t.parceiro); flRateio(t.rateio).forEach(x=>s.add(x[0])); });
+  return [...s].filter(Boolean).sort((a,b)=>a.localeCompare(b,"pt-BR"));
 }
 function flNovoModal(tipo, t, preset){
   const novo=!t, u=finUi(), p=preset||{};
   const cx0 = t ? t.cx : (p.cx || (u.cx==="tudo" ? "esc" : u.cx));
-  const tp = t ? t.tipo : (tipo||"out");
-  const x = t || {desc:p.desc||"", v:p.v||"", venc:p.venc||isoDia(), cat:p.cat||"", conta:"", pessoa:"", etapa:"", rateio:"", nf:false, obs:""};
+  const x = t || {tipo:tipo||"out", desc:p.desc||"", v:p.v||"", venc:p.venc||isoDia(), cat:p.cat||"", conta:"", pessoa:"", etapa:"", rateio:"", nf:false, obs:"", jm:"", comp:"", vinc:{}, anexos:[], parceiro:""};
+  const comp0 = x.comp || String(x.venc||isoDia()).slice(0,7);
+  FL_NV = {novo, t, tipo: t ? t.tipo : (tipo||"out"), cx:cx0, sit:"aberto", parcial:false, rep:false, como:"fixa", entrada:false, compAberto:!!(x.comp && x.comp!==String(x.venc||"").slice(0,7)),
+    anexos:(x.anexos||[]).map(a=>Object.assign({},a)), pes:(x.vinc&&x.vinc.pes)||(x.pessoa?{id:"", n:x.pessoa}:null), caso:(x.vinc&&x.vinc.caso)||null, catManual:!!x.cat};
   const grupoSerie = t && ((t.parc && t.parc.g) || t.fixo);
-  modal(novo?"Novo lançamento":"Editar lançamento", `<div class="fin-form fl-novo">
-    <label class="df">Tipo<select class="inp" id="flNT"><option value="in" ${tp==="in"?"selected":""}>Receita (entrada)</option><option value="out" ${tp==="out"?"selected":""}>Despesa (saída)</option></select></label>
-    <label class="df">Caixa<select class="inp" id="flNX"><option value="esc" ${cx0==="esc"?"selected":""}>Escritório M&P</option><option value="pf" ${cx0==="pf"?"selected":""}>Pessoal (meu)</option><option value="grupo" ${cx0==="grupo"?"selected":""}>MP Grupo</option></select></label>
-    <label class="df fl-full">Descrição<input class="inp" id="flND" value="${esc(x.desc)}" placeholder="Ex.: Aluguel da sala · Honorários inventário"></label>
-    <label class="df">Valor<input class="inp" id="flNV" value="${x.v===""?"":esc(String(x.v).replace(".",","))}" inputmode="decimal" placeholder="1.650,00"></label>
-    <label class="df">Vencimento${novo?" (1ª parcela)":""}<input class="inp" type="date" id="flNVc" value="${esc(x.venc||isoDia())}"></label>
-    <label class="df">Categoria<select class="inp" id="flNC">${flCatOpts(cx0, tp, x.cat)}</select></label>
-    <label class="df">Conta<select class="inp" id="flNB">${flBancoOpts(cx0, x.conta)}</select></label>
-    <label class="df">Pessoa (primeiro nome)<input class="inp" id="flNP" value="${esc(x.pessoa||"")}" placeholder="Ex.: Fernanda L."></label>
-    ${novo?`<label class="df">Repetição<select class="inp" id="flNR"><option value="unica">Única</option><option value="parc">Parcelada</option><option value="fixo">Fixa (todo mês)</option></select></label>
-    <label class="df" id="flNNw">Parcelas<input class="inp" type="number" id="flNN" value="3" min="2" max="60"></label>
-    <label class="df" id="flNVtw">O valor informado é<select class="inp" id="flNVt"><option value="total">o total (divide nas parcelas)</option><option value="parc">de cada parcela</option></select></label>`:""}
-    <label class="df" id="flNEw">Etapa da obra<select class="inp" id="flNE">${finEtapaOpts(x.etapa||"")}</select></label>
-    <label class="df fl-full" id="flNRatw">Rateio (cria os repasses ao receber)<input class="inp" id="flNRat" value="${esc(x.rateio||"")}" placeholder="Alan 30%, Evaldo 20%"></label>
-    <label class="df fl-full">Anotação<input class="inp" id="flNO" value="${esc(x.obs||"")}" placeholder="Opcional"></label>
-    <label class="check" id="flNNfw"><input type="checkbox" id="flNNf" ${x.nf?"checked":""}> Recebe no CNPJ (pede NF)</label>
-    ${novo?`<label class="check" id="flNJaw"><input type="checkbox" id="flNJa"> Já foi ${tp==="in"?"recebido":"pago"}</label>`:""}
-    ${grupoSerie?`<label class="check fl-full"><input type="checkbox" id="flNG" checked> Aplicar também às próximas ${t.fixo?"repetições":"parcelas"} ainda não pagas</label>`:""}
-    <p class="muted fin-mini fl-full" id="flNDica"></p></div>`,
-  [{label:"Cancelar"},{label:novo?"Salvar lançamento":"Salvar", cls:"primary", fn:()=>flNovoSalvar(t)}], true);
-  setTimeout(flNovoSync, 0);
+  const v2=v=>v===""||v===undefined||v===null ? "" : esc(String(v).replace(".",","));
+  const bancos=FIN.d.bancos.map(b=>`<option value="${b.id}">${esc(b.n)} · ${esc(FIN_CX[b.cx]||b.cx)}</option>`).join("");
+  const html = `<div class="fl-nv">
+    <div class="fl-nv-top">
+      <div class="fin-seg fl-nv-tipo" role="radiogroup" aria-label="Tipo do lançamento"><button data-flnv="tipo" data-v="in">Receita</button><button data-flnv="tipo" data-v="out">Despesa</button>${novo?`<button data-flnv="tipo" data-v="tr">Transferência</button>`:""}</div>
+      <span class="grow"></span>
+      <div class="fin-seg fl-nv-cx" role="radiogroup" aria-label="Caixa"><button data-flnv="cx" data-v="esc">Escritório M&amp;P</button><button data-flnv="cx" data-v="pf">Pessoal</button><button data-flnv="cx" data-v="grupo">MP Grupo</button></div>
+    </div>
+    <p class="muted fin-mini fl-nv-trdica" id="flNTrDica">Use para mover dinheiro entre contas, como do banco para o caixa ou do escritório para o pessoal. Não conta como receita nem despesa.</p>
+    <div class="fl-nv-body">
+      <div class="fl-nv-main">
+        <div id="flNTr" class="fl-g2">
+          <label class="df">Sai de<select class="inp" id="flTrDe"><option value="">Sai da conta</option>${bancos}</select></label>
+          <label class="df">Entra em<select class="inp" id="flTrPara"><option value="">Entra na conta</option>${bancos}</select></label>
+          <label class="df">Valor<input class="inp" id="flTrV" inputmode="decimal" placeholder="R$ 0,00"></label>
+          <label class="df">Data<input class="inp" type="date" id="flTrD" value="${isoDia()}"></label>
+          <label class="df fl-full">Descrição<input class="inp" id="flTrDesc" value="Transferência entre contas"></label>
+          ${FIN.d.bancos.length<2?`<p class="fin-neg fin-mini fl-full">Cadastre pelo menos duas contas em Contas e orçamento › Contas bancárias para transferir.</p>`:""}
+        </div>
+        <div id="flNNorm">
+          <div class="fl-g3">
+            <label class="df">Valor<input class="inp" id="flNV" value="${v2(x.v)}" inputmode="decimal" placeholder="R$ 0,00"></label>
+            <label class="df"><span>Juros ou multa <span class="fl-i" title="Quanto do valor do lançamento é juros ou multa por atraso. Deixe em branco se não houver.">i</span></span><input class="inp" id="flNJm" value="${v2(x.jm)}" inputmode="decimal" placeholder="R$ 0,00"></label>
+            <label class="df">Descrição<input class="inp" id="flND" value="${esc(x.desc)}" placeholder="Ex.: Honorários iniciais de Ana S."></label>
+          </div>
+          <div class="fl-g3">
+            <label class="df" id="flNVcW">Vencimento<input class="inp" type="date" id="flNVc" value="${esc(x.venc||isoDia())}"></label>
+            <label class="df">Conta<select class="inp" id="flNB">${flBancoOpts(cx0, x.conta)}</select></label>
+            <label class="df">Categoria<select class="inp" id="flNC">${flCatOpts(cx0, FL_NV.tipo, x.cat)}</select></label>
+          </div>
+          <div class="fl-nv-comp"><span id="flNCompTxt"></span> <button class="lnk" data-flnv="comp">Mudar o mês</button>
+            <label class="df" id="flNCompW"><span>Mês do resultado <span class="fl-i" title="Em que mês este valor entra no DRE (regime de competência). Normalmente é o mês do vencimento.">i</span></span><input class="inp" type="month" id="flNComp" value="${esc(comp0)}"></label></div>
+          ${novo?`<div class="fl-nv-sec"><span class="fin-lbl">Pagamento</span>
+            <div class="fl-nv-pg">
+              <div class="df"><span>Situação</span><div class="fin-seg fl-nv-sit" role="radiogroup" aria-label="Situação do pagamento"><button data-flnv="sit" data-v="ja" id="flNSitJa">Já recebido</button><button data-flnv="sit" data-v="aberto" id="flNSitAb">A receber</button></div></div>
+              <label class="df" id="flNPgDW"><span id="flNPgDL">Recebido em</span><input class="inp" type="date" id="flNPgD" value="${isoDia()}"></label>
+              <label class="df" id="flNPgFW">Forma<select class="inp" id="flNPgF">${FL_FORMAS.map(f=>`<option>${f}</option>`).join("")}</select></label>
+            </div>
+            <button class="lnk fl-nv-add" data-flnv="parcial" id="flNParcBtn">+ Adicionar pagamento parcial</button>
+            <div class="fl-g3" id="flNParcW"><label class="df">Valor já pago<input class="inp" id="flNParcV" inputmode="decimal" placeholder="R$ 0,00"></label><label class="df">Data<input class="inp" type="date" id="flNParcD" value="${isoDia()}"></label><label class="df">Forma<select class="inp" id="flNParcF">${FL_FORMAS.map(f=>`<option>${f}</option>`).join("")}</select></label></div>
+            <label class="check" id="flNEntW"><input type="checkbox" id="flNEnt"> Entrada</label>
+            <div class="fl-g2" id="flNEntBox"><label class="df">Valor da entrada<input class="inp" id="flNEntV" inputmode="decimal" placeholder="R$ 0,00"></label><label class="df">Data da entrada<input class="inp" type="date" id="flNEntD" value="${isoDia()}"></label></div>
+          </div>
+          <div class="fl-nv-rep">
+            <div class="fin-ch"><div><b>Repetir ou parcelar</b><small class="muted">Para mensalidades, parcelas e contas fixas.</small></div><span class="grow"></span><button class="fl-sw" role="switch" aria-checked="false" aria-label="Repetir ou parcelar" data-flnv="rep"><i></i></button></div>
+            <div id="flNRepBox">
+              <div class="df"><span>Como se repete</span><div class="fin-seg fl-nv-como" role="radiogroup" aria-label="Como se repete"><button data-flnv="como" data-v="fixa">Conta fixa</button><button data-flnv="como" data-v="parc">Parcelado</button></div></div>
+              <p class="muted fin-mini" id="flNComoDica"></p>
+              <div class="fl-g3" id="flNFixaW"><label class="df">Repete<select class="inp" id="flNFreq">${FL_PER.map(([k,,a])=>`<option value="${k}" ${k==="mes"?"selected":""}>${a}</option>`).join("")}</select></label></div>
+              <div class="fl-g3" id="flNParcelW">
+                <label class="df">Quantas parcelas<input class="inp" type="number" id="flNN" value="2" min="2" max="120"></label>
+                <label class="df">Uma parcela a cada<select class="inp" id="flNPer">${FL_PER.map(([k,n])=>`<option value="${k}" ${k==="mes"?"selected":""}>${n}</option>`).join("")}</select></label>
+                <label class="df">Primeira parcela<input class="inp" type="date" id="flNPri" value="${esc(x.venc||isoDia())}"></label>
+                <label class="df fl-full">O valor informado é<select class="inp" id="flNVt"><option value="total">o total (divide nas parcelas)</option><option value="parc">o de cada parcela</option></select></label>
+              </div>
+            </div>
+          </div>`:`<p class="muted fin-mini">Pagamentos, estornos e recibo ficam no detalhe do lançamento.</p>`}
+          <div class="fl-nv-sec"><span class="fin-lbl">Anotações e anexos</span>
+            <textarea class="inp fl-nv-obs" id="flNO" placeholder="Algo que vale lembrar sobre este lançamento (opcional)">${esc(x.obs||"")}</textarea>
+            <div id="flNAnexos" class="fl-nv-anx"></div>
+            <div class="fl-nv-anxadd"><input class="inp" id="flNAnxU" placeholder="Cole o link do comprovante, nota ou contrato (Dropbox, Drive)"><button class="btn sm" data-flnv="anexo+">Anexar link</button></div>
+          </div>
+          ${grupoSerie?`<label class="check"><input type="checkbox" id="flNG" checked> Aplicar também às próximas ${t.fixo?"repetições":"parcelas"} ainda não pagas</label>`:""}
+        </div>
+      </div>
+      <aside class="fl-nv-vinc" id="flNVinc"><span class="fin-lbl">Vínculos</span><small class="muted">Ligue o lançamento a quem ele se refere. Tudo opcional.</small>
+        <label class="df">Cliente ou pessoa<input class="inp" id="flNPes" autocomplete="off" value="${esc(FL_NV.pes?FL_NV.pes.n:"")}" placeholder="Buscar pelo nome"></label><div class="fl-sug" id="flNPesSug"></div>
+        <label class="df">Caso ou processo<input class="inp" id="flNCaso" autocomplete="off" value="${esc(FL_NV.caso?FL_NV.caso.n:"")}" placeholder="Buscar pelo caso ou nº"></label><div class="fl-sug" id="flNCasoSug"></div>
+        <label class="df">Parceiro<input class="inp" id="flNParc" list="flNParcL" value="${esc(x.parceiro||"")}" placeholder="Buscar parceiro"></label><datalist id="flNParcL">${flParceiros().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+        <label class="df" id="flNRatW">Rateio (cria os repasses ao receber)<input class="inp" id="flNRat" value="${esc(x.rateio||"")}" placeholder="Alan 30%, Evaldo 20%"></label>
+        <label class="check" id="flNNfW"><input type="checkbox" id="flNNf" ${x.nf?"checked":""}> Recebe no CNPJ (pede NF)</label>
+        <label class="df" id="flNEW">Etapa da obra<select class="inp" id="flNE">${finEtapaOpts(x.etapa||"")}</select></label>
+      </aside>
+    </div></div>`;
+  modal(novo?"Novo lançamento":"Editar lançamento", html, [{label:"Fechar"},{label:novo?"Confirmar":"Salvar", cls:"primary", fn:()=>flNovoSalvar()}], true);
+  const m=$("#modalRoot .modal"); if(m) m.classList.add("fl-nv-modal");
+  flNovoSync(true);
+  setTimeout(()=>{ const el=$("#flNV"); if(el) el.focus(); }, 40);
 }
-function flNovoSalvar(t){
-  const g=id=>($("#"+id)||{}), tipo=g("flNT").value, cx=g("flNX").value, desc=(g("flND").value||"").trim(), v=flRound(finNum(g("flNV").value)), venc=g("flNVc").value;
-  const cat=g("flNC").value, conta=g("flNB").value||"", pessoa=flCurto(g("flNP").value), etapa=cx==="grupo"?(g("flNE").value||""):"", rateio=(tipo==="in"&&cx==="esc")?(g("flNRat").value||"").trim():"", nf=tipo==="in"&&cx==="esc"&&!!g("flNNf").checked, obs=(g("flNO").value||"").trim();
-  if(!desc){ g("flND").focus && g("flND").focus(); return false; }
-  if(!(v>0)){ g("flNV").focus && g("flNV").focus(); return false; }
-  if(!venc){ g("flNVc").focus && g("flNVc").focus(); return false; }
-  if(/\d{6,}/.test(desc+" "+g("flNP").value+" "+obs)){ toast("Tire números longos (CPF, telefone, nº de processo) da descrição e da pessoa."); return false; }
-  const hoje=isoDia(), F=FIN.d;
-  if(t){
+function flNovoSync(refill){
+  const N=FL_NV; if(!N || !$("#flNNorm")) return;
+  const ent=N.tipo==="in", tr=N.tipo==="tr";
+  const show=(id, on)=>{ const el=$("#"+id); if(el) el.style.display = on ? "" : "none"; };
+  $$('[data-flnv="tipo"]').forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===N.tipo)));
+  $$('[data-flnv="cx"]').forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===N.cx)));
+  show("flNTr", tr); show("flNTrDica", tr); show("flNNorm", !tr); show("flNVinc", !tr);
+  const cxSeg=$(".fl-nv-cx"); if(cxSeg) cxSeg.style.visibility = tr ? "hidden" : "";
+  const bt=$$("#modalRoot .mfoot .btn"); if(bt.length) bt[bt.length-1].textContent = tr ? "Transferir" : (N.novo?"Confirmar":"Salvar");
+  if(tr) return;
+  if(refill){
+    const c=$("#flNC"); if(c){ const sel=c.value; c.innerHTML=flCatOpts(N.cx, N.tipo, N.catManual?sel:""); if(N.catManual && [...c.options].some(o=>o.value===sel)) c.value=sel; else if(N.cx!=="grupo"){ const s=finSugCat(($("#flND")||{}).value||"", ent?1:-1, ""); c.value=[...c.options].some(o=>o.value===s) && (($("#flND")||{}).value||"").trim() ? s : ""; } }
+    const b=$("#flNB"); if(b){ const sel=b.value; b.innerHTML=flBancoOpts(N.cx, sel); if([...b.options].some(o=>o.value===sel)) b.value=sel; }
+  }
+  const parc = N.novo && N.rep && N.como==="parc";
+  show("flNVcW", !parc);
+  const venc = parc ? (($("#flNPri")||{}).value||isoDia()) : (($("#flNVc")||{}).value||isoDia());
+  if(!N.compAberto){ const cp=$("#flNComp"); if(cp) cp.value=venc.slice(0,7); }
+  const cv=(($("#flNComp")||{}).value||venc.slice(0,7));
+  const ct=$("#flNCompTxt"); if(ct) ct.textContent = "Entra no resultado de "+flYmLabel(cv).toLowerCase().replace(" "," de ")+".";
+  show("flNCompW", N.compAberto);
+  if(N.novo){
+    $$('[data-flnv="sit"]').forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===N.sit)));
+    const ja=$("#flNSitJa"), ab=$("#flNSitAb"); if(ja) ja.textContent = ent?"Já recebido":"Já pago"; if(ab) ab.textContent = ent?"A receber":"A pagar";
+    const dl=$("#flNPgDL"); if(dl) dl.textContent = ent?"Recebido em":"Pago em";
+    const sitOn = !parc;
+    show("flNPgDW", sitOn && N.sit==="ja"); show("flNPgFW", sitOn && N.sit==="ja");
+    const sitSeg=$(".fl-nv-sit"); if(sitSeg) sitSeg.closest(".df").style.display = sitOn ? "" : "none";
+    show("flNParcBtn", sitOn && N.sit==="aberto" && !N.parcial && !N.rep); show("flNParcW", sitOn && N.sit==="aberto" && N.parcial && !N.rep);
+    show("flNEntW", parc); show("flNEntBox", parc && N.entrada);
+    const sw=$(".fl-sw"); if(sw) sw.setAttribute("aria-checked", String(N.rep));
+    show("flNRepBox", N.rep);
+    $$('[data-flnv="como"]').forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===N.como)));
+    show("flNFixaW", N.como==="fixa"); show("flNParcelW", N.como==="parc");
+    const cd=$("#flNComoDica"); if(cd) cd.textContent = N.como==="fixa" ? "Se repete sem data para acabar, como mensalidades e aluguel. O primeiro vencimento é o do campo Vencimento." : "Divide em um número certo de parcelas, uma em cada período.";
+  }
+  show("flNRatW", ent && N.cx==="esc"); show("flNNfW", ent && N.cx==="esc"); show("flNEW", N.cx==="grupo");
+  const ax=$("#flNAnexos"); if(ax) ax.innerHTML = N.anexos.map((a,i)=>`<div class="fin-li"><span class="fin-ico neutral">⧉</span><a class="fin-tx" href="${esc(a.url)}" target="_blank" rel="noopener"><b>${esc(a.n)}</b><small>${esc(a.url.slice(0,60))}</small></a><button class="btn sm" data-flnv="anexo-" data-i="${i}">Tirar</button></div>`).join("");
+}
+function flSug(boxId, itens, tipo){
+  const box=$("#"+boxId); if(!box) return;
+  box.innerHTML = itens.map(x=>`<button class="fl-sug-it" data-flnv="${tipo}" data-id="${esc(x.id)}" data-n="${esc(x.n)}"><b>${esc(x.n)}</b>${x.s?`<small>${esc(x.s)}</small>`:""}</button>`).join("");
+  box.style.display = itens.length ? "flex" : "none";
+}
+function flUrlOk(u){ return /^https?:\/\/\S+$/i.test(String(u||"").trim()); }
+function flNovoSalvar(){
+  const N=FL_NV; if(!N) return;
+  const g=id=>($("#"+id)||{}), hoje=isoDia(), F=FIN.d;
+  if(N.tipo==="tr"){
+    const de=g("flTrDe").value, para=g("flTrPara").value, v=flRound(finNum(g("flTrV").value)), d=g("flTrD").value||hoje, desc=(g("flTrDesc").value||"").trim()||"Transferência entre contas";
+    if(!de || !para){ toast("Escolha a conta de onde sai e a conta onde entra."); return false; }
+    if(de===para){ toast("As duas contas são a mesma."); return false; }
+    if(!(v>0)){ g("flTrV").focus && g("flTrV").focus(); return false; }
+    const A=flBanco(de), B=flBanco(para), par=uid();
+    finMuda(F2=>{
+      F2.lanc.push({id:uid(), d, desc:desc+" · para "+B.n, v:-v, cx:A.cx, cat:"Transferência", conta:de, tr:true, trPar:par});
+      F2.lanc.push({id:uid(), d, desc:desc+" · de "+A.n, v, cx:B.cx, cat:"Transferência", conta:para, tr:true, trPar:par});
+    });
+    toast("Transferência de "+finBrl(v)+" de "+A.n+" para "+B.n+" registrada.");
+    return;
+  }
+  const tipo=N.tipo, cx=N.cx, ent=tipo==="in", desc=(g("flND").value||"").trim(), v=flRound(finNum(g("flNV").value)), jmR=flRound(finNum(g("flNJm").value)), jm=jmR>0?jmR:0;
+  const conta=g("flNB").value||"", cat=g("flNC").value||"", obs=(g("flNO").value||"").trim();
+  const pesTxt=(g("flNPes").value||"").trim(), pes = pesTxt ? (N.pes && N.pes.n===pesTxt ? N.pes : {id:"", n:flCurto(pesTxt)}) : null;
+  const casoTxt=(g("flNCaso").value||"").trim(), caso = casoTxt ? (N.caso && N.caso.n===casoTxt ? N.caso : {id:"", n:casoTxt}) : null;
+  const parceiro=(g("flNParc").value||"").trim(), rateio=(ent&&cx==="esc")?(g("flNRat").value||"").trim():"", nf=ent&&cx==="esc"&&!!g("flNNf").checked, etapa=cx==="grupo"?(g("flNE").value||""):"";
+  const parc = N.novo && N.rep && N.como==="parc", venc = parc ? (g("flNPri").value||hoje) : (g("flNVc").value||hoje);
+  const comp = N.compAberto ? (g("flNComp").value||venc.slice(0,7)) : "";
+  if(!(v>0)){ toast("Informe o valor."); g("flNV").focus && g("flNV").focus(); return false; }
+  if(!desc){ toast("Escreva a descrição."); g("flND").focus && g("flND").focus(); return false; }
+  if(jm>v){ toast("Juros ou multa não pode passar do valor."); return false; }
+  if(/\d{6,}/.test(desc+" "+pesTxt+" "+obs)){ toast("Tire números longos (CPF, telefone, nº de processo) da descrição, da pessoa e da anotação."); return false; }
+  const vinc={}; if(pes) vinc.pes={id:pes.id||"", n:flCurto(pes.n)}; if(caso) vinc.caso={id:caso.id||"", n:caso.n.replace(/\d{7}-?\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/g,"").trim()||caso.n};
+  const base={tipo, desc, cx, cat, conta, pessoa:vinc.pes?vinc.pes.n:"", vinc, parceiro, etapa, rateio, nf, obs, jm, anexos:N.anexos.slice()};
+  if(!N.novo){
+    const t=N.t;
     if(v < flPago(t)-0.004){ toast("O valor não pode ficar menor do que já foi pago ("+finBrl(flPago(t))+")."); return false; }
     const serie = g("flNG").checked ? F.tit.filter(y=>y.id!==t.id && y.venc>t.venc && flPago(y)<=0 && ((t.fixo && y.fixo===t.fixo) || (t.parc && y.parc && y.parc.g===t.parc.g))) : [];
-    finMuda(()=>{
-      Object.assign(t, {tipo, cx, desc, v, venc, cat, conta, pessoa, etapa, rateio, nf, obs});
+    finMuda(F2=>{
+      Object.assign(t, base, {v, venc, comp});
       t.hist.push({t:Date.now(), txt:"Editado"});
-      serie.forEach(y=>{ Object.assign(y, {tipo, cx, cat, conta, pessoa, etapa, rateio, nf}); if(t.fixo) Object.assign(y, {desc, v}); y.hist.push({t:Date.now(), txt:"Editado junto com a série"}); });
+      serie.forEach(y=>{ Object.assign(y, {tipo, cx, cat, conta, pessoa:base.pessoa, vinc, parceiro, etapa, rateio, nf}); if(t.fixo) Object.assign(y, {desc, v, jm}); y.hist.push({t:Date.now(), txt:"Editado junto com a série"}); });
+      if(t.fixo && F2.series && F2.series[t.fixo] && g("flNG").checked) Object.assign(F2.series[t.fixo].tpl, {tipo, cx, cat, conta, pessoa:base.pessoa, vinc, parceiro, etapa, rateio, nf, desc, v, jm});
     });
     toast("Lançamento salvo"+(serie.length?" (e mais "+serie.length+" da série)":"")+".");
     return;
   }
-  const rep=g("flNR").value||"unica", ja=rep==="unica" && !!g("flNJa").checked;
-  if(rep==="fixo" && tipo==="out"){
-    finMuda(F2=>{
-      const c={id:uid(), n:desc, dia:finD(venc).getDate(), v, cx, cat, pagos:{}, conta};
-      F2.contas.push(c);
-    });
-    toast("Despesa fixa cadastrada: repete todo dia "+finD(venc).getDate()+" (está em Contas e orçamento).");
-    return;
+  const itens=[], pgs=[], agora=Date.now();
+  let nR=0, msg="";
+  if(parc){
+    const n=Math.min(120, Math.max(2, +g("flNN").value||2)), per=g("flNPer").value||"mes", tot = g("flNVt").value==="parc" ? flRound(v*n) : v, gid=uid();
+    let resto=tot;
+    if(N.entrada){
+      const ev=flRound(finNum(g("flNEntV").value)), ed=g("flNEntD").value||hoje;
+      if(!(ev>0) || ev>=tot){ toast("O valor da entrada tem que ser maior que zero e menor que o total."); return false; }
+      const te=Object.assign({}, base, {id:uid(), desc:desc+" · entrada", v:ev, venc:ed, comp:"", jm:0, parc:{i:0, n, g:gid, entrada:true}, criado:hoje, hist:[{t:agora, txt:"Criado (entrada)"}]});
+      itens.push(te);
+      if(ed<=hoje) pgs.push({t:te, v:ev, d:ed, forma:"Pix"});
+      resto=flRound(tot-ev);
+    }
+    const cada=Math.floor(resto/n*100)/100;
+    for(let k=0;k<n;k++){ const vk=k===n-1?flRound(resto-cada*(n-1)):cada, vc=flAddPer(venc, per, k); itens.push(Object.assign({}, base, {id:uid(), v:vk, jm:jm?flRound(jm*vk/tot):0, venc:vc, comp:"", parc:{i:k+1, n, g:gid, per}, criado:hoje, hist:[{t:agora, txt:"Criado (parcela "+(k+1)+"/"+n+", a cada "+flPerNome(per).toLowerCase()+")"}]})); }
+    msg = (N.entrada?"Entrada + ":"")+n+" parcelas criadas (a cada "+flPerNome(per).toLowerCase()+").";
+  } else if(N.rep){
+    const per=g("flNFreq").value||"mes", gid=uid();
+    const tpl=Object.assign({}, base, {v, comp:""});
+    let k=0, vc=venc; const lim=finIso(finAddD(finHoje(), 365));
+    while(k<60 && (k===0 || vc<=lim)){ itens.push(Object.assign({}, tpl, {id:uid(), venc:vc, fixo:gid, criado:hoje, hist:[{t:agora, txt:"Criado (conta fixa "+flPerNome(per,true).toLowerCase()+")"}]})); k++; vc=flAddPer(venc, per, k); }
+    if(N.sit==="ja") pgs.push({t:itens[0], v, d:g("flNPgD").value||hoje, forma:g("flNPgF").value||"Pix"});
+    FIN.d.series = FIN.d.series || {};
+    FIN.d.series[gid] = {per, ativo:true, ini:venc, tpl};
+    msg = "Conta fixa "+flPerNome(per,true).toLowerCase()+" criada: repete sem data para acabar.";
+  } else {
+    const it=Object.assign({}, base, {id:uid(), v, venc, comp, criado:hoje, hist:[{t:agora, txt:"Criado"}]});
+    itens.push(it);
+    if(N.sit==="ja") pgs.push({t:it, v, d:g("flNPgD").value||hoje, forma:g("flNPgF").value||"Pix"});
+    else if(N.parcial){
+      const pv=flRound(finNum(g("flNParcV").value));
+      if(!(pv>0) || pv>=v){ toast("O pagamento parcial tem que ser maior que zero e menor que o valor."); return false; }
+      pgs.push({t:it, v:pv, d:g("flNParcD").value||hoje, forma:g("flNParcF").value||"Pix", parcial:true});
+    }
   }
-  const base={tipo, desc, cx, cat, conta, pessoa, etapa, rateio, nf, obs, criado:hoje};
-  const itens=[];
-  if(rep==="parc"){
-    const n=Math.min(60, Math.max(2, +g("flNN").value||2)), tot = g("flNVt").value==="parc" ? flRound(v*n) : v, cada=Math.floor(tot/n*100)/100, gid=uid();
-    for(let k=0;k<n;k++) itens.push(Object.assign({}, base, {id:uid(), v:k===n-1?flRound(tot-cada*(n-1)):cada, venc:finIso(finAddM(finD(venc),k)), parc:{i:k+1, n, g:gid}, hist:[{t:Date.now(), txt:"Criado (parcela "+(k+1)+"/"+n+")"}]}));
-  } else if(rep==="fixo"){
-    const gid=uid();
-    for(let k=0;k<12;k++) itens.push(Object.assign({}, base, {id:uid(), v, venc:finIso(finAddM(finD(venc),k)), fixo:gid, hist:[{t:Date.now(), txt:"Criado (receita fixa)"}]}));
-  } else itens.push(Object.assign({}, base, {id:uid(), v, venc, hist:[{t:Date.now(), txt:"Criado"}]}));
-  let nR=0;
   finMuda(F2=>{
     F2.tit.push(...itens);
-    if(ja){
-      const it=itens[0], d=venc<=hoje?venc:hoje;
-      F2.lanc.push({id:uid(), d, desc, v:flSinal(tipo)*v, cx, cat, tit:it.id, conta, forma:"Pix", pessoa:pessoa||undefined, etapa:etapa||undefined, nf:nf?"pend":undefined});
-      if(tipo==="in" && rateio) nR=flRepasses(F2, rateio, v, desc);
-      it.hist.push({t:Date.now(), txt:"Lançado já "+(tipo==="in"?"recebido":"pago")});
+    pgs.forEach(p=>{
+      const t=p.t, parcial = p.v < (Number(t.v)||0)-0.004;
+      F2.lanc.push({id:uid(), d:p.d, desc:t.desc+(parcial?" (parcial)":""), v:flSinal(t.tipo)*p.v, cx:t.cx, cat:t.cat, tit:t.id, conta:t.conta, forma:p.forma, pessoa:t.pessoa||undefined, etapa:t.etapa||undefined, nf:t.nf?"pend":undefined, jm:t.jm?flRound(t.jm*p.v/(Number(t.v)||1)):undefined});
+      if(t.tipo==="in" && t.rateio) nR+=flRepasses(F2, t.rateio, p.v, t.desc+(parcial?" (parcial)":""));
+      t.hist.push({t:Date.now(), txt:(t.tipo==="in"?"Recebido ":"Pago ")+finBrl(p.v)+" ("+p.forma+(parcial?", parcial":"")+")"});
+    });
+  });
+  toast((msg || ("Lançamento salvo"+(pgs.length?(pgs[0].parcial?" com pagamento parcial":" como "+(ent?"recebido":"pago")):"")+"."))+(nR?" "+nR+" repasse(s) criado(s).":""));
+}
+/* Conta fixa sem data para acabar: mantém sempre 12 meses à frente criados. */
+function flSeriesGarantir(){
+  const F=FIN.d, S2=F.series||{}, lim=finIso(finAddD(finHoje(), 365)); let mud=false;
+  Object.keys(S2).forEach(g=>{
+    const s=S2[g]; if(!s || !s.ativo) return;
+    const L=F.tit.filter(t=>t.fixo===g).sort((a,b)=>a.venc.localeCompare(b.venc)); if(!L.length) return;
+    let k=Math.round(L.length), ult=L[L.length-1].venc, guard=0;
+    while(guard<60){
+      const vc=flAddPer(s.ini, s.per, k);
+      if(vc>lim) break;
+      if(vc>ult){ F.tit.push(Object.assign({}, s.tpl, {id:uid(), venc:vc, fixo:g, criado:isoDia(), hist:[{t:Date.now(), txt:"Criado automaticamente (conta fixa)"}]})); mud=true; }
+      k++; guard++;
     }
   });
-  toast(itens.length>1 ? itens.length+" lançamentos criados ("+(rep==="parc"?"parcelas":"12 meses")+")." : "Lançamento salvo"+(ja?" como "+(tipo==="in"?"recebido":"pago"):"")+"."+(nR?" "+nR+" repasse(s) criado(s).":""));
+  if(mud) finSalvar();
+}
+function flPararSerie(id){
+  const F=FIN.d, t=F.tit.find(x=>x.id===id); if(!t || !t.fixo) return;
+  const hoje=isoDia(), fut=F.tit.filter(y=>y.fixo===t.fixo && y.venc>hoje && flPago(y)<=0);
+  confirmBox("Parar de repetir", "A conta fixa “"+esc(t.desc)+"” para de se repetir. "+(fut.length?fut.length+" lançamento(s) futuro(s) ainda não pago(s) serão apagados. ":"")+"O que já foi pago fica no histórico.", "Parar de repetir", ()=>{
+    const bk=JSON.stringify(fut), g=t.fixo;
+    finMuda(F2=>{ F2.tit=F2.tit.filter(y=>!fut.includes(y)); if(F2.series && F2.series[g]) F2.series[g].ativo=false; });
+    flFechar();
+    toast("Conta fixa encerrada.", ()=>finMuda(F2=>{ F2.tit.push(...JSON.parse(bk)); if(F2.series && F2.series[g]) F2.series[g].ativo=true; }));
+  });
 }
 function flExcluir(id){
   const F=FIN.d, t=F.tit.find(x=>x.id===id); if(!t) return;
@@ -10134,8 +10348,16 @@ function flExtratoModal(b){
 }
 
 /* ---------- DRE ---------- */
-function flDreSpec(ano, cx){
-  const L=FIN.d.lanc.filter(l=>l.d && l.d.slice(0,4)===String(ano) && (cx==="tudo" ? (l.cx==="esc"||l.cx==="pf") && !l.tr : l.cx===cx));
+function flDreSpec(ano, cx, reg){
+  const okCx=o=>cx==="tudo" ? (o.cx==="esc"||o.cx==="pf") && !o.tr : o.cx===cx, A=String(ano);
+  let src=[];
+  if(reg==="caixa") src=FIN.d.lanc.filter(l=>l.d && l.d.slice(0,4)===A && okCx(l));
+  else {
+    FIN.d.tit.forEach(t=>{ const m=String(t.comp||t.venc||"").slice(0,7); if(m.slice(0,4)===A && okCx(t)) src.push({d:m+"-01", v:flSinal(t.tipo)*(Number(t.v)||0), cat:t.cat, jm:t.jm||0}); });
+    FIN.d.lanc.forEach(l=>{ if(l.tit) return; const m=String(l.comp||l.d||"").slice(0,7); if(m.slice(0,4)===A && okCx(l)) src.push({d:m+"-01", v:Number(l.v)||0, cat:l.cat, jm:l.jm||0}); });
+  }
+  const L=[];
+  src.forEach(o=>{ if(o.cat==="Transferência") return; const jm=Math.min(Math.abs(o.v), Number(o.jm)||0); if(jm>0){ const sg=Math.sign(o.v); L.push({d:o.d, v:o.v-sg*jm, cat:o.cat}); L.push({d:o.d, v:sg*jm, cat:"Juros e multas"}); } else L.push(o); });
   const agg=f=>{ const m={}; L.filter(f).forEach(l=>{ const k=l.cat||"Sem categoria"; (m[k]=m[k]||Array(12).fill(0))[+l.d.slice(5,7)-1]+=Math.abs(Number(l.v)||0); }); return m; };
   const rec=agg(l=>l.v>0), rep=agg(l=>l.v<0 && l.cat==="Repasses"), ret=agg(l=>l.v<0 && l.cat==="Pró-labore"), desp=agg(l=>l.v<0 && l.cat!=="Repasses" && l.cat!=="Pró-labore");
   const soma=m=>{ const t=Array(12).fill(0); Object.values(m).forEach(a=>a.forEach((v,i)=>t[i]+=v)); return t; };
@@ -10153,13 +10375,14 @@ function flDreSpec(ano, cx){
   return {cols, rows, vazio:!L.length};
 }
 function flAbaDre(){
-  const u=flUi(), cx=finUi().cx, sp=flDreSpec(u.dreAno, cx), mAt=finHoje().getFullYear()===u.dreAno ? finHoje().getMonth() : -1;
+  const u=flUi(), cx=finUi().cx, reg=u.dreReg||"comp", sp=flDreSpec(u.dreAno, cx, reg), mAt=finHoje().getFullYear()===u.dreAno ? finHoje().getMonth() : -1;
   const html=flTabHtml(sp).replace('<table class="fl-rt">', `<table class="fl-rt fl-dre" data-mes="${mAt}">`);
   return `<section class="fin-card"><div class="fin-ch"><h2>DRE · ${esc(FIN_CX[cx]||cx)}${cx==="tudo"?" (escritório + pessoal, sem transferências)":""}</h2><span class="grow"></span>
       <div class="fin-seg"><button data-fl="dreAno" data-v="-1" aria-label="Ano anterior">‹</button><button aria-pressed="true">${u.dreAno}</button><button data-fl="dreAno" data-v="1" aria-label="Próximo ano">›</button></div>
+      <div class="fin-seg" role="group" aria-label="Regime"><button data-fl="dreReg" data-v="comp" aria-pressed="${reg==="comp"}" title="Pelo mês do resultado, pago ou não (como o Juridiq)">Competência</button><button data-fl="dreReg" data-v="caixa" aria-pressed="${reg==="caixa"}" title="Só o que foi pago ou recebido, no mês do pagamento">Caixa</button></div>
       <button class="btn sm" data-fl="dreCsv">Excel</button><button class="btn sm" data-fl="drePdf">PDF</button></div>
     ${sp.vazio?`<p class="muted">Nenhum lançamento pago em ${u.dreAno} neste caixa.</p>`:`<div class="fin-tbl fl-dre-w">${html}</div>`}
-    <p class="muted fin-mini">Regime de caixa: entra o que foi pago ou recebido, no mês do pagamento. Troque o caixa no seletor de cima (Escritório, Pessoal, Grupo). Meses que só têm o total informado, sem lançamentos, não aparecem aqui.</p></section>`;
+    <p class="muted fin-mini">${reg==="comp"?"Competência: entra cada lançamento no mês do resultado (pago ou não). Contas fixas antigas e honorários de Receber e cobrar só entram quando pagos.":"Caixa: entra o que foi pago ou recebido, no mês do pagamento."} Transferências não entram; juros e multas aparecem em linha própria. Troque o caixa no seletor de cima (Escritório, Pessoal, Grupo). Meses que só têm o total informado, sem lançamentos, não aparecem aqui.</p></section>`;
 }
 
 /* ---------- relatórios ---------- */
@@ -10174,12 +10397,12 @@ function flSaldoAntes(iso){
 function flRelSpec(){
   const R=flUi().rel, hoje=isoDia(), L=flRelBase();
   if(R.modelo==="cat"){
-    const m={}; L.forEach(l=>{ const k=(l.v>0?"in":"out")+"|"+(l.cat||"Sem categoria"); m[k]=m[k]||{n:0,v:0}; m[k].n++; m[k].v+=Number(l.v)||0; });
+    const m={}, LL=L.filter(l=>l.cat!=="Transferência"); LL.forEach(l=>{ const k=(l.v>0?"in":"out")+"|"+(l.cat||"Sem categoria"); m[k]=m[k]||{n:0,v:0}; m[k].n++; m[k].v+=Number(l.v)||0; });
     const ks=Object.keys(m).sort((a,b)=>a.split("|")[0]===b.split("|")[0] ? Math.abs(m[b].v)-Math.abs(m[a].v) : a<b?-1:1);
-    const tin=L.filter(l=>l.v>0).reduce((a,l)=>a+l.v,0), tout=-L.filter(l=>l.v<0).reduce((a,l)=>a+l.v,0);
+    const tin=LL.filter(l=>l.v>0).reduce((a,l)=>a+l.v,0), tout=-LL.filter(l=>l.v<0).reduce((a,l)=>a+l.v,0);
     return {titulo:"Receitas e despesas por categoria", cols:[{t:"Categoria"},{t:"Tipo"},{t:"Lançamentos", r:true, int:true},{t:"Total", r:true, cor:true},{t:"% do tipo", r:true, pct:true}],
       rows:ks.map(k=>{ const [t,c]=k.split("|"); return {c:[c, t==="in"?"Receita":"Despesa", m[k].n, m[k].v, Math.abs(m[k].v)/((t==="in"?tin:tout)||1)*100]}; }),
-      foot:[["Receitas","",L.filter(l=>l.v>0).length,tin,""],["Despesas","",L.filter(l=>l.v<0).length,-tout,""],["Resultado","",L.length,tin-tout,""]]};
+      foot:[["Receitas","",LL.filter(l=>l.v>0).length,tin,""],["Despesas","",LL.filter(l=>l.v<0).length,-tout,""],["Resultado","",LL.length,tin-tout,""]]};
   }
   if(R.modelo==="mensal"){
     const rows=[]; let s=flSaldoAntes(R.de); const d0=finD(R.de), d1=finD(R.ate);
@@ -10374,6 +10597,12 @@ function flImpConfirmar(){
 
 /* ---------- ligações com o Financeiro existente ---------- */
 function finAbaExtra(aba){ return aba==="lanc" ? flAbaLanc() : aba==="dre" ? flAbaDre() : aba==="relat" ? flAbaRelat() : ""; }
+const flMesTotBase = finMesTot;
+finMesTot = function(ym){
+  const r=flMesTotBase(ym); if(!r || !r.real) return r;
+  FIN.d.lanc.forEach(l=>{ if(l.cat==="Transferência" && l.d && l.d.slice(0,7)===ym && finInCx(l)){ if(l.v>0) r.i-=l.v; else r.o+=l.v; } });
+  return r;
+};
 const flEventosBase = finEventos;
 finEventos = function(N){
   const ev=flEventosBase(N), D0=finHoje(), fim=finAddD(D0,N);
@@ -10435,6 +10664,203 @@ finConcLancar = function(F, x){
 const flLancModalBase = finLancModal;
 finLancModal = function(l){ if(l.tit) flAbrir("tit", l.tit); else flAbrir("lanc", l.id); };
 
+/* ---------- topo do Financeiro: botões + linha rápida (10/11/2026, substitui a barra de texto com #códigos) ---------- */
+/* Linha 1: + Receita, − Despesa, ⇄ Transferir (abrem o formulário completo) e o seletor de caixa. */
+/* Linha 2: lançamento rápido em campos: tipo, valor, descrição, categoria (sugerida pela descrição), data, caixa, conta e "já pago". */
+/* Enter em qualquer campo lança. Sem "já pago" vira conta a pagar/receber com vencimento na data. */
+let FL_QR = null;
+function flQr(){
+  const u=finUi();
+  if(!FL_QR) FL_QR = {tipo:"out", v:"", desc:"", cat:"", catManual:false, d:isoDia(), cx:u.cx==="tudo"?"esc":u.cx, conta:"", pago:true};
+  return FL_QR;
+}
+function flTopoHtml(){
+  const u=finUi(), Q=flQr();
+  const cxs = `<div class="fin-seg" role="group" aria-label="Caixa">${Object.entries(FIN_CX).map(([k,n])=>`<button data-fin="cx" data-v="${k}" aria-pressed="${u.cx===k}" ${k==="tudo"?'title="Escritório + Pessoal (o Grupo fica à parte)"':""}>${n}</button>`).join("")}</div>`;
+  const ent=Q.tipo==="in";
+  return `<section class="fin-card fl-topo">
+    <div class="fl-topo-l1"><button class="btn fl-big in" data-fl="novo" data-v="in">+ Receita</button><button class="btn fl-big out" data-fl="novo" data-v="out">− Despesa</button><button class="btn fl-big" data-fl="novo" data-v="tr">⇄ Transferir</button><span class="grow"></span><span class="muted fin-mini">Ver caixa:</span>${cxs}</div>
+    <div class="fl-qr" role="group" aria-label="Lançamento rápido"><div class="fl-qr-r">
+      <div class="fin-sign fl-qr-tipo" role="radiogroup" aria-label="Tipo"><button class="in" data-flqr="tipo" data-v="in" aria-pressed="${ent}">Receita</button><button class="out" data-flqr="tipo" data-v="out" aria-pressed="${!ent}">Despesa</button></div>
+      <label class="fl-qr-f fl-qr-v"><span>Valor</span><input class="inp" id="flQV" inputmode="decimal" placeholder="R$ 0,00" value="${esc(Q.v)}"></label>
+      <label class="fl-qr-f fl-qr-d"><span>Descrição</span><input class="inp" id="flQD" placeholder="${ent?"Ex.: Honorários Ana S.":"Ex.: Aluguel da sala"}" value="${esc(Q.desc)}" autocomplete="off"></label>
+      <label class="fl-qr-f"><span>Categoria</span><select class="inp" id="flQC">${flCatOpts(Q.cx, Q.tipo, Q.cat)}</select></label>
+      </div><div class="fl-qr-r">
+      <label class="fl-qr-f fl-qr-dt"><span>Data</span><input class="inp" type="date" id="flQT" value="${esc(Q.d)}"></label>
+      <label class="fl-qr-f"><span>Caixa</span><select class="inp" id="flQX"><option value="esc" ${Q.cx==="esc"?"selected":""}>Escritório</option><option value="pf" ${Q.cx==="pf"?"selected":""}>Pessoal</option><option value="grupo" ${Q.cx==="grupo"?"selected":""}>MP Grupo</option></select></label>
+      <label class="fl-qr-f"><span>Conta</span><select class="inp" id="flQB">${flBancoOpts(Q.cx, Q.conta)}</select></label>
+      <label class="check fl-qr-pg"><input type="checkbox" id="flQP" ${Q.pago?"checked":""}> ${ent?"Já recebido":"Já pago"}</label>
+      <button class="btn primary fl-qr-ok" data-flqr="lancar">Lançar</button>
+    </div></div>
+    <p class="muted fin-mini fl-qr-dica">Preencha e aperte <b>Enter</b>. A categoria é sugerida pela descrição. Sem "${ent?"já recebido":"já pago"}", entra como ${ent?"a receber":"a pagar"} na data. Para parcelar, repetir, anexar ou vincular cliente, use os botões de cima.</p>
+  </section>`;
+}
+function flQrLer(){
+  const Q=flQr(), g=id=>$("#"+id);
+  if(!g("flQV")) return Q;
+  Q.v=g("flQV").value; Q.desc=g("flQD").value; Q.cat=g("flQC").value; Q.d=g("flQT").value||isoDia(); Q.cx=g("flQX").value; Q.conta=g("flQB").value; Q.pago=g("flQP").checked;
+  return Q;
+}
+function flQrLancar(){
+  const Q=flQrLer(), v=flRound(finNum(Q.v)), desc=String(Q.desc||"").trim();
+  if(!(v>0)){ toast("Informe o valor."); const el=$("#flQV"); if(el) el.focus(); return; }
+  if(!desc){ toast("Escreva a descrição."); const el=$("#flQD"); if(el) el.focus(); return; }
+  if(/\d{6,}/.test(desc)){ toast("Tire números longos (CPF, telefone, nº de processo) da descrição."); return; }
+  const ent=Q.tipo==="in", cat=Q.cat || finSugCat(desc, ent?1:-1, Q.cx==="grupo"?"grupo":""), id=uid(), hoje=isoDia();
+  finMuda(F=>{
+    if(Q.pago) F.lanc.push({id, d:Q.d, desc, v:(ent?1:-1)*v, cx:Q.cx, cat, conta:Q.conta||""});
+    else F.tit.push({id, tipo:Q.tipo, desc, v, venc:Q.d, cx:Q.cx, cat, conta:Q.conta||"", pessoa:"", criado:hoje, hist:[{t:Date.now(), txt:"Criado pela linha rápida"}]});
+  });
+  Q.v=""; Q.desc=""; Q.cat=""; Q.catManual=false;
+  render();
+  setTimeout(()=>{ const el=$("#flQV"); if(el) el.focus(); }, 30);
+  toast((ent?"Receita":"Despesa")+" de "+finBrl(v)+(Q.pago?" lançada":" lançada "+(ent?"a receber":"a pagar"))+" em "+cat+".", ()=>finMuda(F=>{ F.lanc=F.lanc.filter(x=>x.id!==id); F.tit=F.tit.filter(x=>x.id!==id); }));
+}
+const flViewFinBase = viewFinanceiro;
+viewFinanceiro = function(){
+  const h=flViewFinBase();
+  if(!finMaster() || !FIN.d) return h;
+  return h.replace(/<section class="fin-card fin-quick">[\s\S]*?<\/section>/, flTopoHtml()).replace(/<span class="muted fin-mini">Na barra de cima:[\s\S]*?<\/span>/, "");
+};
+if(typeof R2_VIEWS!=="undefined") R2_VIEWS.financeiro=viewFinanceiro;
+document.addEventListener("click", e=>{
+  const cxb=e.target && e.target.closest ? e.target.closest('[data-fin="cx"]') : null;
+  if(cxb && FIN.d && cxb.dataset.v!=="tudo"){ const Q=flQr(); if(Q.cx!==cxb.dataset.v){ Q.cx=cxb.dataset.v; Q.conta=""; if(!Q.catManual) Q.cat=""; render(); } return; }
+  const b=e.target && e.target.closest ? e.target.closest("[data-flqr]") : null; if(!b || !FIN.d || !finMaster()) return;
+  e.preventDefault();
+  if(b.dataset.flqr==="tipo"){ const Q=flQrLer(); Q.tipo=b.dataset.v; if(!Q.catManual) Q.cat=""; render(); setTimeout(()=>{ const el=$("#flQV"); if(el) el.focus(); }, 30); return; }
+  if(b.dataset.flqr==="lancar") flQrLancar();
+});
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t || !t.id || !FIN.d) return;
+  if(t.id==="flQC"){ const Q=flQrLer(); Q.catManual=!!t.value; return; }
+  if(t.id==="flQX"){ const Q=flQrLer(); Q.conta=""; if(!Q.catManual) Q.cat=""; render(); return; }
+  if(/^flQ[VDTBP]$/.test(t.id)) flQrLer();
+});
+document.addEventListener("input", e=>{
+  const t=e.target; if(!t || !FIN.d) return;
+  if(t.id==="flQV" || t.id==="flQD"){ const Q=flQr(); if(t.id==="flQV") Q.v=t.value; else Q.desc=t.value; }
+  if(t.id==="flQD"){
+    const Q=flQr(), c=$("#flQC"); if(!c || Q.catManual) return;
+    const s=t.value.trim() ? finSugCat(t.value, Q.tipo==="in"?1:-1, Q.cx==="grupo"?"grupo":"") : "";
+    c.value=[...c.options].some(o=>o.value===s) ? s : ""; Q.cat=c.value;
+  }
+});
+document.addEventListener("keydown", e=>{
+  const t=e.target; if(e.key!=="Enter" || !t || !t.id || !/^flQ[VDCTXBP]$/.test(t.id)) return;
+  e.preventDefault(); flQrLancar();
+});
+(function(){ const st=document.createElement("style"); st.id="flQrCss"; st.textContent = ""
+ + ".fl-topo{margin-bottom:14px;gap:12px}.fl-topo-l1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.fl-topo-l1 .grow{flex:1}"
+ + ".fl-big{height:42px;padding:0 18px;font-size:14.5px;font-weight:700;border-radius:12px}.fl-big.in{color:var(--ok);border-color:var(--ok)}.fl-big.out{color:var(--danger);border-color:var(--danger)}"
+ + ".fl-big.in:hover{background:var(--ok-soft)}.fl-big.out:hover{background:var(--danger-soft)}"
+ + ".fl-qr{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;background:var(--surface-2)}.fl-qr-r{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}"
+ + ".fl-qr-v{flex:0 0 140px}.fl-qr-d{flex:2 1 220px}.fl-qr-f:has(#flQC){flex:1 1 170px}.fl-qr-dt{flex:0 0 160px}.fl-qr-f:has(#flQX){flex:0 0 150px}.fl-qr-f:has(#flQB){flex:1 1 180px;max-width:320px}.fl-qr-ok{margin-left:auto}"
+ + ".fl-qr-f{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--muted);min-width:0}.fl-qr-f .inp{width:100%;height:40px;background:var(--surface)}"
+ + ".fl-qr-tipo{align-self:end;height:40px;background:var(--surface)}.fl-qr-tipo button{height:34px}.fl-qr-v .inp{font-weight:700;font-size:15px}"
+ + ".fl-qr-pg{white-space:nowrap;font-size:13px;height:40px;display:flex;align-items:center;gap:6px}.fl-qr-ok{height:40px;padding:0 18px}.fl-qr-dica{margin:0}"
+ + "@media (max-width:640px){.fl-qr-r>*{flex:1 1 100%!important;max-width:none!important}.fl-qr-v,.fl-qr-dt{flex:1 1 40%!important}.fl-big{flex:1;padding:0 8px}.fl-topo-l1 .fin-seg{width:100%}.fl-topo-l1 .fin-seg button{flex:1}}";
+ document.head.appendChild(st); })();
+
+/* ---------- ações rápidas da lista (✓, menu ⋯ e seleção em lote) ---------- */
+function flPagarCore(F, r, d, forma){
+  const o=r.o, v=r.resta;
+  if(!(v>0.004)) return false;
+  if(r.k==="tit"){
+    F.lanc.push({id:uid(), d, desc:o.desc, v:flSinal(o.tipo)*v, cx:o.cx, cat:o.cat, tit:o.id, conta:o.conta||"", forma, pessoa:o.pessoa||undefined, etapa:o.etapa||undefined, nf:(o.nf && o.tipo==="in")?"pend":undefined, jm:o.jm?flRound(o.jm*v/(Number(o.v)||1)):undefined});
+    if(o.tipo==="in" && o.rateio) flRepasses(F, o.rateio, v, o.desc);
+    o.hist.push({t:Date.now(), txt:"Marcado como "+(o.tipo==="in"?"recebido":"pago")+" ("+finBrl(v)+")"});
+    return true;
+  }
+  if(r.k==="rec"){ if(r.kk>0) return false; flRecCore(F, o, v, d, forma, "", ""); return true; }
+  if(r.k==="conta"){ o.pagos[r.ym]=true; F.lanc.push({id:uid(), d, desc:o.n, v:-v, cx:o.cx, cat:o.cat, conta:o.conta||"", forma, contaId:o.id}); return true; }
+  if(r.k==="pagar"){ o.pago=true; F.lanc.push({id:uid(), d, desc:o.desc, v:-v, cx:"grupo", cat:o.cat||"Outros da obra", etapa:o.etapa||"", forn:o.forn||"", forma}); return true; }
+  return false;
+}
+function flPagarRapido(lista){
+  const hoje=isoDia(); let n=0, tot=0;
+  const rows=lista.map(x=>flAchar(x.k, x.id)).filter(r=>r && r.st!=="pago" && !(r.k==="rec" && r.kk>0));
+  if(!rows.length){ toast("Nada em aberto para marcar."); return; }
+  const recs=new Set();
+  finMuda(F=>{ rows.forEach(r=>{ if(r.k==="rec"){ if(recs.has(r.o.id)) return; recs.add(r.o.id); } const v=r.resta; if(flPagarCore(F, r, hoje, "Pix")){ n++; tot+=r.tipo==="in"?v:-v; } }); });
+  FL_SEL.clear(); render();
+  toast(n===1 ? "Marcado como "+(tot>0?"recebido":"pago")+" hoje ("+finBrl(Math.abs(tot))+")." : n+" lançamentos marcados como pagos/recebidos hoje.");
+}
+function flApagar(lista){
+  const F=FIN.d, tits=[], lancs=[]; let travados=0, virt=0;
+  lista.forEach(x=>{
+    if(x.k==="tit"){ const t=F.tit.find(y=>y.id===x.id); if(!t) return; if(flPgs(t).length) travados++; else tits.push(t); return; }
+    if(x.k==="lanc"){ const l=F.lanc.find(y=>y.id===x.id); if(!l) return; if(l.trPar) F.lanc.filter(y=>y.trPar===l.trPar).forEach(y=>{ if(!lancs.includes(y)) lancs.push(y); }); else lancs.push(l); return; }
+    virt++;
+  });
+  if(!tits.length && !lancs.length){ toast(travados ? "Estorne os pagamentos antes de apagar." : "Contas fixas, honorários e pagamentos da obra se apagam no próprio cadastro."); return; }
+  const n=tits.length+lancs.length;
+  confirmBox("Apagar lançamentos", "Apagar "+n+" lançamento"+(n>1?"s":"")+"? Dá para desfazer logo depois."+(travados?" "+travados+" com pagamento registrado fica(m) (estorne antes).":"")+(virt?" "+virt+" conta(s) fixa(s)/honorário(s) não entram (apague no cadastro).":""), "Apagar", ()=>{
+    const bkT=JSON.stringify(tits), bkL=JSON.stringify(lancs);
+    finMuda(F2=>{ F2.tit=F2.tit.filter(y=>!tits.includes(y)); F2.lanc=F2.lanc.filter(y=>!lancs.includes(y)); });
+    FL_SEL.clear(); flFechar(); render();
+    toast(n+" lançamento"+(n>1?"s apagados":" apagado")+".", ()=>finMuda(F2=>{ F2.tit.push(...JSON.parse(bkT)); F2.lanc.push(...JSON.parse(bkL)); }));
+  });
+}
+function flEditarK(k, id){
+  const F=FIN.d, r=flAchar(k, id); if(!r) return;
+  if(k==="tit") return flNovoModal(r.o.tipo, r.o);
+  if(k==="lanc") return flLancModalBase(r.o);
+  if(k==="conta") return finContaModal(r.o);
+  if(k==="rec") return finRecModal(r.o);
+  if(k==="pagar") return finPagarModal(r.o);
+}
+function flLinhasTela(){
+  return [...$$('[data-flsel]')].map(el=>el.dataset.flsel);
+}
+document.addEventListener("click", e=>{
+  const t=e.target && e.target.closest ? e.target : null; if(!t || !FIN.d || !finMaster()) return;
+  if(!t.closest(".fl-acts-c")) $$(".fl-mn.open").forEach(m=>m.classList.remove("open"));
+  const nv=t.closest("[data-flnv]");
+  if(nv && FL_NV){
+    e.preventDefault();
+    const a=nv.dataset.flnv, N=FL_NV;
+    if(a==="tipo"){ N.tipo=nv.dataset.v; flNovoSync(true); return; }
+    if(a==="cx"){ N.cx=nv.dataset.v; flNovoSync(true); return; }
+    if(a==="sit"){ N.sit=nv.dataset.v; if(N.sit==="ja") N.parcial=false; flNovoSync(); return; }
+    if(a==="parcial"){ N.parcial=true; flNovoSync(); const v=$("#flNParcV"); if(v) v.focus(); return; }
+    if(a==="rep"){ N.rep=!N.rep; flNovoSync(); return; }
+    if(a==="como"){ N.como=nv.dataset.v; flNovoSync(); return; }
+    if(a==="comp"){ N.compAberto=!N.compAberto; flNovoSync(); return; }
+    if(a==="anexo+"){ const el=$("#flNAnxU"), u=(el&&el.value||"").trim(); if(!flUrlOk(u)){ toast("Cole um link que comece com https://"); if(el) el.focus(); return; } const nome=decodeURIComponent(u.split("?")[0].split("/").filter(Boolean).pop()||"Anexo").slice(0,60); N.anexos.push({n:nome, url:u}); el.value=""; flNovoSync(); return; }
+    if(a==="anexo-"){ N.anexos.splice(+nv.dataset.i,1); flNovoSync(); return; }
+    if(a==="pes" || a==="caso"){ N[a]={id:nv.dataset.id, n:nv.dataset.n}; const inp=$(a==="pes"?"#flNPes":"#flNCaso"); if(inp) inp.value=nv.dataset.n; flSug(a==="pes"?"flNPesSug":"flNCasoSug", [], a); if(a==="caso" && !N.pes){ const c=csAll().find(x=>x.id===nv.dataset.id), p=c && c.pessoa && typeof psGet==="function" ? psGet(c.pessoa) : null; if(p){ N.pes={id:p.id, n:p.nome}; const ip=$("#flNPes"); if(ip) ip.value=p.nome; } } return; }
+    return;
+  }
+  const b=t.closest("[data-fl]"); if(!b) return;
+  const a=b.dataset.fl, id=b.dataset.id, k=b.dataset.k;
+  if(a==="menu"){ const m=b.parentElement.querySelector(".fl-mn"); const ab=m && !m.classList.contains("open"); $$(".fl-mn.open").forEach(x=>x.classList.remove("open")); if(ab) m.classList.add("open"); return; }
+  if(a==="rapido"){ flPagarRapido([{k, id}]); return; }
+  if(a==="editarK"){ flEditarK(k, id); return; }
+  if(a==="apagarK"){ flApagar([{k, id}]); return; }
+  if(a==="selLimpar"){ FL_SEL.clear(); render(); return; }
+  if(a==="selPagar"){ flPagarRapido([...FL_SEL].map(x=>{ const i=x.indexOf("|"); return {k:x.slice(0,i), id:x.slice(i+1)}; })); return; }
+  if(a==="selApagar"){ flApagar([...FL_SEL].map(x=>{ const i=x.indexOf("|"); return {k:x.slice(0,i), id:x.slice(i+1)}; })); return; }
+  if(a==="pararSerie"){ flPararSerie(id); return; }
+  if(a==="trExcluir"){ flApagar([{k:"lanc", id}]); return; }
+});
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t || !FIN.d) return;
+  if(t.dataset && t.dataset.flsel!==undefined){ if(t.checked) FL_SEL.add(t.dataset.flsel); else FL_SEL.delete(t.dataset.flsel); render(); return; }
+  if(t.id==="flSelTodos"){ const L=flLinhasTela(); L.forEach(x=>{ if(t.checked) FL_SEL.add(x); else FL_SEL.delete(x); }); render(); return; }
+  if(!FL_NV) return;
+  if(t.id==="flNC"){ FL_NV.catManual = !!t.value; return; }
+  if(t.id==="flNEnt"){ FL_NV.entrada=t.checked; flNovoSync(); return; }
+  if(t.id==="flNVc" || t.id==="flNPri" || t.id==="flNComp"){ flNovoSync(); return; }
+});
+document.addEventListener("input", e=>{
+  const t=e.target; if(!t || !FL_NV) return;
+  if(t.id==="flND"){ const c=$("#flNC"); if(c && !FL_NV.catManual && FL_NV.cx!=="grupo"){ const s=finSugCat(t.value, FL_NV.tipo==="in"?1:-1, ""); c.value=[...c.options].some(o=>o.value===s) && t.value.trim() ? s : ""; } return; }
+  if(t.id==="flNPes"){ FL_NV.pes=null; flSug("flNPesSug", flBuscaPessoa(t.value.trim()).map(p=>({id:p.id, n:p.nome, s:typeof bpPessoaSub==="function"?bpPessoaSub(p):""})), "pes"); return; }
+  if(t.id==="flNCaso"){ FL_NV.caso=null; flSug("flNCasoSug", flBuscaCaso(t.value.trim()).map(c=>({id:c.id, n:c.titulo, s:[c.area, c.processo].filter(Boolean).join(" · ")})), "caso"); return; }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") $$(".fl-mn.open").forEach(m=>m.classList.remove("open")); });
+
 /* ---------- cliques e campos ---------- */
 document.addEventListener("click", e=>{
   const t=e.target && e.target.closest ? e.target : null; if(!t) return;
@@ -10457,9 +10883,10 @@ document.addEventListener("click", e=>{
   if(a==="recibo"){ const r=FL_DET ? flAchar(FL_DET.k, FL_DET.id) : null; if(r) flReciboModal(r); return; }
   if(a==="banco"){ flBancoModal(id ? F.bancos.find(x=>x.id===id) : null); return; }
   if(a==="extrato"){ const x=F.bancos.find(y=>y.id===id); if(x) flExtratoModal(x); return; }
+  if(a==="dreReg"){ u.dreReg=b.dataset.v; render(); return; }
   if(a==="dreAno"){ u.dreAno += +b.dataset.v; render(); return; }
-  if(a==="dreCsv"){ flTabCsv(flDreSpec(u.dreAno, finUi().cx), "DRE-"+u.dreAno+"-"+finUi().cx); return; }
-  if(a==="drePdf"){ const sp=flDreSpec(u.dreAno, finUi().cx); flImprimir("DRE "+u.dreAno, `<h1>DRE ${u.dreAno}</h1><p class="sub">${esc(FIN_CX[finUi().cx])} · regime de caixa</p>${flTabHtml(sp, true)}`, true); return; }
+  if(a==="dreCsv"){ flTabCsv(flDreSpec(u.dreAno, finUi().cx, u.dreReg||"comp"), "DRE-"+u.dreAno+"-"+finUi().cx); return; }
+  if(a==="drePdf"){ const sp=flDreSpec(u.dreAno, finUi().cx, u.dreReg||"comp"); flImprimir("DRE "+u.dreAno, `<h1>DRE ${u.dreAno}</h1><p class="sub">${esc(FIN_CX[finUi().cx])} · regime de ${(u.dreReg||"comp")==="comp"?"competência":"caixa"}</p>${flTabHtml(sp, true)}`, true); return; }
   if(a==="relModelo"){ u.rel.modelo=b.dataset.v; render(); return; }
   if(a==="relPreset"){ flRelPreset(b.dataset.v); render(); return; }
   if(a==="relCsv"){ const sp=flRelSpec(); flTabCsv(sp, sp.titulo.replace(/[^\wÀ-ÿ]+/g,"-")+"-"+u.rel.de+"-a-"+u.rel.ate); return; }
@@ -10471,8 +10898,6 @@ document.addEventListener("change", e=>{
   const t=e.target; if(!t || !FIN.d || !finMaster()) return;
   const u=flUi();
   if(t.id==="flCat"){ u.lc=t.value; render(); return; }
-  if(t.id==="flNT" || t.id==="flNX" || t.id==="flNR"){ flNovoSync(); return; }
-  if(t.id==="flNC"){ t.dataset.manual="1"; return; }
   if(t.id==="flRDe" || t.id==="flRAte"){ if(t.value){ u.rel[t.id==="flRDe"?"de":"ate"]=t.value; if(u.rel.de>u.rel.ate){ const x=u.rel.de; u.rel.de=u.rel.ate; u.rel.ate=x; } render(); } return; }
   if(t.id==="flRTipo"){ u.rel.tipo=t.value; render(); return; }
   if(t.id==="flRCat"){ u.rel.cat=t.value; render(); return; }
@@ -10498,7 +10923,6 @@ document.addEventListener("input", e=>{
     flBuscaT=setTimeout(()=>{ flUi().lq=t.value; render(); const n=$("#flBusca"); if(n){ n.focus(); const k=n.value.length; n.setSelectionRange(k,k); } }, 250);
     return;
   }
-  if(t.id==="flND"){ const c=$("#flNC"), x=($("#flNX")||{}).value; if(c && !c.dataset.manual && x!=="grupo"){ const s=finSugCat(t.value, ($("#flNT")||{}).value==="in"?1:-1, ""); if([...c.options].some(o=>o.value===s)) c.value=s; } return; }
   if(t.id==="flCfV"){ const r=$("#flCfR"), mapa=+t.dataset.saldo, raw=String(t.value||"").trim(); if(!r) return; if(!raw){ r.textContent="Digite o saldo do banco para ver a diferença."; r.className="muted fin-mini"; return; } const v=(/^[-−]/.test(raw)?-1:1)*(finNum(raw.replace(/^[-−+]/,""))||0), d=flRound(v-mapa); r.className="fin-mini "+(Math.abs(d)<0.01?"fin-pos":"fin-neg"); r.textContent = Math.abs(d)<0.01 ? "Bateu certinho com o Mapa." : "Diferença de "+finBrl(Math.abs(d))+(d>0?": o banco tem mais (falta lançar entrada ou sobrou saída).":": o banco tem menos (falta lançar saída ou tarifa)."); }
 });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && FL_DET && !$("#modalRoot .modal-bg")) flFechar(); });
@@ -10532,6 +10956,34 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape" && FL_DET && !$("#
  + "#flImp .fin-drop{margin-top:10px}#flImp .fin-sum4{margin-bottom:6px}.fl-sum3{grid-template-columns:repeat(3,minmax(0,1fr))}"
  + ".fl-conf{display:flex;flex-direction:column;gap:6px;margin:12px 0;padding:10px 12px;border-radius:12px;background:var(--surface-2)}.fl-conf .inp{width:240px;max-width:100%}"
  + ".fl-ext{max-height:46vh;overflow:auto}.fl-sald{min-width:96px;text-align:right;font-weight:500}"
+ + "#flNNorm,#flNTr{gap:12px}#flNNorm{display:flex;flex-direction:column}.fl-nv .inp{min-height:40px}"
+ + ".fl-nv-modal.modal{max-width:1120px;padding:22px 24px}.fl-nv{display:flex;flex-direction:column;gap:12px}"
+ + ".fl-nv-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.fl-nv-top .grow{flex:1}.fl-nv-tipo button{padding:7px 16px;font-size:13.5px}.fl-nv-tipo button[aria-pressed=\"true\"]{background:var(--accent);color:var(--accent-fg,#fff);box-shadow:none}"
+ + ".fl-nv-body{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}.fl-nv-main{display:flex;flex-direction:column;gap:12px;min-width:0}"
+ + ".fl-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.fl-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}"
+ + ".fl-nv .df{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}.fl-nv .df>span{display:inline-flex;align-items:center;gap:6px}.fl-nv .inp{width:100%}"
+ + ".fl-i{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--muted);font-size:10px;font-weight:700;font-style:normal;cursor:help}"
+ + ".fl-nv-comp{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px;color:var(--muted);margin-top:-4px}.fl-nv-comp .df{flex-basis:100%;max-width:240px}"
+ + ".fl-nv-sec{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}.fl-nv-pg{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:end}"
+ + ".fl-nv-sit button{flex:1;padding:8px 10px;font-size:13px}.fl-nv-sit button[aria-pressed=\"true\"]{background:var(--accent);color:var(--accent-fg,#fff);box-shadow:none}.fl-nv-add{align-self:flex-start;font-size:12.5px}"
+ + ".fl-nv-rep{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}.fl-nv-rep small{display:block}.fl-nv-rep #flNRepBox{display:flex;flex-direction:column;gap:8px}"
+ + ".fl-nv-como button{flex:1;padding:8px 14px}.fl-nv-como button[aria-pressed=\"true\"]{background:var(--accent);color:var(--accent-fg,#fff);box-shadow:none}"
+ + ".fl-sw{width:42px;height:24px;border-radius:99px;border:0;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);position:relative;cursor:pointer;flex:none}.fl-sw i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.15s}"
+ + ".fl-sw[aria-checked=\"true\"]{background:var(--accent)}.fl-sw[aria-checked=\"true\"] i{left:21px;background:#fff}"
+ + ".fl-nv-obs{min-height:76px;resize:vertical}.fl-nv-anx{display:flex;flex-direction:column;gap:6px}.fl-nv-anx a{text-decoration:none;color:inherit}.fl-nv-anxadd{display:flex;gap:8px}.fl-nv-anxadd .inp{flex:1}"
+ + ".fl-nv-vinc{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;position:sticky;top:0}.fl-nv-vinc .check{font-size:13px}"
+ + ".fl-sug{display:none;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:-4px;overflow:hidden}"
+ + ".fl-sug-it{border:0;background:transparent;color:var(--fg);text-align:left;padding:7px 10px;cursor:pointer;font:inherit;font-size:13px;display:flex;flex-direction:column}.fl-sug-it:focus,.fl-sug-it:hover{background:var(--surface-2)}.fl-sug-it small{color:var(--muted);font-size:11.5px}"
+ + ".fl-ck{width:30px;padding-left:4px!important;padding-right:0!important}.fl-ck input{width:16px;height:16px;cursor:pointer}.fl-tbl tr.fl-sel td{background:var(--surface-2)}"
+ + ".fl-acts{width:76px}.fl-acts-c{position:relative;display:inline-flex;gap:4px;align-items:center;justify-content:flex-end}"
+ + ".fl-ok-b{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-weight:700;opacity:0;transition:.12s}.fl-ok-b.vazio{display:inline-block;border-color:transparent}"
+ + ".fl-tbl tr:hover .fl-ok-b:not(.vazio),.fl-ok-b:focus-visible{opacity:1}.fl-ok-b:hover{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}"
+ + ".fl-mais{width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--fg);cursor:pointer;font-size:18px;line-height:1}.fl-mais:hover{background:var(--surface-2)}"
+ + ".fl-mn{display:none;position:absolute;right:0;top:32px;z-index:6;min-width:190px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;box-shadow:0 14px 34px rgba(0,0,0,.3);flex-direction:column;text-align:left}.fl-mn.open{display:flex}"
+ + ".fl-mn button{border:0;background:transparent;color:var(--fg);font:inherit;font-size:13px;text-align:left;padding:7px 10px;border-radius:8px;cursor:pointer;white-space:nowrap}.fl-mn button:hover{background:var(--surface-2)}.fl-mn .fin-neg{color:var(--danger)}"
+ + ".fl-bulk{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-radius:12px;background:var(--surface-2);font-size:13px}.fl-bulk .grow{flex:1}"
+ + "@media (max-width:900px){.fl-nv-body{grid-template-columns:1fr}.fl-nv-vinc{position:static}}"
+ + "@media (max-width:640px){.fl-g3,.fl-g2,.fl-nv-pg{grid-template-columns:1fr}.fl-ok-b{opacity:1}.fl-nv-cx{width:100%}.fl-nv-cx button{flex:1}}"
  + "@media (max-width:1060px){.fl-mods{grid-template-columns:repeat(2,minmax(0,1fr))}}"
  + "@media (max-width:640px){.fl-hide{display:none}.fl-busca{width:100%}.fl-sec.fl-2{grid-template-columns:1fr}.fl-mods{grid-template-columns:1fr}.fl-tbl td,.fl-tbl th{padding:8px 4px}.fl-gv{font-size:24px}}";
  document.head.appendChild(st); })();
