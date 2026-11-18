@@ -6664,7 +6664,7 @@ renderSaveChip = function(){ anChipBase(); if(AN_MINI && ui.an.built==="carregan
 /* Principal começa aberto; o grupo da tela atual abre sozinho; grupo fechado com aviso mostra uma bolinha no título. */
 /* A escolha fica só neste aparelho. No menu recolhido (só ícones) tudo continua visível. */
 const MN_KEY = "mapa-menu-grupos";
-const MN_VER = "Mapa v7.8 · 10/11/2026";
+const MN_VER = "Mapa v7.9 · 18/11/2026";
 const MN_PADRAO = {"Principal":true};
 /* Equipe começa com Gestão e Equipe abertos: Calendário e Pedidos nunca somem do menu da Ellen. */
 const MN_PADRAO_EQUIPE = {"Principal":true, "Gestão":true, "Equipe":true, "Meu trabalho":true, "Clientes":true};
@@ -12649,6 +12649,344 @@ render = function(){ pcRenderBase(); try{ pcFaixaMaster(); }catch(e){ console.wa
  + ".pc-faixa.crit{border-left-color:var(--danger)}.pc-sem{color:var(--danger);font-weight:600}";
  document.head.appendChild(st); })();
 /* ================= fim do Protocolo: confirmar e cobrar ================= */
+/* ================= Pacote 28 · v7.9 · Ajustes da Ellen + correções da auditoria (18/11/2026) ================= */
+/* 1. Movimentações: última movimentação com data no cartão do caso, botão "+ Mov." e aba Movimentações. */
+/*    Tudo grava como "Andamento" no próprio caso (c.registros), o mesmo do Andamento do caso. */
+/* 2. Ficha da pessoa: "+ Nova cobrança" na aba Cobranças e "+ Registrar no histórico" na aba Histórico. */
+/* 3. Grupo Método (Roteiros, Fluxos, Ideias) no menu da Ellen; selo dos Fluxos conta só o que é dela; */
+/*    botão "Sugerir melhoria" no Meu dia; post-it para quem deu a ideia quando a situação muda. */
+/* 4. Correções da auditoria 11/11: Prazos da Ellen abre na lista; selo de Cobranças sem os alertas de prescrição; */
+/*    histórico sem linha repetida; Anotar não cria pessoa com nome comprido; nome curto no cartão; Semana para todos (leitura). */
+/* 7. Sigilo: aviso nos campos "Só eu" / "Só sócios" e no CRM até a proteção do pacote 29. */
+
+/* ---------- Comuns ---------- */
+function p28Equipe(){ return ui.papel==="equipe"; }
+function p28Curto(nome){
+  const w=String(nome||"").trim().split(/\s+/).filter(Boolean);
+  if(!w.length) return "";
+  const cap=s=>s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();
+  const prim=cap(w[0]);
+  if(w.length===1) return prim;
+  const ult=w[w.length-1].replace(/\.$/,"");
+  return prim+" "+ult.charAt(0).toUpperCase()+".";
+}
+function p28DiaReg(r){ return r.data || (r.t ? isoDia(new Date(r.t)) : ""); }
+function p28Movs(c){
+  return (c.registros||[]).filter(r=>r && (r.txt||r.relato) && !r.resumo && adPodeVer(r))
+    .map(r=>({c, r, dia:p28DiaReg(r)}))
+    .sort((a,b)=>(b.dia||"").localeCompare(a.dia||"") || (b.r.t||0)-(a.r.t||0));
+}
+function p28CasosVivos(){ return csAll().filter(c=>!c.lixo); }
+function p28NomeCaso(c){ const n=c.pessoa ? p28Curto(psNome(c.pessoa)) : (c.rotulo||""); return n; }
+
+/* ---------- 1a. Cartão: nome curto + última movimentação + "+ Mov." ---------- */
+const p28CardBase = esCard;
+esCard = function(c, ativo){
+  let h=p28CardBase(c, ativo);
+  const nome=esNome(c);
+  if(nome){ const curto=c.pessoa ? p28Curto(nome) : nome; h=h.replace(`<span class="kb-p">${esc(nome)}</span>`, `<span class="kb-p" title="${esc(curto)}">${esc(curto)}</span>`); }
+  const m=p28Movs(c)[0];
+  const linha = m
+    ? `<div class="p28-mov" title="${esc(m.r.txt||m.r.relato||"")}"><span class="p28-dt">${esc(fmtIso(m.dia))}</span><span class="p28-tx">${esc(m.r.txt||m.r.relato||"")}</span></div>`
+    : `<div class="p28-mov vazio">Sem movimentação ainda</div>`;
+  const bt=`<button class="p28-add" data-p28="mov" data-id="${c.id}" title="Lançar movimentação sem abrir o caso">+ Mov.</button>`;
+  const i=h.indexOf('<div class="kb-f">');
+  if(i<0) return h;
+  h=h.slice(0,i)+linha+h.slice(i);
+  return h.replace('<div class="kb-f">', '<div class="kb-f">'+bt);
+};
+
+function p28MovModal(c, dia){
+  modal("Movimentação · "+(c.titulo||"caso"), `<p class="muted" style="margin:0 0 8px">${esc(p28NomeCaso(c))}. Fica no Andamento do caso e na aba Movimentações.</p>
+    <div class="cb-form">
+      <div class="df"><label>Data</label><input class="inp" type="date" id="p28MvData" value="${esc(dia||isoDia())}"></div>
+      <div class="df"><label>Quem vê</label><select class="inp" id="p28MvVe"><option value="todos">Todos</option><option value="socios">Só sócios</option><option value="eu">Só eu</option></select></div>
+      <div class="df cb-span"><label>O que aconteceu</label><textarea class="inp" id="p28MvTx" style="min-height:80px" placeholder="Ex.: juntada a contestação; audiência marcada para 02/12"></textarea></div>
+    </div><p class="p28-sig" id="p28MvSig" hidden>Restrito só na tela. A proteção total vem no próximo pacote. Não registre aqui nada que a equipe não possa ler.</p>`,
+    [{label:"Cancelar"},{label:"Lançar", cls:"primary", fn:()=>{
+      const tx=($("#p28MvTx").value||"").trim();
+      if(!tx){ $("#p28MvTx").focus(); toast("Escreva a movimentação."); return false; }
+      if(esSensivel(tx)){ toast("O texto parece ter CPF ou senha. Tire antes de lançar."); return false; }
+      p28Lancar(c, $("#p28MvData").value||isoDia(), tx, $("#p28MvVe").value||"todos");
+    }}]);
+}
+function p28Lancar(c, dia, tx, ve){
+  snap();
+  (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:tx, tipoAnd:"andamento", data:dia, link:"", ve:ve||"todos"});
+  logA("lançou movimentação no caso “"+c.titulo+"”");
+  save(); render(); toast("Movimentação lançada. Também está no Andamento do caso.");
+}
+
+/* ---------- 1b. Aba Movimentações em Atendimentos e casos ---------- */
+ui.p28 = {mov:false, per:"semana", q:"", cli:"", sel:""};
+function p28Dentro(dia){
+  if(!dia) return ui.p28.per==="tudo";
+  const hoje=isoDia(), d0=new Date(dia+"T12:00"), dh=new Date(hoje+"T12:00");
+  if(ui.p28.per==="hoje") return dia===hoje;
+  if(ui.p28.per==="semana") return (dh-d0)/864e5 < 7 && dia<=hoje;
+  if(ui.p28.per==="mes") return dia.slice(0,7)===hoje.slice(0,7);
+  return true;
+}
+function p28ListaMov(){
+  const q=String(ui.p28.q||"").trim().toLowerCase();
+  const L=[];
+  p28CasosVivos().forEach(c=>p28Movs(c).forEach(m=>L.push(m)));
+  return L.filter(m=>p28Dentro(m.dia)).filter(m=>!q || [m.c.titulo, psNome(m.c.pessoa), m.c.rotulo].join(" ").toLowerCase().includes(q))
+    .sort((a,b)=>(b.dia||"").localeCompare(a.dia||"") || (b.r.t||0)-(a.r.t||0));
+}
+function p28MovView(){
+  const L=p28ListaMov();
+  const DS=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+  let ult="", linhas="";
+  L.forEach(m=>{
+    if(m.dia!==ult){ ult=m.dia; const d=m.dia?new Date(m.dia+"T12:00"):null; linhas+=`<tr class="p28-dia"><td colspan="4">${m.dia===isoDia()?"Hoje":d?DS[d.getDay()]:"Sem data"}${m.dia?" · "+esc(fmtIsoAno(m.dia)):""}</td></tr>`; }
+    linhas+=`<tr data-act="csAbrir" data-id="${m.c.id}" title="Abrir o caso"><td class="p28-tdt">${esc(fmtIso(m.dia))}</td><td class="p28-tc"><b>${esc(p28NomeCaso(m.c)||"—")}</b><span class="muted"> · ${esc(m.c.titulo||"")}</span></td><td class="p28-ttx">${esc(m.r.txt||m.r.relato||"")}${(m.r.ve&&m.r.ve!=="todos")?` <span class="ad-ve">${m.r.ve==="socios"?"só sócios":"só "+esc(m.r.quem||"")}</span>`:""}</td><td class="p28-tq">${esc(m.r.quem||"")}</td></tr>`;
+  });
+  const per=[["semana","Esta semana"],["hoje","Hoje"],["mes","Mês"],["tudo","Tudo"]];
+  return `<div class="p28-linha">
+      <div class="p28-cli"><input class="inp" id="p28Cli" placeholder="Cliente ou caso (ex.: Bueno)" value="${esc(ui.p28.cli)}" autocomplete="off"><div class="p28-sug" id="p28Sug" hidden></div></div>
+      <input class="inp" type="date" id="p28Data" value="${isoDia()}">
+      <input class="inp" id="p28Tx" placeholder="O que aconteceu (Enter lança)">
+      <button class="btn primary" data-p28="lancar">Lançar</button>
+    </div>
+    <div class="p28-fil">${per.map(([k,n])=>`<button class="ad-chip sm${ui.p28.per===k?" on":""}" data-p28="per" data-v="${k}">${n}</button>`).join("")}<span class="grow"></span><input class="inp" id="p28Busca" placeholder="Filtrar cliente" value="${esc(ui.p28.q)}" style="max-width:200px"><span class="muted p28-cnt">${L.length} movimentaç${L.length===1?"ão":"ões"}</span></div>
+    <div class="p28-tw"><table class="p28-tab"><thead><tr><th>Data</th><th>Cliente</th><th>Movimentação</th><th>Por</th></tr></thead><tbody>${linhas||`<tr><td colspan="4" class="muted">Nada neste período. Lance a primeira movimentação na linha acima ou pelo "+ Mov." do cartão.</td></tr>`}</tbody></table></div>`;
+}
+const p28ViewCasosBase = viewCasos;
+viewCasos = function(){
+  let h=p28ViewCasosBase();
+  if(!/class="es-tabs"/.test(h)) return h;
+  const n=p28CasosVivos().reduce((s,c)=>s+p28Movs(c).filter(m=>m.dia===isoDia()).length,0);
+  const tab=`<button class="es-tab p28-tab${ui.p28.mov?" on":""}" data-p28="aba"><b>Movimentações</b><span>${n?n+" hoje":"cliente · data · o que foi"}</span></button>`;
+  h=h.replace('<span class="grow"></span>', tab+'<span class="grow"></span>');
+  if(!ui.p28.mov) return h;
+  h=h.replace(/<button class="es-tab on"/g, '<button class="es-tab"');
+  const i=h.indexOf('<div class="tb">');
+  return (i<0 ? h : h.slice(0,i)) + p28MovView();
+};
+if(typeof R2_VIEWS!=="undefined" && R2_VIEWS.casos) R2_VIEWS.casos=viewCasos;
+
+function p28Sugestoes(q){
+  const k=String(q||"").trim(); if(k.length<2) return [];
+  const L=p28CasosVivos();
+  const nomeDe=c=>(c.titulo||"")+" "+psNome(c.pessoa)+" "+(c.rotulo||"");
+  return (typeof bpAchar==="function" ? bpAchar(L, k, nomeDe) : L.filter(c=>nomeDe(c).toLowerCase().includes(k.toLowerCase()))).slice(0,6);
+}
+function p28DesenhaSug(){
+  const box=$("#p28Sug"); if(!box) return;
+  const S2=p28Sugestoes(ui.p28.cli);
+  if(!S2.length || ui.p28.sel){ box.hidden=true; return; }
+  box.innerHTML=S2.map(c=>`<button type="button" data-p28="sug" data-id="${c.id}"><b>${esc(p28NomeCaso(c)||"—")}</b> <span class="muted">· ${esc(c.titulo||"")}</span></button>`).join("");
+  box.hidden=false;
+}
+function p28LancarLinha(){
+  let c=ui.p28.sel ? csGet(ui.p28.sel) : null;
+  if(!c){ const s=p28Sugestoes(ui.p28.cli); if(s.length===1) c=s[0]; }
+  if(!c){ const i=$("#p28Cli"); if(i) i.focus(); toast(ui.p28.cli?"Escolha o caso na lista.":"Escreva o cliente ou o caso."); p28DesenhaSug(); return; }
+  const tx=(($("#p28Tx")||{}).value||"").trim();
+  if(!tx){ const t=$("#p28Tx"); if(t) t.focus(); toast("Escreva a movimentação."); return; }
+  if(esSensivel(tx)){ toast("O texto parece ter CPF ou senha. Tire antes de lançar."); return; }
+  const dia=(($("#p28Data")||{}).value)||isoDia();
+  ui.p28.cli=""; ui.p28.sel="";
+  p28Lancar(c, dia, tx, "todos");
+  setTimeout(()=>{ const i=$("#p28Cli"); if(i) i.focus(); }, 30);
+}
+document.addEventListener("input", e=>{
+  const t=e.target; if(!t) return;
+  if(t.id==="p28Cli"){ ui.p28.cli=t.value; ui.p28.sel=""; p28DesenhaSug(); }
+  if(t.id==="p28Busca"){ ui.p28.q=t.value; const pos=t.selectionStart; render(); const n=$("#p28Busca"); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(x){} } }
+});
+document.addEventListener("keydown", e=>{
+  const t=e.target; if(!t || e.key!=="Enter") return;
+  if(t.id==="p28Tx"){ e.preventDefault(); p28LancarLinha(); }
+  if(t.id==="p28Cli"){ e.preventDefault(); const s=p28Sugestoes(ui.p28.cli); if(s.length){ ui.p28.sel=s[0].id; t.value=p28NomeCaso(s[0])+" · "+(s[0].titulo||""); ui.p28.cli=t.value; p28DesenhaSug(); const x=$("#p28Tx"); if(x) x.focus(); } }
+});
+document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="p28MvVe"){ const s=$("#p28MvSig"); if(s) s.hidden=(t.value==="todos"); } });
+document.addEventListener("click", e=>{
+  const esAba=e.target.closest ? e.target.closest('[data-es="aba"]') : null;
+  if(esAba && ui.p28.mov){ ui.p28.mov=false; }
+  const b=e.target.closest ? e.target.closest("[data-p28]") : null; if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const a=b.dataset.p28;
+  if(a==="mov"){ const c=csGet(b.dataset.id); if(c) p28MovModal(c); return; }
+  if(a==="aba"){ ui.p28.mov=true; return render(); }
+  if(a==="per"){ ui.p28.per=b.dataset.v; return render(); }
+  if(a==="lancar") return p28LancarLinha();
+  if(a==="sug"){ const c=csGet(b.dataset.id); if(!c) return; ui.p28.sel=c.id; const i=$("#p28Cli"); if(i){ i.value=p28NomeCaso(c)+" · "+(c.titulo||""); ui.p28.cli=i.value; } p28DesenhaSug(); const x=$("#p28Tx"); if(x) x.focus(); return; }
+  if(a==="pfCob") return p28NovaCobranca(b.dataset.id);
+  if(a==="pfHist") return p28HistModal(b.dataset.id);
+  if(a==="ideia") return ideaQuick("", "");
+}, true);
+
+/* ---------- 2. Ficha da pessoa: "+" em Cobranças e Histórico ---------- */
+function p28NovaCobranca(pid){
+  const p=psGet(pid); if(!p) return;
+  if(typeof cbPode==="function" && !cbPode()){ toast("Você não tem acesso a Cobranças."); return; }
+  cbNova();
+  const cliente=/cliente/i.test(p.papel||"");
+  const alvo=$(cliente ? "#cbfCredor" : "#cbfDevedor");
+  if(alvo){ alvo.value=p.nome; alvo.dispatchEvent(new Event("input", {bubbles:true})); }
+  const outro=$(cliente ? "#cbfDevedor" : "#cbfCredor"); if(outro) setTimeout(()=>outro.focus(), 40);
+}
+const P28_HTIPOS=["Atendimento","Ligação","WhatsApp","Reunião","Documento recebido","Anotação"];
+function p28HistModal(pid){
+  const p=psGet(pid); if(!p) return;
+  const cs=p28CasosVivos().filter(c=>c.pessoa===p.id);
+  modal("Registrar no histórico · "+p28Curto(p.nome), `<div class="cb-form">
+      <div class="df"><label>Data</label><input class="inp" type="date" id="p28HData" value="${isoDia()}"></div>
+      <div class="df"><label>Tipo</label><select class="inp" id="p28HTipo">${P28_HTIPOS.map(t=>`<option>${t}</option>`).join("")}</select></div>
+      <div class="df cb-span"><label>Ligar a um caso (opcional)</label><select class="inp" id="p28HCaso"><option value="">Sem caso</option>${cs.map(c=>`<option value="${c.id}">${esc(c.titulo||"caso")}</option>`).join("")}</select></div>
+      <div class="df cb-span"><label>O que aconteceu</label><textarea class="inp" id="p28HTx" style="min-height:90px" placeholder="Ex.: ligou pedindo atualização; expliquei que aguardamos a avaliação do imóvel."></textarea></div>
+    </div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Ligado a um caso, entra também no Andamento do caso e na aba Movimentações. Sem CPF, senha ou dado bancário.</p>`,
+    [{label:"Cancelar"},{label:"Registrar", cls:"primary", fn:()=>{
+      const tx=($("#p28HTx").value||"").trim();
+      if(!tx){ $("#p28HTx").focus(); toast("Escreva o que aconteceu."); return false; }
+      if(esSensivel(tx)){ toast("O texto parece ter CPF ou senha. Tire antes de registrar."); return false; }
+      const dia=$("#p28HData").value||isoDia(), tipo=$("#p28HTipo").value, cid=$("#p28HCaso").value;
+      snap();
+      if(cid){ const c=csGet(cid); if(c) (c.registros=c.registros||[]).push({id:uid(), t:Date.now(), quem:ui.me||"?", txt:tipo+": "+tx, tipoAnd:"andamento", data:dia, link:"", ve:"todos"}); }
+      else { if(!Array.isArray(p.hist)) p.hist=[]; p.hist.push({id:uid(), t:Date.now(), quem:ui.me||"?", data:dia, tipo, txt:tx}); }
+      logA("registrou no histórico de "+p28Curto(p.nome)+" ("+tipo.toLowerCase()+")");
+      save(); render(); toast("Registrado no histórico.");
+    }}]);
+}
+const p28ViewPessoaBase = viewPessoa;
+viewPessoa = function(){
+  let h=p28ViewPessoaBase();
+  const p=psGet(ui.psId); if(!p) return h;
+  const aba=ui.psAba||"geral";
+  const vazioCob='Nenhuma cobrança com este nome como credor ou devedor.</p>';
+  if(aba==="cobrancas"){
+    const bt=`<button class="btn sm" data-p28="pfCob" data-id="${p.id}">${ic("plus",14)} Nova cobrança</button>`;
+    const i=h.lastIndexOf("</div>");
+    if(i>0) h=h.slice(0,i)+bt+h.slice(i);
+  }
+  if(aba==="historico"){
+    const meus=(p.hist||[]).map(x=>({t:x.t, dia:x.data, quem:x.quem, txt:x.tipo+": "+x.txt}));
+    const n=p.nome.toLowerCase();
+    const H=S.log.filter(x=>(x.txt||"").toLowerCase().includes(n) && !/^registrou no histórico de /.test(x.txt||"")).slice(0,40).map(x=>({t:x.t, quem:x.quem, txt:x.txt}));
+    const cs=csAll().filter(c=>c.pessoa===p.id);
+    const R=cs.flatMap(c=>(c.registros||[]).filter(r=>adPodeVer(r)).map(r=>({t:r.t, dia:r.data, quem:r.quem, txt:c.titulo+": "+(r.txt||r.relato||"")})));
+    const vistos=new Set();
+    const all=meus.concat(H, R).filter(x=>{ const k=(x.quem||"")+"|"+(x.txt||"")+"|"+Math.round((x.t||0)/60000); if(vistos.has(k)) return false; vistos.add(k); return true; })
+      .sort((a,b)=>((b.dia||isoDia(new Date(b.t||0))).localeCompare(a.dia||isoDia(new Date(a.t||0)))) || (b.t||0)-(a.t||0));
+    const corpo=`<div class="pf-one">${all.length?`<ul class="loglist">${all.map(x=>`<li><span>${esc(x.dia?fmtIsoAno(x.dia):fmtT(x.t))}</span><b>${esc(x.quem||"")}</b> ${esc(x.txt)}</li>`).join("")}</ul>`:`<p class="muted pf-v">Sem histórico ainda.</p>`}<button class="btn sm" data-p28="pfHist" data-id="${p.id}">${ic("plus",14)} Registrar no histórico</button></div>`;
+    const i=h.indexOf('<div class="pf-one">');
+    if(i>0) h=h.slice(0,i)+corpo;
+  }
+  return h;
+};
+if(typeof R2_VIEWS!=="undefined" && R2_VIEWS.pessoa) R2_VIEWS.pessoa=viewPessoa;
+
+/* ---------- 3. Grupo Método para a Ellen ---------- */
+if(typeof EQ_MENU!=="undefined" && !EQ_MENU.some(g=>g[0]==="Método")){
+  const iAj=EQ_MENU.findIndex(g=>g[0]==="Ajuda");
+  EQ_MENU.splice(iAj<0?EQ_MENU.length:iAj, 0, ["Método", ["nav-clientes","nav-fluxos","nav-ideias"]]);
+  const mt=EQ_MENU.find(g=>g[0]==="Meu trabalho");
+  if(mt && !mt[1].includes("nav-semana")) mt[1].splice(1, 0, "nav-semana");
+}
+if(typeof MN_PADRAO_EQUIPE!=="undefined") MN_PADRAO_EQUIPE["Método"]=true;
+function p28PendMinhas(){ return FB().filter(x=>!isFeito(x) && (x.para===ui.me)); }
+const p28RenderBase = render;
+render = function(){
+  if(p28Equipe() && !ui.p28.pzOk){ ui.p28.pzOk=true; let salvo=""; try{ salvo=localStorage.getItem("mapa-pz-modo")||""; }catch(x){} if(!salvo && ui.prot) ui.prot.modo="lista"; }
+  p28RenderBase();
+  if(p28Equipe()){
+    const f=$("#nav-fluxos");
+    if(f){ const d=f.querySelector(".dot"); if(d) d.remove(); const n=p28PendMinhas().length; if(n) f.insertAdjacentHTML("beforeend", `<span class="dot">${n}</span>`); }
+    if(ui.view==="hoje" && !$("#p28Ideia")){ const nv=$('[data-eq="novo"]'); if(nv && nv.parentNode) nv.parentNode.insertAdjacentHTML("beforeend", `<button class="btn idea" id="p28Ideia" data-p28="ideia">${ic("bulb",15)} Sugerir melhoria</button>`); }
+  }
+  const sm=$("#nav-semana"); if(sm && ui.papel) sm.style.display="";
+  if(typeof mnAplicar==="function") mnAplicar();
+  if(ui.view==="crm" && ui.papel==="master" && !$("#p28SigCrm")){ const ph=$("#content .phead"); if(ph) ph.insertAdjacentHTML("afterend", `<p class="p28-sig" id="p28SigCrm">O CRM fica no documento da equipe: escondido só na tela até a proteção do próximo pacote. Não registre aqui valores, CPF ou senha.</p>`); }
+};
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t || !t.dataset || t.dataset.chg!=="ideiaSt") return;
+  const i=getIdeia(t.dataset.id); if(!i || !i.quem || i.quem===ui.me) return;
+  if(typeof pnAll!=="function") return;
+  pnAll().push({id:uid(), t:Date.now(), quem:ui.me||"?", pagina:"ideias", cliente:"", passo:"", para:i.quem, texto:"Sua ideia “"+i.titulo+"” mudou para: "+t.options[t.selectedIndex].text+".", cor:"azul", feito:false, feitoPor:"", feitoEm:0, pessoa:"", lidoPor:[]});
+  save();
+});
+if(typeof PACT!=="undefined" && PACT.fbNew){
+  const p28FbBase=PACT.fbNew;
+  PACT.fbNew=function(el){
+    p28FbBase(el);
+    const ft=$("#modalRoot .mfoot"); if(!ft || $("#p28Para")) return;
+    ft.insertAdjacentHTML("beforebegin", `<div class="df"><label>Para quem</label><select class="inp" id="p28Para"><option value="">Equipe</option><option>Ellen</option><option>Gabriel</option><option>Alan</option><option>Evaldo</option></select></div>`);
+    const bt=ft.querySelector(".btn.primary");
+    if(bt) bt.addEventListener("click", ()=>{ const para=($("#p28Para")||{}).value||""; const antes=FB().length; setTimeout(()=>{ if(FB().length>antes && para){ const x=FB()[FB().length-1]; x.para=para; save(); render(); } }, 0); }, true);
+  };
+}
+
+/* ---------- 4. Correções da auditoria ---------- */
+cbAlertas = function(){ let n=0; cbAll().forEach(c=>{ n+=cbParcVencidas(c).length+cbParcHoje(c).length; if(cbAcaoVencida(c)) n++; }); return n; };
+const p28LogBase = logA;
+logA = function(txt, fid){
+  const u=S.log && S.log[0];
+  if(u && u.txt===txt && u.quem===(ui.me||"?") && Date.now()-(u.t||0) < 120000) return;
+  return p28LogBase(txt, fid);
+};
+const p28AnPessoaBase = anPessoaDe;
+anPessoaDe = function(esc0){
+  if(esc0 && (esc0.novo || esc0.at) && !esc0.id){
+    const n=String(esc0.nome||"").trim();
+    if(n.split(/\s+/).length>4 || n.length>40 || /\d{3}/.test(n)) return null;
+  }
+  return p28AnPessoaBase(esc0);
+};
+function p28SemanaLeitura(){
+  const sem=smRefPadrao(), r=smRec(sem);
+  const cab=`<div class="phead"><div><div class="crumb">Semana</div><h1>Semana</h1><p>O plano da semana feito pelo Gabriel. O que é seu aparece destacado e também em Tarefas e no Meu dia.</p></div></div>`;
+  if(!r || !(r.itens||[]).length) return cab+`<div class="empty">A semana ainda não foi planejada.</div>`;
+  const foco=(r.foco||[]).filter(Boolean);
+  const dias=smDias(r.sem).filter(d=>(r.itens||[]).some(i=>i.dia===d));
+  const item=i=>`<li class="p28-si${i.dono===ui.me?" meu":""}${i.status==="feito"?" feito":""}${i.status==="cancelado"?" canc":""}"><span>${esc(i.texto)}</span><span class="tag">${esc(i.dono||"")}</span>${i.hora?`<small class="muted">${esc(i.hora)}</small>`:""}${i.fatal?`<small class="p28-fat">fatal ${esc(fmtIso(i.fatal))}</small>`:""}</li>`;
+  const semDia=(r.itens||[]).filter(i=>!i.dia);
+  return cab+`${foco.length?`<section class="pg-sec"><h3 style="margin:0 0 6px">Foco da semana</h3><ol class="p28-foco">${foco.map(f=>`<li>${esc(f)}</li>`).join("")}</ol></section>`:""}
+    <div class="p28-sem">${dias.map(d=>`<section class="pg-sec"><h3>${esc(smDiaRot(d))}</h3><ul class="p28-sl">${r.itens.filter(i=>i.dia===d).map(item).join("")}</ul></section>`).join("")}
+    ${semDia.length?`<section class="pg-sec"><h3>Sem dia fixo</h3><ul class="p28-sl">${semDia.map(item).join("")}</ul></section>`:""}</div>`;
+}
+const p28SemanaBase = viewSemana;
+viewSemana = function(){ return smMaster() ? p28SemanaBase() : p28SemanaLeitura(); };
+if(typeof R2_VIEWS!=="undefined") R2_VIEWS.semana=viewSemana;
+const p28SmRenderBase = smRender;
+smRender = function(){ p28SmRenderBase(); const n=$("#nav-semana"); if(n && ui.papel) n.style.display=""; };
+
+/* ---------- 7. Sigilo: aviso no Andamento quando "Quem vê" não é Todos ---------- */
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t || t.id!=="adVe") return;
+  let s=$("#p28SigAd");
+  if(!s){ const c=t.closest(".ad-campos"); if(!c) return; c.insertAdjacentHTML("afterend", `<p class="p28-sig" id="p28SigAd">Restrito só na tela. A proteção total vem no próximo pacote. Não registre aqui nada que a equipe não possa ler.</p>`); s=$("#p28SigAd"); }
+  s.hidden=(t.value==="todos");
+});
+
+(function(){ const st=document.createElement("style"); st.id="p28Css"; st.textContent=
+   ".p28-mov{display:flex;gap:7px;align-items:flex-start;background:rgba(127,209,199,.10);border:1px solid rgba(127,209,199,.28);border-radius:9px;padding:6px 8px;font-size:12.5px;line-height:1.35;margin-top:6px}"
+ + ".p28-mov.vazio{background:transparent;border-style:dashed;color:var(--muted)}"
+ + ".p28-dt{font-weight:800;color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums}"
+ + ".p28-tx{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}"
+ + ".p28-add{font:inherit;font-size:11.5px;font-weight:700;color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:99px;padding:2px 9px;cursor:pointer;margin-right:4px}"
+ + ".p28-add:hover,.p28-add:focus-visible{border-color:var(--accent);outline:none}"
+ + ".p28-linha{display:grid;grid-template-columns:minmax(0,1.2fr) 150px minmax(0,2fr) auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}"
+ + ".p28-cli{position:relative;min-width:0}.p28-cli .inp{width:100%}"
+ + ".p28-sug{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.3)}"
+ + ".p28-sug[hidden]{display:none}.p28-ttx,.p28-tx{overflow-wrap:anywhere}"
+ + ".p28-sug button{font:inherit;font-size:13.5px;text-align:left;background:transparent;border:0;color:inherit;border-radius:7px;padding:7px 9px;cursor:pointer}.p28-sug button:hover{background:var(--surface-2)}"
+ + ".p28-fil{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0 8px}.p28-cnt{font-size:12.5px}"
+ + ".p28-tw{overflow-x:auto}.p28-tab{width:100%;border-collapse:collapse;font-size:14px}"
+ + ".p28-tab th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}"
+ + ".p28-tab td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}.p28-tab tbody tr[data-act]{cursor:pointer}.p28-tab tbody tr[data-act]:hover td{background:var(--surface-2)}"
+ + ".p28-tdt{font-weight:800;color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums}.p28-tc{white-space:nowrap}.p28-tq{color:var(--muted);white-space:nowrap;font-size:12.5px}"
+ + ".p28-dia td{padding-top:14px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:0}"
+ + ".p28-sig{font-size:12.5px;color:var(--warn,#d99a2b);border:1px dashed var(--warn,#d99a2b);border-radius:9px;padding:6px 10px;margin:6px 0}"
+ + ".p28-sem{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.p28-sl{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}"
+ + ".p28-si{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:13.5px}.p28-si span:first-child{flex:1;min-width:0}"
+ + ".p28-si.meu{border-color:var(--accent);background:rgba(127,209,199,.08)}.p28-si.feito span:first-child{text-decoration:line-through;color:var(--muted)}.p28-si.canc{opacity:.5}"
+ + ".p28-fat{color:var(--danger)}.p28-foco{margin:0;padding-left:20px}"
+ + "@media (max-width:760px){.p28-linha{grid-template-columns:1fr 1fr}.p28-linha #p28Tx,.p28-linha .btn{grid-column:1/-1}}";
+ document.head.appendChild(st); })();
+/* ================= fim do Pacote 28 ================= */
+
 /* ================= INÍCIO ================= */
 render();
 updUndo();
