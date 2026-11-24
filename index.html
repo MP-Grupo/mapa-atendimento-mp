@@ -12649,6 +12649,104 @@ render = function(){ pcRenderBase(); try{ pcFaixaMaster(); }catch(e){ console.wa
  + ".pc-faixa.crit{border-left-color:var(--danger)}.pc-sem{color:var(--danger);font-weight:600}";
  document.head.appendChild(st); })();
 /* ================= fim do Protocolo: confirmar e cobrar ================= */
+
+/* ================= Pacote 29 · v7.9.1 · Protocolo: cobrança que aumenta durante o dia (24/11/2026) ================= */
+/* Pedido do Gabriel: lembrar o Alan durante o dia, aumentando a frequência, até ele marcar que protocolou. */
+/* Substitui os horários fixos (10h, 14h, 16h30) por intervalos que encurtam: */
+/* - Vence hoje: na abertura; depois a cada 2h até 15h, a cada 30 min das 15h às 17h, a cada 15 min depois das 17h. */
+/* - Atrasado: na abertura; depois a cada 30 min até 15h e a cada 15 min depois. Não pode adiar. */
+/* - Adiar (só sem atraso) vale o intervalo da hora: 1h, 30 min ou 15 min. */
+/* - Faixa vermelha fixa no topo da tela de quem deve protocolar, enquanto houver pendência sem resposta. */
+/* - Na faixa do Gabriel: quantas vezes foi cobrado hoje e botão "Cobrar no WhatsApp" (mensagem pronta). */
+const PC2_WA = { Alan: "" };
+function pc2TemAtraso(L){ return L.some(p=>pzDias(p)<0); }
+function pc2Intervalo(L){
+  const hm=pcAgoraHM();
+  if(pc2TemAtraso(L)) return hm<"15:00" ? 30 : 15;
+  if(hm<"15:00") return 120;
+  if(hm<"17:00") return 30;
+  return 15;
+}
+function pc2Ult(){ return Number(pcLS("pc2-ult-"+pcEu()+"-"+isoDia())||0); }
+pcDeveCobrar = function(){
+  if(!pcEu() || ui.papel==="master") return false;
+  const L=pcPend(pcEu());
+  if(!L.length) return false;
+  if($("#modalRoot") && $("#modalRoot").firstChild) return false;
+  const adiado=Number(pcLS("pc-adiar-"+pcEu())||0);
+  if(adiado && Date.now()<adiado && !pc2TemAtraso(L)) return false;
+  const ult=pc2Ult();
+  if(!ult) return "abertura";
+  if(Date.now()-ult >= pc2Intervalo(L)*60000) return "t"+Date.now();
+  return false;
+};
+const pc2ModalBase = pcModal;
+pcModal = function(origem){
+  if(origem) pcLS("pc2-ult-"+pcEu()+"-"+isoDia(), String(Date.now()));
+  pc2ModalBase(origem);
+  const L=pcPend(pcEu());
+  if(!L.length) return;
+  const foot=document.querySelector("#modalRoot .mfoot"); if(!foot) return;
+  const adiar=[...foot.querySelectorAll("button")].find(b=>/Lembrar em/.test(b.textContent));
+  if(!adiar) return;
+  if(pc2TemAtraso(L)){
+    adiar.remove();
+    const lista=document.querySelector("#modalRoot .pc-lista");
+    if(lista && !document.querySelector("#pc2Aviso")) lista.insertAdjacentHTML("beforebegin", `<p id="pc2Aviso" class="pc2-aviso">Há prazo atrasado: esta janela volta a cada ${pc2Intervalo(L)} min até você marcar Protocolei ou informar o motivo.</p>`);
+    return;
+  }
+  const min=Math.min(60, pc2Intervalo(L));
+  const novo=adiar.cloneNode(true);
+  novo.textContent = min>=60 ? "Lembrar em 1 hora" : "Lembrar em "+min+" min";
+  novo.addEventListener("click", e=>{ e.stopPropagation(); pcLS("pc-adiar-"+pcEu(), String(Date.now()+min*60000)); pcLS("pc2-ult-"+pcEu()+"-"+isoDia(), String(Date.now())); closeModal(); toast("Volto a lembrar em "+(min>=60?"1 hora":min+" min")+"."); });
+  adiar.replaceWith(novo);
+};
+function pc2Faixa(){
+  const old=$("#pc2Faixa");
+  if(!pcEu() || ui.papel==="master" || ui.verComo){ if(old) old.remove(); return; }
+  const L=pcPend(pcEu());
+  if(!L.length){ if(old) old.remove(); return; }
+  const c=$("#content"); if(!c) return;
+  const txt=L.map(p=>esc(p.prot.cod||"")+(pzDias(p)<0?" atrasado "+(-pzDias(p))+"d":" vence hoje")).join(" · ");
+  const html=`<div class="pc2-faixa" id="pc2Faixa" role="alert"><b>Protocolo pendente</b><span>${txt}</span><span class="grow"></span><button class="btn sm primary" data-pc2="abrir">Responder agora</button></div>`;
+  if(old){ old.outerHTML=html; return; }
+  c.insertAdjacentHTML("afterbegin", html);
+}
+function pc2MsgWa(nome){
+  const L=protItens().filter(p=>pcResp(p)===nome && pcAlvo(p) && !pcJustHoje(p));
+  if(!L.length) return "";
+  const linhas=L.map(p=>"- "+(p.prot.cod||"")+" · "+(p.processo||"")+" · "+(pzDias(p)<0?"atrasado "+(-pzDias(p))+" dia(s)":"vence hoje")).join("\n");
+  return nome+", protocolo de hoje ainda sem confirmação no Mapa:\n"+linhas+"\n\nMarque Protocolei (com o nº do evento) ou informe o motivo no Mapa. Obrigado!";
+}
+function pc2FaixaMasterWa(){
+  if(!(ui.papel==="master" && !ui.verComo)) return;
+  const f=$("#pcFaixa"); if(!f || f.querySelector("[data-pc2='wa']")) return;
+  const resp=[...new Set(protItens().filter(p=>pcAlvo(p) && !pcJustHoje(p)).map(pcResp))];
+  if(!resp.length) return;
+  f.insertAdjacentHTML("beforeend", resp.map(n=>`<button class="btn sm" data-pc2="wa" data-n="${esc(n)}">Cobrar ${esc(n)} no WhatsApp</button>`).join(""));
+}
+const pc2RenderBase = render;
+render = function(){ pc2RenderBase(); try{ pc2Faixa(); pc2FaixaMasterWa(); }catch(e){ console.warn("pc2", e); } };
+document.addEventListener("click", e=>{
+  const b=e.target.closest ? e.target.closest("[data-pc2]") : null; if(!b) return;
+  e.preventDefault();
+  if(b.dataset.pc2==="abrir"){ pcModal(); return; }
+  if(b.dataset.pc2==="wa"){
+    const n=b.dataset.n, msg=pc2MsgWa(n); if(!msg) return;
+    const num=(PC2_WA[n]||"").replace(/\D/g,"");
+    const url=(num?"https://wa.me/"+num:"https://api.whatsapp.com/send")+"?text="+encodeURIComponent(msg);
+    window.open(url, "_blank");
+    logA("cobrou "+n+" no WhatsApp pelo protocolo de hoje");
+    save();
+    toast("WhatsApp aberto com a mensagem pronta.");
+  }
+});
+(function(){ const st=document.createElement("style"); st.id="pc2Css"; st.textContent=
+   ".pc2-faixa{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--danger-soft);border:1px solid var(--danger);border-radius:12px;padding:8px 12px;margin:0 0 12px;font-size:13px}"
+ + ".pc2-faixa .grow{flex:1}.pc2-faixa b{color:var(--danger)}"
+ + ".pc2-aviso{margin:0 0 10px;padding:8px 10px;border-radius:10px;background:var(--danger-soft);color:var(--danger);font-weight:600;font-size:13px}";
+ document.head.appendChild(st); })();
+/* ================= fim da cobrança que aumenta durante o dia ================= */
 /* ================= Pacote 28 · v7.9 · Ajustes da Ellen + correções da auditoria (18/11/2026) ================= */
 /* 1. Movimentações: última movimentação com data no cartão do caso, botão "+ Mov." e aba Movimentações. */
 /*    Tudo grava como "Andamento" no próprio caso (c.registros), o mesmo do Andamento do caso. */
