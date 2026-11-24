@@ -13085,6 +13085,371 @@ document.addEventListener("change", e=>{
  document.head.appendChild(st); })();
 /* ================= fim do Pacote 28 ================= */
 
+/* ================= Pacote 30 · v7.10 · Tarefas por cliente + exclusão com justificativa (24/11/2026) ================= */
+/* Pedido do Gabriel: na tela Tarefas, um quadro por cliente (nome primeiro, nº de casos, tarefas e urgências). */
+/* Ao abrir o quadro, a pasta do cliente mostra cada caso num quadro próprio, com as pendências. Vale para todos. */
+/* Exclusão de tarefa: todos podem excluir, sempre com justificativa escrita; fica guardada em S.tfExcluidas e no histórico. */
+function tcEuReal(){ return (ui.vcReal ? ui.vcReal.me : ui.me) || "?"; }
+function tcExclAll(){ if(!Array.isArray(S.tfExcluidas)) S.tfExcluidas=[]; return S.tfExcluidas; }
+function tcCliDe(t){
+  if(t.pessoa) return t.pessoa;
+  const c=t.caso ? csGet(t.caso) : null;
+  return c && c.pessoa ? c.pessoa : "";
+}
+function tcSt(t){
+  if(t.done || !t.data) return "";
+  const h=isoDia();
+  if(t.data<h) return "venc";
+  if(t.data===h) return "hoje";
+  return "";
+}
+function tcContar(L){
+  const r={n:L.length, venc:0, hoje:0, alta:0};
+  L.forEach(t=>{ const s=tcSt(t); if(s==="venc") r.venc++; if(s==="hoje") r.hoje++; if(t.prio==="alta") r.alta++; });
+  return r;
+}
+function tcChips(c){
+  const a=[];
+  if(c.venc) a.push(`<span class="tc-ch venc">${c.venc} vencida${c.venc>1?"s":""}</span>`);
+  if(c.hoje) a.push(`<span class="tc-ch hoje">${c.hoje} vence${c.hoje>1?"m":""} hoje</span>`);
+  if(c.alta) a.push(`<span class="tc-ch alta">${c.alta} prioridade alta</span>`);
+  if(!a.length) a.push(`<span class="tc-ch ok">em dia</span>`);
+  return a.join("");
+}
+function tcOrdTf(a,b){
+  const ka=(a.data||"9999")+(a.dataComp||"9999"), kb=(b.data||"9999")+(b.dataComp||"9999");
+  return ka.localeCompare(kb);
+}
+function tcFiltradas(){
+  const f=ui.tf; const q=(f.busca||"").toLowerCase();
+  return tfLista().filter(t=>{
+    if(f.area && t.area!==f.area) return false;
+    if(f.resp && t.resp!==f.resp) return false;
+    if(!q) return true;
+    const c=t.caso?csGet(t.caso):null;
+    return [t.txt, t.obs, psNome(tcCliDe(t)), c?c.titulo:""].join(" ").toLowerCase().includes(q);
+  });
+}
+function tcGrupos(L){
+  const m={};
+  L.forEach(t=>{ const k=tcCliDe(t)||"__sem"; (m[k]=m[k]||[]).push(t); });
+  return Object.entries(m).map(([k,ts])=>{
+    const ab=ts.filter(t=>!t.done);
+    const casos=new Set(ab.filter(t=>t.caso && csGet(t.caso)).map(t=>t.caso));
+    return {k, nome:k==="__sem"?"Sem cliente (internas)":(psNome(k)||"Cliente sem nome"), ab, fe:ts.filter(t=>t.done), casos:casos.size, c:tcContar(ab)};
+  });
+}
+function tcSeg(html){
+  const f=ui.tf; const modo=(!f.modo||f.modo==="cliente")?"cliente":f.modo;
+  return html.replace(/<div class="seg">[\s\S]*?<\/div><\/div>/, `<div class="seg"><button class="${modo==="cliente"?"on":""}" data-act="tfModo" data-v="cliente">Por cliente</button><button class="${modo==="quadro"?"on":""}" data-act="tfModo" data-v="quadro">Quadro</button><button class="${modo==="lista"?"on":""}" data-act="tfModo" data-v="lista">Lista</button></div></div>`);
+}
+function tcHeadExtra(html){
+  const n=tcExclAll().length;
+  if(!n) return html;
+  const alvo=`<button class="btn primary" data-act="tfNova">`;
+  return html.replace(alvo, `<button class="btn" data-tc="lista">Excluídas (${n})</button>`+alvo);
+}
+const tcViewBase = viewTarefas2;
+viewTarefas2 = function(){
+  const f=ui.tf;
+  if(f.modo && f.modo!=="cliente") return tcHeadExtra(tcSeg(tcViewBase()));
+  const guard=f.modo; f.modo="lista"; const full=tcViewBase(); f.modo=guard;
+  const cut=full.indexOf(`<div class="tf-box">`);
+  const head=tcHeadExtra(tcSeg(cut>=0?full.slice(0,cut):full));
+  const L=tcFiltradas();
+  const G=tcGrupos(L);
+  if(f.cli){
+    const g=G.find(x=>x.k===f.cli);
+    if(g) return head+tcPasta(g);
+    f.cli="";
+  }
+  const abertos=G.filter(g=>g.ab.length).sort((a,b)=>(a.k==="__sem")-(b.k==="__sem") || b.c.venc-a.c.venc || b.c.hoje-a.c.hoje || b.c.alta-a.c.alta || b.c.n-a.c.n || a.nome.localeCompare(b.nome));
+  const totAb=L.filter(t=>!t.done).length;
+  if(!abertos.length) return head+`<div class="tf-box"><p class="muted" style="margin:0">Nenhuma tarefa aberta${f.resp||f.area||f.busca?" com esses filtros":""}.</p></div>`;
+  return head+`<p class="muted tc-res">${abertos.length} quadro${abertos.length>1?"s":""} · ${totAb} tarefa${totAb>1?"s":""} abertas · urgentes primeiro</p>
+    <div class="tc-grid">${abertos.map(g=>`<button class="tc-cli${g.c.venc?" urg":""}${g.k==="__sem"?" sem":""}" data-tc="abrir" data-k="${esc(g.k)}">
+      <span class="tc-nm">${esc(g.nome)}</span>
+      <span class="tc-sub">${g.k==="__sem"?"":`${g.casos} caso${g.casos===1?"":"s"} · `}${g.ab.length} tarefa${g.ab.length>1?"s":""}</span>
+      <span class="tc-chs">${tcChips(g.c)}</span>
+      <span class="tc-quem">${[...new Set(g.ab.map(t=>t.resp).filter(Boolean))].map(respInic).join("")}</span>
+    </button>`).join("")}</div>`;
+};
+function tcItem(t){
+  const s=tcSt(t);
+  const datas=`${t.dataComp?`<span class="muted" title="Data de fazer">${esc(fmtIso(t.dataComp))}</span>`:""}${t.dataComp&&t.data?`<span class="muted">→</span>`:""}${t.data?`<span class="tc-fat ${s}" title="Data fatal">${esc(fmtIso(t.data))}</span>`:(!t.dataComp?`<span class="muted">sem data</span>`:"")}`;
+  return `<div class="tc-it${t.done?" done":""}">
+    <input type="checkbox" data-act="tfDone2" data-id="${t.id}" ${t.done?"checked":""} aria-label="Concluir">
+    <span class="tc-tx" data-act="tfEdit2" data-id="${t.id}">${agPrioDot(t.prio)}${esc(t.txt)}${t.status==="andamento"?` <span class="tc-and">em andamento</span>`:""}${s==="venc"?` <span class="tc-ch venc">${esc(diasTxt(diasAte(t.data)))}</span>`:""}</span>
+    <span class="tc-dt">${datas}</span>${respInic(t.resp)}
+    <button class="tc-del" data-tc="del" data-id="${t.id}" title="Excluir (pede justificativa)" aria-label="Excluir tarefa">✕</button>
+  </div>`;
+}
+function tcPasta(g){
+  const m={};
+  g.ab.forEach(t=>{ const c=t.caso?csGet(t.caso):null; const k=c?c.id:"__semcaso"; (m[k]=m[k]||[]).push(t); });
+  const caixas=Object.entries(m).map(([k,ts])=>({k, c:k==="__semcaso"?null:csGet(k), ts:ts.sort(tcOrdTf), cont:tcContar(ts)}))
+    .sort((a,b)=>(a.k==="__semcaso")-(b.k==="__semcaso") || b.cont.venc-a.cont.venc || b.cont.hoje-a.cont.hoje || tcOrdTf(a.ts[0],b.ts[0]));
+  const cli=g.k==="__sem"?"":g.k;
+  const fe=g.fe.sort((a,b)=>(b.doneEm||0)-(a.doneEm||0)).slice(0,15);
+  return `<div class="tc-ph">
+      <button class="btn sm" data-tc="voltar">‹ Todos os clientes</button>
+      <h2 class="tc-h">${esc(g.nome)}</h2>
+      <span class="muted">${g.k==="__sem"?"":`${g.casos} caso${g.casos===1?"":"s"} · `}${g.ab.length} tarefa${g.ab.length>1?"s":""} abertas</span>
+      <span class="tc-chs">${tcChips(g.c)}</span><span class="grow"></span>
+      ${cli?`<button class="btn sm" data-act="psAbrir" data-id="${esc(cli)}">Abrir ficha</button>`:""}
+      <button class="btn sm primary" data-act="tfNova" data-p="${esc(cli)}">+ Tarefa${cli?" para o cliente":""}</button>
+    </div>
+    <div class="tc-casos">${caixas.map(x=>`<section class="tc-caso${x.cont.venc?" urg":""}">
+      <header><div><b>${esc(x.c?(x.c.titulo||"Caso sem título"):(g.k==="__sem"?"Tarefas internas":"Sem caso vinculado"))}</b>
+        <small class="muted">${x.c&&x.c.area?esc(x.c.area)+" · ":""}${x.ts.length} pendência${x.ts.length>1?"s":""}</small></div>
+        <span class="tc-chs">${x.cont.venc||x.cont.hoje?tcChips(x.cont):""}</span></header>
+      ${x.ts.map(tcItem).join("")}
+      <button class="lnk tc-add" data-act="tfNova" data-p="${esc(cli)}" data-c="${x.c?esc(x.c.id):""}">+ Tarefa ${x.c?"neste caso":"aqui"}</button>
+    </section>`).join("")}</div>
+    ${fe.length?`<details class="more" style="margin-top:14px"><summary>Concluídas deste ${g.k==="__sem"?"grupo":"cliente"} (${g.fe.length})</summary><div class="tf-box">${fe.map(tcItem).join("")}</div></details>`:""}`;
+}
+function tcExcluir(id){
+  const t=tfAll().find(x=>x.id===id); if(!t) return;
+  modal("Excluir tarefa", `<p style="margin:0 0 8px">“${esc(t.txt)}”</p>
+    <div class="df"><label>Por que você está excluindo? (obrigatório)</label><textarea class="inp" id="tcMotivo" style="min-height:70px" placeholder="Ex.: feita fora do Mapa; duplicada; cliente desistiu"></textarea><small class="tc-err" id="tcErr" hidden>Escreva a justificativa para excluir.</small></div>
+    <p class="muted" style="font-size:12.5px;margin:6px 0 0">A justificativa fica no histórico e a tarefa vai para “Excluídas”, de onde pode ser restaurada.</p>`,
+    [{label:"Cancelar", fn:()=>{ if(ui.tcVolta){ const pid=ui.tcVolta; ui.tcVolta=""; setTimeout(()=>tcJanelaCliente(pid), 0); } }},{label:"Excluir", cls:"danger solid", fn:()=>{
+      const el=$("#tcMotivo"); const mot=(el?el.value:"").trim();
+      if(!mot){ const er=$("#tcErr"); if(er) er.hidden=false; if(el) el.focus(); return false; }
+      snap();
+      S.tarefas=tfAll().filter(x=>x.id!==id);
+      const ex=tcExclAll(); ex.unshift(Object.assign({}, t, {exclPor:tcEuReal(), exclEm:Date.now(), exclMotivo:mot}));
+      if(ex.length>300) ex.length=300;
+      logA("excluiu a tarefa “"+t.txt+"” · justificativa: "+mot);
+      save(); render(); toast("Tarefa excluída.", ()=>{ undo(); render(); });
+      if(ui.tcVolta){ const pid=ui.tcVolta; ui.tcVolta=""; setTimeout(()=>tcJanelaCliente(pid), 0); }
+    }}]);
+  setTimeout(()=>{ const el=$("#tcMotivo"); if(el){ el.focus(); el.addEventListener("input", ()=>{ const er=$("#tcErr"); if(er) er.hidden=true; }); } }, 40);
+}
+function tcListaExcl(){
+  const L=tcExclAll();
+  modal("Tarefas excluídas ("+L.length+")", L.length?`<div class="tc-exl">${L.slice(0,100).map(t=>`<div class="tc-ex"><div><b>${esc(t.txt)}</b><small class="muted">${esc(psNome(tcCliDe(t))||"sem cliente")} · excluída por ${esc(t.exclPor||"?")} em ${esc(fmtT(t.exclEm))}</small><small>Justificativa: ${esc(t.exclMotivo||"")}</small></div><button class="btn sm" data-tc="rest" data-id="${t.id}">Restaurar</button></div>`).join("")}</div>`:`<p class="muted">Nenhuma tarefa excluída.</p>`, [{label:"Fechar", cls:"primary"}], true);
+}
+function tcRestaurar(id){
+  const L=tcExclAll(); const i=L.findIndex(x=>x.id===id); if(i<0) return;
+  snap();
+  const t=Object.assign({}, L[i]); delete t.exclPor; delete t.exclEm; delete t.exclMotivo;
+  L.splice(i,1); tfAll().push(t);
+  logA("restaurou a tarefa “"+t.txt+"”");
+  save(); closeModal(); render(); toast("Tarefa restaurada.");
+}
+const tcModalBase = tfModal2;
+tfModal2 = function(t, pre){
+  tcModalBase(t, pre);
+  if(!t) return;
+  const bt=[...document.querySelectorAll("#modalRoot .mfoot .btn")].find(b=>b.textContent.trim()==="Excluir");
+  if(!bt) return;
+  const nb=bt.cloneNode(true); bt.replaceWith(nb);
+  nb.addEventListener("click", ()=>tcExcluir(t.id));
+};
+document.addEventListener("click", e=>{
+  const el=e.target.closest ? e.target.closest("[data-tc]") : null; if(!el) return;
+  const a=el.dataset.tc; e.preventDefault();
+  if(a==="abrir"){ ui.tf.cli=el.dataset.k; render(); window.scrollTo(0,0); }
+  else if(a==="voltar"){ ui.tf.cli=""; render(); }
+  else if(a==="del"){ e.stopPropagation(); ui.tcVolta = el.closest(".tc-jan") ? ui.tcJan : ""; tcExcluir(el.dataset.id); }
+  else if(a==="lista") tcListaExcl();
+  else if(a==="rest") tcRestaurar(el.dataset.id);
+});
+document.addEventListener("click", e=>{
+  const el=e.target.closest ? e.target.closest('#modalRoot .tc-jan [data-act="tfDone2"]') : null;
+  if(el && ui.tcJan){ const pid=ui.tcJan; setTimeout(()=>tcJanelaCliente(pid), 0); }
+});
+try{ ui.tf.modo = localStorage.getItem("mp-tf-modo") || "cliente"; }catch(e){ ui.tf.modo="cliente"; }
+document.addEventListener("click", e=>{
+  const el=e.target.closest ? e.target.closest('[data-act="tfModo"]') : null;
+  if(!el) return;
+  ui.tf.cli="";
+  try{ localStorage.setItem("mp-tf-modo", el.dataset.v||"cliente"); }catch(er){}
+}, true);
+/* Atendimentos e casos: cartão com o nome do cliente em cima e o caso embaixo (pedido do Gabriel e item 7 da Ellen). */
+/* Sem data de movimentação nem de criação, o cartão não mostra a contagem de dias (antes aparecia "20781d"). */
+const tcEsCardBase = esCard;
+esCard = function(c, ativo){
+  let h=tcEsCardBase(c, ativo);
+  const m=h.match(/<b>([\s\S]*?)<\/b>(\s*)<span class="kb-p"([^>]*)>([\s\S]*?)<\/span>/);
+  if(m) h=h.replace(m[0], `<b>${m[4]}</b>${m[2]}<span class="kb-p tc-caso-sub" title="Caso">${m[1]}</span>`);
+  if(!c.movidoEm && !c.t) h=h.replace(/<span class="kb-d[^"]*" title="tempo na coluna">\d+d<\/span>/, "");
+  return h;
+};
+/* Atendimentos e casos: cliente com mais de um caso na mesma coluna vira um cartão só; clicar abre a janela do cliente */
+/* com todos os casos dele separados (de todas as colunas), cada um com etapa, última movimentação e tarefas abertas. */
+function tcCasosDe(pid){ return csAll().filter(c=>c.pessoa===pid && !c.lixo); }
+function tcAgruparCasos(){
+  if(ui.view!=="casos") return;
+  document.querySelectorAll(".kb-col .kb-list").forEach(lst=>{
+    const g={};
+    lst.querySelectorAll(":scope > .es-card[data-id]").forEach(el=>{ const c=csGet(el.dataset.id); if(c && c.pessoa) (g[c.pessoa]=g[c.pessoa]||[]).push(el); });
+    Object.entries(g).forEach(([pid, els])=>{
+      if(els.length<2) return;
+      const cs=els.map(e=>csGet(e.dataset.id));
+      const urg=cs.some(c=>(c.etiquetas||[]).includes("Urgente"));
+      const resp=[...new Set(cs.map(c=>c.resp).filter(Boolean))];
+      const nome=psNome(pid)||"Cliente";
+      const curto=typeof p28Curto==="function" ? p28Curto(nome) : nome;
+      const h=`<div class="kb-card es-card tc-grp" data-tc="grp" data-p="${esc(pid)}" title="Abrir os casos de ${esc(curto)}">
+        <b>${esc(curto)}</b><span class="kb-p tc-caso-sub">${cs.length} casos nesta etapa${tcCasosDe(pid).length>cs.length?` · ${tcCasosDe(pid).length} no total`:""}</span>
+        <ul class="tc-grp-l">${cs.slice(0,4).map(c=>`<li>${esc(c.titulo||"Caso sem título")}</li>`).join("")}${cs.length>4?`<li class="muted">+ ${cs.length-4}</li>`:""}</ul>
+        <div class="kb-f">${urg?`<span class="etq u">Urgente</span>`:""}<span class="grow"></span>${resp.map(respInic).join("")}</div></div>`;
+      els[0].insertAdjacentHTML("beforebegin", h);
+      els.forEach(e=>e.remove());
+    });
+  });
+}
+const tcRenderCasosBase = render;
+render = function(){ tcRenderCasosBase.apply(this, arguments); try{ tcAgruparCasos(); }catch(e){} };
+function tcJanelaCliente(pid){
+  const L=tcCasosDe(pid); if(!L.length) return;
+  ui.tcJan=pid;
+  const nome=psNome(pid)||"Cliente";
+  const tfs=tfLista().filter(t=>!t.done);
+  const box=c=>{
+    const col=typeof esColDe==="function" ? esColDe(c) : null;
+    const movs=typeof p28Movs==="function" ? p28Movs(c).slice(0,3) : [];
+    const docs=typeof esDocs==="function" ? (esDocs(c)||[]) : (c.docsLista||[]);
+    const ab=tfs.filter(t=>t.caso===c.id);
+    const venc=ab.filter(t=>tcSt(t)==="venc").length;
+    return `<section class="tc-caso${venc?" urg":""}">
+      <header><div><b>${esc(c.titulo||"Caso sem título")}</b><small class="muted">${col?esc(col.nome):""}${c.area?" · "+esc(c.area):""}</small></div>${(c.etiquetas||[]).includes("Urgente")?`<span class="tc-ch venc">urgente</span>`:""}</header>
+      <small class="tc-lbl">Movimentações</small>
+      ${movs.length?movs.map(x=>`<div class="tc-it tc-mv"><b class="tc-fat">${esc(fmtIso(x.dia))}</b><span class="tc-tx" style="cursor:default">${esc(x.r.txt||x.r.relato||"")}</span></div>`).join(""):`<div class="tc-it tc-mv"><span class="muted">Sem movimentação ainda</span></div>`}
+      <small class="tc-lbl">Tarefas abertas${ab.length?` (${ab.length})`:""}${venc?` · <span class="tc-fat venc">${venc} vencida${venc>1?"s":""}</span>`:""}</small>
+      ${ab.length?ab.sort(tcOrdTf).slice(0,6).map(tcItem).join("")+(ab.length>6?`<small class="muted">+ ${ab.length-6} no caso</small>`:""):`<div class="tc-it tc-mv"><span class="muted">Nenhuma tarefa aberta</span></div>`}
+      ${docs.length?`<small class="tc-lbl">Documentos: ${docs.filter(d=>d.ok).length} de ${docs.length} recebidos</small>`:""}
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm primary" data-tc="csabrir" data-id="${c.id}">Abrir tudo do caso</button><button class="p28-add" data-p28="mov" data-id="${c.id}">+ Mov.</button><button class="p28-add" data-act="tfNova" data-p="${esc(c.pessoa||"")}" data-c="${c.id}">+ Tarefa</button>${c.pastaUrl?`<a class="p28-add" href="${esc(c.pastaUrl)}" target="_blank" rel="noopener">Pasta</a>`:""}${c.resp?respInic(c.resp):""}</div>
+    </section>`;
+  };
+  modal(nome+" · "+L.length+" caso"+(L.length>1?"s":""), `<div class="tc-casos tc-jan">${L.map(box).join("")}</div>
+    <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-tc="cltf" data-p="${esc(pid)}">Ver tarefas do cliente</button><button class="btn sm" data-act="psAbrir" data-id="${esc(pid)}">Abrir ficha</button><button class="btn sm" data-act="csNovo" data-p="${esc(pid)}">+ Novo caso</button></div>`, [{label:"Fechar", cls:"primary"}], true);
+}
+/* Janela completa do caso (todas as funções e registros): quando o cliente tem 2+ casos, aparece no topo uma faixa */
+/* para trocar de caso sem fechar e voltar à janela com todos os casos do cliente. */
+const tcCsModalEsBase = csModalEs;
+csModalEs = function(c){
+  tcCsModalEsBase(c);
+  try{
+    const cc=csGet(c.id)||c; const pid=cc.pessoa; if(!pid) return;
+    const L=tcCasosDe(pid); if(L.length<2) return;
+    const h3=document.querySelector("#modalRoot .modal > h3"); if(!h3) return;
+    const nome=psNome(pid)||"Cliente";
+    h3.insertAdjacentHTML("beforebegin", `<div class="tc-nav"><button class="btn sm" data-tc="cljan" data-p="${esc(pid)}">‹ Todos os casos de ${esc(typeof p28Curto==="function"?p28Curto(nome):nome)}</button><div class="tc-tabs">${L.map(x=>`<button class="tc-tab${x.id===cc.id?" on":""}" data-tc="cstab" data-id="${x.id}" title="${esc(x.titulo||"")}">${esc(x.titulo||"Caso")}</button>`).join("")}</div></div>`);
+  }catch(e){}
+};
+document.addEventListener("click", e=>{
+  const el=e.target.closest ? e.target.closest('[data-tc="grp"],[data-tc="csabrir"],[data-tc="cltf"],[data-tc="cljan"],[data-tc="cstab"]') : null; if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  const a=el.dataset.tc;
+  if(a==="grp"||a==="cljan") tcJanelaCliente(el.dataset.p);
+  else if(a==="cstab"){ const c=csGet(el.dataset.id); if(c) csModalEs(c); }
+  else if(a==="csabrir"){ closeModal(); const f=ACT.csAbrir; if(f) f({dataset:{id:el.dataset.id}}); }
+  else if(a==="cltf"){ closeModal(); ui.tf.modo="cliente"; ui.tf.cli=el.dataset.p; go("tarefas"); }
+}, true);
+/* Cobranças: editar e excluir para todos que acessam a área; excluir sempre com justificativa (S.cbExcluidas, Restaurar). */
+function tcCbExclAll(){ if(!Array.isArray(S.cbExcluidas)) S.cbExcluidas=[]; return S.cbExcluidas; }
+cbExcluir = function(id){
+  const c=cbGet(id); if(!c) return;
+  modal("Excluir cobrança", `<p style="margin:0 0 8px">Devedor “${esc(c.devedor||"")}” · credor ${esc(c.credor||"—")}</p>
+    <div class="df"><label>Por que você está excluindo? (obrigatório)</label><textarea class="inp" id="tcCbMotivo" style="min-height:70px" placeholder="Ex.: cadastrada em duplicidade; cliente desistiu; quitada fora do Mapa"></textarea><small class="tc-err" id="tcCbErr" hidden>Escreva a justificativa para excluir.</small></div>
+    <p class="muted" style="font-size:12.5px;margin:6px 0 0">A justificativa fica no histórico e a cobrança vai para “Excluídas”, de onde pode ser restaurada.</p>`,
+    [{label:"Cancelar"},{label:"Excluir", cls:"danger solid", fn:()=>{
+      const el=$("#tcCbMotivo"); const mot=(el?el.value:"").trim();
+      if(!mot){ const er=$("#tcCbErr"); if(er) er.hidden=false; if(el) el.focus(); return false; }
+      snap();
+      S.cobrancas=cbAll().filter(x=>x.id!==id);
+      const ex=tcCbExclAll(); ex.unshift(Object.assign({}, c, {exclPor:tcEuReal(), exclEm:Date.now(), exclMotivo:mot}));
+      if(ex.length>200) ex.length=200;
+      logA("excluiu a cobrança de "+(c.devedor||"?")+" · justificativa: "+mot);
+      save(); render(); toast("Cobrança excluída.", ()=>{ undo(); render(); });
+    }}]);
+  setTimeout(()=>{ const el=$("#tcCbMotivo"); if(el){ el.focus(); el.addEventListener("input", ()=>{ const er=$("#tcCbErr"); if(er) er.hidden=true; }); } }, 40);
+};
+function tcCbEditar(id){
+  cbVer(id);
+  setTimeout(()=>{ const d=document.querySelector("#modalRoot details.cb-sec"); if(d){ d.open=true; d.scrollIntoView({block:"start"}); const f=d.querySelector("input,select,textarea"); if(f) f.focus(); } }, 60);
+}
+function tcCbListaExcl(){
+  const L=tcCbExclAll();
+  modal("Cobranças excluídas ("+L.length+")", L.length?`<div class="tc-exl">${L.slice(0,100).map(c=>`<div class="tc-ex"><div><b>${esc(c.devedor||"(sem nome)")}</b><small class="muted">credor ${esc(c.credor||"—")} · excluída por ${esc(c.exclPor||"?")} em ${esc(fmtT(c.exclEm))}</small><small>Justificativa: ${esc(c.exclMotivo||"")}</small></div><button class="btn sm" data-tc="cbrest" data-id="${c.id}">Restaurar</button></div>`).join("")}</div>`:`<p class="muted">Nenhuma cobrança excluída.</p>`, [{label:"Fechar", cls:"primary"}], true);
+}
+function tcCbRestaurar(id){
+  const L=tcCbExclAll(); const i=L.findIndex(x=>x.id===id); if(i<0) return;
+  snap();
+  const c=Object.assign({}, L[i]); delete c.exclPor; delete c.exclEm; delete c.exclMotivo;
+  L.splice(i,1); cbAll().push(c);
+  logA("restaurou a cobrança de "+(c.devedor||"?"));
+  save(); closeModal(); render(); toast("Cobrança restaurada.");
+}
+const tcCbCardBase = cbCard;
+cbCard = function(c){
+  const h=tcCbCardBase(c);
+  const i=h.lastIndexOf("</div>"); if(i<0) return h;
+  return h.slice(0,i)+`<div class="tc-cbac"><button class="tc-cbb" data-tc="cbedit" data-id="${c.id}" title="Editar a ficha da cobrança">✎ Editar</button><button class="tc-cbb del" data-tc="cbdel" data-id="${c.id}" title="Excluir (pede justificativa)">✕ Excluir</button></div>`+h.slice(i);
+};
+const tcCbVerBase = cbVer;
+cbVer = function(id){
+  tcCbVerBase(id);
+  const ft=$("#modalRoot .mfoot"); if(!ft) return;
+  const tem=[...ft.querySelectorAll(".btn")].some(b=>b.textContent.trim()==="Excluir");
+  ft.insertAdjacentHTML("afterbegin", `<button class="btn" data-tc="cbedit" data-id="${id}">✎ Editar ficha</button>${tem?"":`<button class="btn danger" data-tc="cbdel" data-id="${id}">Excluir</button>`}`);
+};
+function tcCbTopo(){
+  if(ui.view!=="cobrancas" || !tcCbExclAll().length || $("#tcCbExclBtn")) return;
+  const ph=document.querySelector("#content .phead, .phead"); if(!ph) return;
+  ph.insertAdjacentHTML("beforeend", `<button class="btn" id="tcCbExclBtn" data-tc="cblista">Cobranças excluídas (${tcCbExclAll().length})</button>`);
+}
+const tcRenderCbBase = render;
+render = function(){ tcRenderCbBase.apply(this, arguments); try{ tcCbTopo(); }catch(e){} };
+document.addEventListener("click", e=>{
+  const el=e.target.closest ? e.target.closest('[data-tc="cbedit"],[data-tc="cbdel"],[data-tc="cblista"],[data-tc="cbrest"]') : null; if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  const a=el.dataset.tc;
+  if(a==="cbedit") tcCbEditar(el.dataset.id);
+  else if(a==="cbdel") cbExcluir(el.dataset.id);
+  else if(a==="cblista") tcCbListaExcl();
+  else if(a==="cbrest") tcCbRestaurar(el.dataset.id);
+}, true);
+(function(){ const st=document.createElement("style"); st.id="tcCss"; st.textContent=
+   ".tc-res{font-size:12.5px;margin:2px 0 10px}"
+ + ".tc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}"
+ + ".tc-cli{font:inherit;color:inherit;text-align:left;display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;cursor:pointer}"
+ + ".tc-cli:hover,.tc-cli:focus-visible{border-color:var(--accent);outline:none}"
+ + ".tc-cli.urg{border-color:var(--danger)}.tc-cli.sem{border-style:dashed}"
+ + ".tc-nm{font-size:16px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}"
+ + ".tc-sub{font-size:13px;color:var(--muted)}"
+ + ".tc-chs{display:flex;gap:5px;flex-wrap:wrap}.tc-quem{display:flex;gap:3px;margin-top:2px}"
+ + ".tc-ch{font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px;border:1px solid var(--line);white-space:nowrap}"
+ + ".tc-ch.venc{color:var(--danger);border-color:var(--danger)}.tc-ch.hoje{color:var(--warn,#d99a2b);border-color:var(--warn,#d99a2b)}"
+ + ".tc-ch.alta{color:var(--accent);border-color:var(--accent)}.tc-ch.ok{color:var(--muted)}"
+ + ".tc-ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}.tc-h{margin:0;font-size:22px}"
+ + ".tc-casos{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;align-items:start}"
+ + ".tc-caso{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}.tc-caso.urg{border-color:var(--danger)}"
+ + ".tc-caso header{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:4px}.tc-caso header b{display:block;overflow-wrap:anywhere}.tc-caso header small{display:block}"
+ + ".tc-it{display:flex;gap:8px;align-items:flex-start;border-top:1px solid var(--line);padding:8px 0;font-size:13.5px;line-height:1.4}"
+ + ".tc-it.done .tc-tx{text-decoration:line-through;color:var(--muted)}"
+ + ".tc-tx{flex:1;min-width:0;cursor:pointer;overflow-wrap:anywhere}.tc-tx:hover{color:var(--accent)}"
+ + ".tc-dt{display:flex;gap:4px;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}"
+ + ".tc-fat.venc{color:var(--danger);font-weight:700}.tc-fat.hoje{color:var(--warn,#d99a2b);font-weight:700}"
+ + ".tc-and{font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:0 6px}"
+ + ".tc-del{font:inherit;font-size:12px;background:transparent;border:0;color:var(--muted);cursor:pointer;padding:0 2px;line-height:1.4}.tc-del:hover,.tc-del:focus-visible{color:var(--danger);outline:none}"
+ + ".tc-add{margin-top:6px;font-size:13px}"
+ + ".tc-err{color:var(--danger);font-size:12.5px}"
+
+ + ".tc-lbl{display:block;margin:10px 0 2px;font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.tc-mv{gap:8px}.tc-mv .tc-fat{white-space:nowrap}"
+ + ".tc-nav{display:flex;flex-direction:column;gap:8px;margin:0 0 10px;padding-bottom:10px;border-bottom:1px solid var(--line)}.tc-tabs{display:flex;gap:6px;flex-wrap:wrap}"
+ + ".tc-tab{font:inherit;font-size:12.5px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:transparent;color:inherit;border:1px solid var(--line);border-radius:99px;padding:4px 10px;cursor:pointer}.tc-tab:hover{border-color:var(--accent)}.tc-tab.on{background:var(--accent);color:var(--bg,#111);border-color:var(--accent);font-weight:700}"
+ + ".tc-cbac{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.tc-cbb{font:inherit;font-size:12px;font-weight:700;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 9px;cursor:pointer}.tc-cbb:hover{color:var(--accent);border-color:var(--accent)}.tc-cbb.del:hover{color:var(--danger);border-color:var(--danger)}"
+ + ".tc-grp{cursor:pointer;border-style:dashed}.tc-grp-l{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}.tc-grp-l li{overflow-wrap:anywhere}.tc-jan{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}"
+ + ".es-card .tc-caso-sub{font-size:13px;color:var(--muted);font-weight:500}"
+ + ".tc-exl{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}.tc-ex{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 10px}.tc-ex>div{display:flex;flex-direction:column;gap:2px;min-width:0}"
+ + "@media (max-width:760px){.tc-casos{grid-template-columns:1fr}.tc-grid{grid-template-columns:1fr 1fr}.tc-it{flex-wrap:wrap}.tc-dt{margin-left:26px}}";
+ document.head.appendChild(st); })();
+/* ================= fim do Pacote 30 ================= */
+
 /* ================= INÍCIO ================= */
 render();
 updUndo();
