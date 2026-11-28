@@ -39,6 +39,6 @@ Cruzamento das 33 telas do Mapa com os projetos e manuais do Cowork (skills `pop
 2. Primeiro contato: **decidido em 28/11, Ellen**. O manual v0.1 do Cowork passa a apontar para os Fluxos do Mapa (v0.2 a escrever).
 3. Fonte da verdade dos POPs: **decidido em 28/11, os Fluxos do Mapa**. A skill pop-mp vira índice que aponta para eles (v0.2 a escrever).
 4. CRM: **decidido em 28/11, o WhatsApp 9955 continua como CRM de contatos no Mapa**. A fila da Vera, se entrar, entra como um bloco dentro dele ou na Hoje, sem tirar o cadastro.
-5. Documentos e Biblioteca como Central de Documentos + prompts.
+5. Documentos e Biblioteca: **decidido em 28/11, Central de Documentos do caso** (pasta do Drive na estrutura padrão + modelos da área) e Biblioteca por área e etapa, com modelos e prompts, aberta de dentro da esteira.
 6. Manual e Trilha saem de Painel e dados para Manuais e método.
 7. Publicar o Pacote 31 agora (após cópia no Dropbox) ou depois desta revisão.
