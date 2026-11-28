@@ -24,6 +24,6 @@ Responsável pelas cobranças extrajudiciais da MP Grupo, pela prospecção de n
 - POPs: Régua de cobrança, cadastro do credor, acordo, kit judicial (em construção) · Prospecção de credores e prestação de contas ao credor (a escrever).
 
 ## Decisões em aberto (do Gabriel)
-1. Liberar o Evaldo nas Cobranças e em Negócios (hoje só o Alan tem acesso às Cobranças).
+1. Confirmar o acesso do Evaldo: as Cobranças já abrem para ele (só ficam fechadas para quem for bloqueado de propósito); conferir Negócios.
 2. Responsável pelas cobranças cadastradas (hoje quase todas no nome da Ellen).
 3. A Ellen continuar vendo a agenda e os documentos do Gabriel.
