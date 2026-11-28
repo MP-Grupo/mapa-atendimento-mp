@@ -6941,7 +6941,7 @@ const FOLHA_EXTRA = ''
 AP_LINGS.folha = {n:"Folha", ref:"", sub:"aprovada em 28/11/2026", desc:"Papel claro quente, uma cor petróleo, letra Geist, vermelho só para atraso. Escuro em grafite suave.", f:"geist", r:[16,10,8], cards:"borda", dens:"normal", menu:"claro",
   extra:FOLHA_EXTRA,
   l:{bg:"#f7f7f5",s:"#ffffff",s2:"#f0f0ec",s3:"#e8e8e3",line:"#e6e6e2",fg:"#1f2328",muted:"#6b7075",accent:"#41716f",a2:"#355f5d",soft:"#e6eeed"},
-  d:{bg:"#1c1d20",s:"#232428",s2:"#2a2b30",s3:"#313237",line:"#303136",fg:"#d9dadc",muted:"#9a9ca1",accent:"#8db3b0",a2:"#a8c7c4",soft:"#2b3535"}};
+  d:{bg:"#1a1b1e",s:"#212225",s2:"#27282c",s3:"#2e2f34",line:"#2c2d31",fg:"#cdced1",muted:"#909297",accent:"#84aba8",a2:"#9dbebb",soft:"#283231"}};
 function mpfSouVidro(a){ return !!a && a.ling==="vidro"; }
 function mpfPessoal(){ const p=apLS("mp-fundo"); return (p && typeof p==="object") ? p : null; }
 function mpfEscolha(a){
@@ -13766,8 +13766,8 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
   const st=document.createElement("style"); st.id="hjStyle";
   st.textContent = ""
   + ".hj{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#e6e6e2;--hs:#f0f0ec;--ha:#41716f;--ho:#ffffff;--hr:#b4553f;font-family:'Geist','Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--ht);background:var(--hb);min-height:100vh}"
-  + "html[data-theme='dark'] .hj{--hb:#1c1d20;--hc:#232428;--ht:#d9dadc;--hm:#9a9ca1;--hl:#303136;--hs:#2a2b30;--ha:#8db3b0;--ho:#1c1d20;--hr:#d58c78}"
-  + "body.hj-on{background:var(--hj-fundo,#f7f7f5)}html[data-theme='dark'] body.hj-on{--hj-fundo:#1c1d20}"
+  + "html[data-theme='dark'] .hj{--hb:#1a1b1e;--hc:#212225;--ht:#cdced1;--hm:#909297;--hl:#303136;--hs:#2a2b30;--ha:#84aba8;--ho:#1a1b1e;--hr:#cc8572}"
+  + "body.hj-on{background:var(--hj-fundo,#f7f7f5)}html[data-theme='dark'] body.hj-on{--hj-fundo:#1a1b1e}"
   + "body.hj-on .rail,body.hj-on .pn-wrap,body.hj-on .pn-fab,body.hj-on #pdFab,body.hj-on .pd-fab,body.hj-on .ch-fab,body.hj-on #chFab,body.hj-on .mob-btn,body.hj-on #ptFaixa,body.hj-on #maMesa,body.hj-on .pd-banner{display:none!important}"
   + "body.hj-on .app{grid-template-columns:minmax(0,1fr)!important;background:transparent!important}body.hj-on::before{display:none!important}body.hj-on .content{max-width:none!important;padding:0!important}"
   + ".hj *{box-sizing:border-box}.hj button{font:inherit;color:inherit;cursor:pointer}"
@@ -13879,7 +13879,7 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
   + "body.hj-shell .cal-c.sel{box-shadow:inset 0 0 0 1px var(--fg)!important;background:var(--surface)!important}"
   + "body.hj-shell .cal-nav{gap:6px}body.hj-shell .cal-nav h2,body.hj-shell .cal-nav b{font-size:15px!important;font-weight:600!important}"
   + ".hj-tok{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#ecece8;--hs:#f0f0ec;--ha:#41716f;--ho:#ffffff;--hr:#b4553f}"
-  + "html[data-theme='dark'] .hj-tok{--hb:#1c1d20;--hc:#232428;--ht:#d9dadc;--hm:#9a9ca1;--hl:#2c2d32;--hs:#2a2b30;--ha:#8db3b0;--ho:#1c1d20;--hr:#d58c78}"
+  + "html[data-theme='dark'] .hj-tok{--hb:#1a1b1e;--hc:#212225;--ht:#cdced1;--hm:#909297;--hl:#2c2d32;--hs:#2a2b30;--ha:#84aba8;--ho:#1a1b1e;--hr:#cc8572}"
   + "#hjMenuRoot{font-family:'Geist','Segoe UI',system-ui,sans-serif;color:var(--ht);font-size:13px}#hjMenuRoot button{font:inherit;color:inherit;cursor:pointer}"
   + "body.hj-shell .rail,body.hj-shell .pn-fab,body.hj-shell #chatFab,body.hj-shell #pdFab,body.hj-shell .pd-fab,body.hj-shell .mob-btn{display:none!important}"
   + "body.hj-shell .app{grid-template-columns:minmax(0,1fr)!important}body.hj-shell .content{margin:0 auto}"
