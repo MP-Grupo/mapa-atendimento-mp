@@ -8066,7 +8066,8 @@ document.addEventListener("keydown", e=>{
   if(t && t.id==="cxEd" && e.key==="Escape"){ ui.cx.ed=""; render(); return; }
   const digitando=/INPUT|TEXTAREA|SELECT/.test(t.tagName) || t.isContentEditable;
   if(!digitando && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key==="n"||e.key==="N") && !$("#modalRoot .modal")){
-    if(ui.view!=="central" && ui.view!=="hoje"){ go(eqSouEquipeCx()?"hoje":"central"); }
+    if(ui.view==="dia"){ ui.hj.aba="dia"; render(); }
+    else if(ui.view!=="central" && ui.view!=="hoje"){ go(eqSouEquipeCx()?"hoje":"central"); }
     e.preventDefault(); cxFoco();
   }
 });
@@ -13475,6 +13476,318 @@ document.addEventListener("click", e=>{
  + "@media (max-width:760px){.tc-casos{grid-template-columns:1fr}.tc-grid{grid-template-columns:1fr 1fr}.tc-it{flex-wrap:wrap}.tc-dt{margin-left:26px}}";
  document.head.appendChild(st); })();
 /* ================= fim do Pacote 30 ================= */
+
+/* ================= Pacote 31 · tela HOJE: Começar, Durante e Encerrar o dia (Ficha 04, 28/11/2026) ================= */
+/* Desenho aprovado pelo Gabriel em 28/11 (folha clara, uma cor petróleo, letra Geist). Por enquanto só o master vê. */
+/* Não cria seção nova: reaproveita Caixa rápida (data-cx), post-its (data-act pn*), protocolo (data-pt, data-pc2), avisos (data-mpp) e agenda (calItens). */
+/* "Onde parei" e as 3 prioridades ficam em S.prefs[pessoa].dia, dentro das preferências que já existem. */
+/* A Meu dia antiga continua igual e fica no menu. */
+ui.hj = ui.hj || {aba:"", passo:0, fila:false, menu:false, rec:false, pri:null, parei:null};
+const HJ_DS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const HJ_MS = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function hjPode(){ return (typeof souMasterReal==="function") ? souMasterReal() : ui.papel==="master"; }
+function hjEu(){ return ui.me || "Gabriel"; }
+function hjHM(d){ d=d||new Date(); return pad2(d.getHours())+":"+pad2(d.getMinutes()); }
+function hjDataLonga(d){ d=d||new Date(); return HJ_DS[d.getDay()]+", "+d.getDate()+" de "+HJ_MS[d.getMonth()]; }
+function hjMesmoDia(ms){ return !!ms && isoDia(new Date(ms))===isoDia(); }
+function hjIni(n){ return esc(String(n||"?").slice(0,2).toUpperCase()); }
+function hjDia(){ const p=S.prefs && S.prefs[hjEu()]; return (p && p.dia && typeof p.dia==="object") ? p.dia : null; }
+function hjAbaPadrao(){
+  const h=new Date().getHours(), d=hjDia();
+  if(h>=17) return "fim";
+  let comecou=""; try{ comecou=localStorage.getItem("hj-comecou-"+hjEu())||""; }catch(e){}
+  if(h<12 && comecou!==isoDia()) return "manha";
+  return "dia";
+}
+function hjAtrasadas(){ return cxMinhas().filter(t=>!t.triar && cxData(t) && cxData(t)<cxHoje()); }
+function hjTres(){ const a=hjAtrasadas(); return (a.length ? a : cxMinhas()).slice(0,3); }
+function hjPri(){
+  const d=hjDia(); if(!d || !Array.isArray(d.pri) || !d.em || d.em>isoDia()) return [];
+  return d.pri.map(id=>cxTf(id)).filter(t=>t && !t.done);
+}
+function hjLinha(t, modo){
+  if(ui.cx.fw===t.id || ui.cx.ed===t.id) return `<li class="hj-cx">${cxLinha(t)}</li>`;
+  const p=t.pessoa ? psGet(t.pessoa) : null; const d=cxData(t); const at=d && d<cxHoje();
+  const quando = t.triar ? "para triar" : !d ? "sem data" : at ? "desde "+fmtIso(d) : d===cxHoje() ? "hoje" : fmtIso(d);
+  const botoes = modo==="fim"
+    ? `<button class="hj-l" data-cx="feito" data-id="${t.id}">Feito</button><button class="hj-l" data-cx="adiar" data-id="${t.id}">Amanhã</button><button class="hj-l" data-cx="encaminhar" data-id="${t.id}">Encaminhar</button>`
+    : `<button class="hj-l" data-cx="feito" data-id="${t.id}">Feito</button><button class="hj-l" data-cx="encaminhar" data-id="${t.id}">Encaminhar</button><button class="hj-l" data-cx="adiar" data-id="${t.id}">Adiar</button>${cxPode(t)?`<button class="hj-l" data-cx="editar" data-id="${t.id}" title="Editar">✎</button>`:""}`;
+  return `<li>${at?`<span class="hj-ponto"></span>`:`<span class="hj-h">${esc(quando==="hoje"?"hoje":"")}</span>`}<span class="hj-x">${p?`<a href="#" class="hj-cli" data-cx="ficha" data-p="${p.id}">${esc(p.nome)}</a> · `:""}${esc(t.txt||"")} <span class="hj-mu">${esc(at?quando:(quando==="hoje"?"":quando))}</span></span>${botoes}</li>`;
+}
+function hjAgenda(){
+  let it=[]; try{ it=calItens(isoDia())||[]; }catch(e){}
+  const comHora=it.filter(x=>x.h && ["ev","sala","adm","lm"].includes(x.k)).sort((a,b)=>String(a.h).localeCompare(String(b.h)));
+  const pz=it.filter(x=>x.k==="pz"||x.k==="prazo").length;
+  const tf=it.filter(x=>x.k==="tf").length;
+  let lm=[]; try{ lm=lmHoje(hjEu()); }catch(e){}
+  return {comHora, pz, tf, lm};
+}
+function hjProt(){
+  let L=[], sem=null; try{ sem=protSemanaAtual(); L=sem?protDaSemana(sem):[]; }catch(e){}
+  const feitos=L.filter(p=>p.done).length, hj=L.filter(p=>!p.done && pzDias(p)<=0).length;
+  let adi=0; try{ adi=L.filter(protAdiantado).length; }catch(e){}
+  let pend=[]; try{ pend=pcPend("Alan"); }catch(e){}
+  return {sem, L, feitos, hj, adi, prox:L.find(p=>!p.done), pend};
+}
+function hjCobrancas(){
+  try{
+    if(!cbPode()) return null; let n=0;
+    cbAll().forEach(c=>{ if(cbPrescAlerta(c)!=null) n++; n+=cbParcVencidas(c).length+cbParcHoje(c).length; if(cbAcaoVencida(c)) n++; });
+    return n;
+  }catch(e){ return null; }
+}
+function hjRev(){ let n=0; try{ S.flows.forEach(f=>f.steps.forEach(s=>{ if(s.aprov==="revisao") n++; })); }catch(e){} return n; }
+function hjAtrasadasDe(nome){ const h=isoDia(); return tfLista().filter(t=>!t.done && t.resp===nome && t.data && t.data<h).length; }
+
+function hjTopo(){
+  const novos=(typeof pnNaoLidos==="function")?pnNaoLidos().length:0;
+  const peds=(typeof pdAbertos==="function")?pdAbertos().filter(p=>p.para===hjEu()||!p.para).length:0;
+  const rec=novos+peds; const escuro=document.documentElement.getAttribute("data-theme")==="dark";
+  const aba=ui.hj.aba;
+  return `<div class="hj-top"><button class="hj-b" data-hj="menu">Menu</button><b class="hj-marca">Mapa M&amp;P</b><span class="hj-mu">· Hoje</span>
+    <button class="hj-busca" data-act="palette"><span>Buscar ou pedir à Vera</span><span class="hj-kbd">Ctrl K</span></button>
+    <span class="hj-grow"></span>
+    <div class="hj-tabs">${[["manha","Começar o dia"],["dia","Durante o dia"],["fim","Encerrar o dia"]].map(([k,n])=>`<button class="${aba===k?"on":""}" data-hj="aba" data-v="${k}">${n}</button>`).join("")}</div>
+    <span class="hj-grow"></span>
+    <button class="hj-b" data-act="criar">+ Criar</button>
+    <span class="hj-recw"><button class="hj-b hj-lnk" data-hj="rec">Recados${rec?" "+rec:""}</button>${ui.hj.rec?`<span class="hj-pop"><button data-act="pnNovo">+ Post-it</button><button data-act="chatToggle">Chat da equipe</button><button data-act="pdToggle">Pedidos${peds?" ("+peds+")":""}</button><button data-go="postits">Ver post-its</button></span>`:""}</span>
+    <button class="hj-b" data-act="temaTroca" data-hj-tema="1">${escuro?"Claro":"Escuro"}</button></div>`;
+}
+const HJ_MENU = [
+  ["Dia a dia", [["Hoje","go","dia"],["Agenda","go","calendario"],["Semana","go","semana"],["Anotar (janelinha)","an","abrirJanela"],["Tarefas","go","tarefas"],["WhatsApp 9955","go","crm"]]],
+  ["Casos e prazos", [["Atendimentos e casos","go","casos"],["Prazos","go","prazos"],["Cobranças","go","cobrancas"],["Pessoas","go","pessoas"],["Documentos","go","documentos"],["Processos administrativos","go","admin"]]],
+  ["Equipe", [["Post-its","go","postits"],["Lembretes","go","lembretes"],["Pedidos","act","pdToggle"],["Chat da equipe","act","chatToggle"],["Bloco rápido","go","bloco"],["Sala de reunião","act","salaAbrir"]]],
+  ["Só sócios", [["Gestão (Painel de gestão)","go","central"],["Meu dia (como era)","go","hoje"],["Meu financeiro","go","financeiro"],["Perfis da equipe","act","perfis"]]],
+  ["Manuais e método", [["Fluxos","go","fluxos"],["Roteiros","go","clientes"],["Ideias","go","ideias"],["Biblioteca","gtab","biblioteca"],["Manual (POP)","gtab","manual"],["Trilha da equipe","gtab","trilha"]]],
+  ["Ajustes", [["Aparência","go","aparencia"],["Painel e dados","go","gestao"],["Importar dados","go","importar"],["Instalar o app","act","instalar"],["Em breve: Autenticador eProc","go","eb-autenticador"],["Em breve: Extensões","go","eb-extensoes"],["Em breve: Prazos DJEN","go","eb-djen"],["Em breve: Agente de IA","go","eb-agente"],["Em breve: Andamento até o protocolo","go","eb-protocolo"]]]
+];
+function hjMenu(){
+  if(!ui.hj.menu) return "";
+  const at={go:"data-go",act:"data-act",an:"data-an",gtab:"data-gtab"};
+  return `<div class="hj-sombra" data-hj="menu"></div><nav class="hj-menu" aria-label="Menu do Mapa"><b class="hj-marca" style="display:block;margin:0 8px 6px">Mapa M&amp;P</b>${HJ_MENU.map(([g,L])=>`<div class="hj-g">${g}</div>`+L.map(([n,tipo,v])=>`<button class="hj-mi${tipo==="go"&&v==="dia"?" on":""}" ${at[tipo]}="${v}">${n}</button>`).join("")).join("")}</nav>`;
+}
+
+function hjManha(){
+  const passos=["Onde você parou","Agenda de hoje","Prazos","Recados","Suas 3 decisões"];
+  const i=Math.max(0, Math.min(4, ui.hj.passo||0));
+  let corpo="";
+  if(i===0){
+    const d=hjDia(), pri=hjPri(), sug=pri.length?pri:hjTres();
+    const quando = d && d.em ? (d.em===isoDia() ? "Hoje" : HJ_DS[new Date(d.em+"T12:00:00").getDay()]) : "";
+    corpo = d && d.parei
+      ? `<div class="hj-big">${esc(quando)} você parou: ${esc(d.parei)}</div><div class="hj-mu">É o que você escreveu ao encerrar o dia. ${pri.length?"As prioridades que você escolheu:":"Sugestão do Mapa para começar:"}</div>`
+      : `<div class="hj-big">Você ainda não encerrou um dia pelo Mapa.</div><div class="hj-mu">Hoje à tarde, em "Encerrar o dia", você deixa uma frase e as 3 prioridades de amanhã. Por enquanto, a sugestão do Mapa: suas 3 tarefas mais antigas.</div>`;
+    corpo += `<ul class="hj-lista">${sug.map((t,k)=>`<li><span class="hj-h">${k+1}</span><span class="hj-x">${esc(t.txt||"")}${t.pessoa&&psGet(t.pessoa)?` <span class="hj-mu">· ${esc(psGet(t.pessoa).nome)}</span>`:""}</span></li>`).join("")||`<li><span class="hj-x hj-mu">Nada aberto na sua Caixa rápida.</span></li>`}</ul>`;
+  } else if(i===1){
+    const a=hjAgenda(); const meus=a.comHora.filter(x=>!x.r||x.r===hjEu()||x.r==="Todos");
+    corpo = `<div class="hj-big">${meus.length?(meus.length===1?"1 compromisso seu hoje.":meus.length+" compromissos seus hoje."):"Nenhum compromisso seu hoje."}</div><div class="hj-mu">O que vence hoje, já somado: ${a.pz} prazo${a.pz===1?"":"s"} e ${a.tf} tarefa${a.tf===1?"":"s"}.</div>
+      <ul class="hj-lista">${a.comHora.map(x=>`<li><span class="hj-h">${esc(x.h)}</span><span class="hj-x">${esc(x.t||"")}</span>${x.r?`<span class="hj-av">${hjIni(x.r)}</span>`:""}</li>`).join("")}
+      ${a.lm.length?`<li><span class="hj-ponto"></span><span class="hj-x">${a.lm.length} lembrete${a.lm.length>1?"s":""} para hoje</span><button class="hj-l" data-go="lembretes">Ver</button></li>`:""}
+      <li><span class="hj-h">sala</span><span class="hj-x">Sala de reunião</span><button class="hj-l" data-act="salaAbrir">Reservar ou ver</button></li></ul>
+      <div class="hj-linha"><button class="hj-l" data-go="calendario">+ Compromisso</button><button class="hj-l" data-go="calendario">Abrir a agenda</button></div>`;
+  } else if(i===2){
+    const p=hjProt();
+    corpo = `<div class="hj-big">${p.pend.length?p.pend.length+" protocolo"+(p.pend.length>1?"s":"")+" sem confirmação.":"Nenhum protocolo esperando confirmação."}</div><div class="hj-mu">${p.L.length?"Semana em curso: "+p.feitos+" de "+p.L.length+" protocolados"+(p.hj?", "+p.hj+" para hoje ou atrasado"+(p.hj>1?"s":""):"")+".":"Nenhuma semana de protocolo importada."}</div>
+      <ul class="hj-lista">${p.pend.length?`<li><span class="hj-ponto"></span><span class="hj-x">Sem confirmação: ${esc(p.pend.map(x=>x.prot.cod).join(", "))} · com o Alan</span><button class="hj-l" data-pc2="abrir">Abrir</button><details class="hj-mais"><summary class="hj-l">⋯</summary><span><button class="hj-l" data-pc2="wa" data-n="Alan">Cobrar Alan no WhatsApp</button></span></details></li>`:""}
+      ${p.L.length?`<li><span class="hj-h">semana</span><span class="hj-x"><span class="hj-barra"><i style="width:${Math.round(p.feitos*100/p.L.length)}%"></i></span> ${p.feitos} de ${p.L.length} protocolados · ${p.adi} adiantado${p.adi===1?"":"s"}</span><button class="hj-l" data-pt="abrir">Ver a semana</button></li>`:`<li><span class="hj-x hj-mu">Importe a semana em Prazos.</span><button class="hj-l" data-pt="abrir">Importar</button></li>`}
+      ${p.prox?`<li><span class="hj-h">próximo</span><span class="hj-x">${esc(p.prox.prot.cod)} · ${esc(pzLabel(p.prox))}</span><button class="hj-l" data-pt="det" data-id="${p.prox.id}">Abrir e protocolar</button></li>`:""}</ul>`;
+  } else if(i===3){
+    const novos=pnNaoLidos(); const meus=pnAll().filter(n=>!n.feito && n.quem===hjEu()).length;
+    const peds=pdAbertos().filter(p=>p.para===hjEu()||!p.para).length; const av=mppAvisos().filter(a=>a.ativo!==false).length;
+    corpo = `<div class="hj-big">${novos.length?(novos.length===1?"1 post-it novo para você":novos.length+" post-its novos para você"):"Nenhum post-it novo"}${peds?" e "+peds+" pedido"+(peds>1?"s":"")+" esperando.":"."}</div><div class="hj-mu">Clique em Ler para ver o recado inteiro.</div>
+      <ul class="hj-lista">${novos.slice(0,5).map(n=>`<li><span class="hj-av">${hjIni(n.quem)}</span><span class="hj-x">${esc(String(n.texto||"").slice(0,90))} <span class="hj-mu">· de ${esc(n.quem)}</span></span><button class="hj-l" data-act="pnVer" data-id="${n.id}">Ler</button><button class="hj-l" data-act="pnLi" data-id="${n.id}">Entendi</button></li>`).join("")}
+      <li><span class="hj-av">${hjIni(hjEu())}</span><span class="hj-x">${meus} post-it${meus===1?"":"s"} seu${meus===1?"":"s"} em aberto</span><button class="hj-l" data-go="postits">Ver</button></li>
+      ${peds?`<li><span class="hj-ponto"></span><span class="hj-x">${peds} pedido${peds>1?"s":""} esperando você</span><button class="hj-l" data-act="pdToggle">Abrir</button></li>`:""}
+      <li><span class="hj-h">aviso</span><span class="hj-x ${av?"":"hj-mu"}">${av?av+" aviso"+(av>1?"s":"")+" fixado"+(av>1?"s":"")+" para a equipe":"Nenhum aviso fixado"}</span><button class="hj-l" data-mpp="aviso-novo">+ Fixar aviso</button></li></ul>`;
+  } else {
+    const L=hjTres(); const tot=cxMinhas().length, at=hjAtrasadas().length; const rev=hjRev(), ide=S.ideias.filter(x=>x.status==="nova").length;
+    corpo = `<div class="hj-big">Comece por estas 3.</div><div class="hj-mu">Suas tarefas mais antigas da Caixa rápida. As outras ficam na fila.</div>
+      <ul class="hj-lista">${L.map(t=>hjLinha(t)).join("")||`<li><span class="hj-x hj-mu">Nada aberto na sua Caixa rápida.</span></li>`}</ul>
+      <div class="hj-mu" style="margin-top:10px">Na fila: ${Math.max(0,at-L.length)} atrasada${at-L.length===1?"":"s"}, ${tot} aberta${tot===1?"":"s"} · <button class="hj-l hj-sub" data-hj="fila">Ver a fila</button></div>
+      ${rev||ide?`<div class="hj-mu" style="margin-top:6px">Também esperando você: ${rev?`<button class="hj-l hj-sub" data-go="hoje">${rev} passo${rev>1?"s":""} para validar</button>`:""}${rev&&ide?" · ":""}${ide?`<button class="hj-l hj-sub" data-go="ideias">${ide} ideia${ide>1?"s":""}</button>`:""}</div>`:""}`;
+  }
+  return `<div class="hj-wrap hj-estreito"><div class="hj-mu">${esc(hjDataLonga())} · ${hjHM()}</div><h1 class="hj-h1">Bom dia, ${esc(hjEu())}.</h1><div class="hj-sub">Cinco passos, uns três minutos. Depois o Mapa abre no seu dia de trabalho.</div>
+    <div class="hj-passos">${passos.map((_,k)=>`<i class="${k<=i?"f":""}"></i>`).join("")}</div>
+    <div class="hj-cd"><div class="hj-n">Passo ${i+1} de 5 · ${passos[i]}</div>${corpo}
+    <div class="hj-acoes">${i?`<button class="hj-b" data-hj="ant">Voltar</button>`:""}<span class="hj-grow"></span><button class="hj-b hj-lnk" data-hj="pular">Pular tudo</button><button class="hj-b hj-pri" data-hj="prox">${i<4?"Próximo":"Começar o dia"}</button></div></div>
+    <div class="hj-ex">A Vera continua mostrando o resumo de entrada. <button class="hj-l hj-sub" data-hj="vera">Ouvir a Vera agora</button></div></div>`;
+}
+
+function hjDurante(){
+  const pri=hjPri(); const agora=pri[0]||hjTres()[0]; const depois=(pri.length?pri.slice(1):hjTres().slice(1));
+  const L=cxMinhas(); const at=hjAtrasadas().length; const vis=ui.hj.fila?L.slice(0,15):L.filter(t=>!agora||t.id!==agora.id).slice(0,3);
+  const a=hjAgenda(), p=hjProt(), cb=hjCobrancas();
+  const pns=pnAll().filter(n=>!n.feito && pnVisivel(n)).sort((x,y)=>(pnNovo(y)-pnNovo(x))||((y.t||0)-(x.t||0)));
+  const novos=pnNaoLidos().length;
+  return `<div class="hj-wrap"><div class="hj-mu">${esc(hjDataLonga())}</div><h1 class="hj-h1">Seu dia</h1><div class="hj-sub">O que você escolheu de manhã, em ordem. O resto fica a um clique.</div>
+  <div class="hj-cols"><div class="hj-pilha">
+    <div class="hj-cd"><div class="hj-n">Agora</div>${agora?`<div class="hj-big hj-m">${esc(agora.txt||"")}${agora.pessoa&&psGet(agora.pessoa)?` <span class="hj-mu">· ${esc(psGet(agora.pessoa).nome)}</span>`:""}</div>
+      ${ui.cx.fw===agora.id||ui.cx.ed===agora.id?`<ul class="hj-lista">${hjLinha(agora)}</ul>`:`<div class="hj-acoes" style="margin-top:10px"><button class="hj-b hj-pri" data-cx="feito" data-id="${agora.id}">Feito</button><button class="hj-b" data-cx="encaminhar" data-id="${agora.id}">Encaminhar</button><button class="hj-b hj-lnk" data-cx="adiar" data-id="${agora.id}">Adiar</button></div>`}`:`<div class="hj-big hj-m">Nada aberto agora.</div>`}
+      ${depois.length?`<div class="hj-n" style="margin-top:18px">Depois</div><ul class="hj-lista" style="margin:0">${depois.map(t=>`<li><span class="hj-x">${esc(t.txt||"")}</span></li>`).join("")}</ul>`:""}</div>
+    <div class="hj-cd"><div class="hj-n">Caixa rápida<span class="hj-grow"></span><span>${at} atrasada${at===1?"":"s"} · ${L.length} aberta${L.length===1?"":"s"}</span></div>
+      <input class="hj-in" id="cxIn" placeholder="Anotar: cliente: o que fazer #dono prazo !  · Enter grava" autocomplete="off">
+      <div class="hj-prev" id="cxPrev">${ui.cx.aviso?esc(ui.cx.aviso):"Enter grava · cliente novo vira ficha “a completar” · sem cliente vai para Para triar"}</div>
+      <ul class="hj-lista">${vis.map(t=>hjLinha(t)).join("")||`<li><span class="hj-x hj-mu">Nada aberto. Anote acima o que surgir.</span></li>`}</ul>
+      <div class="hj-linha"><button class="hj-l" data-hj="fila">${ui.hj.fila?"Mostrar menos":"Ver a fila ("+L.length+")"}</button>${ui.hj.fila&&L.length>15?`<button class="hj-l" data-go="tarefas">Todas as tarefas</button>`:""}<span class="hj-grow"></span>
+        <select class="hj-sel" id="cxFolha" aria-label="Folha para imprimir"><option value="dia" ${ui.cx.folha==="dia"?"selected":""}>Folha do dia</option><option value="semana" ${ui.cx.folha==="semana"?"selected":""}>Folha da semana</option><option value="mes" ${ui.cx.folha==="mes"?"selected":""}>Folha do mês</option></select>
+        <button class="hj-l" data-cx="imprimir">Imprimir</button><button class="hj-l" data-cx="colar">Colar lista do papel</button></div></div>
+    <div class="hj-cd"><div class="hj-n">Post-its<span class="hj-grow"></span><span>${novos?novos+" novo"+(novos>1?"s":"")+" · ":""}${pns.length} aberto${pns.length===1?"":"s"}</span></div>
+      ${pns.slice(0,4).map(n=>`<div class="hj-post"><span class="hj-c" style="background:${PN_CORES[n.cor]||PN_CORES.amarelo}"></span><div class="hj-pt" data-act="pnVer" data-id="${n.id}"><div>${esc(String(n.texto||"").split("\n")[0].slice(0,80))}</div><div class="hj-mu hj-pq">De ${esc(n.quem)} p/ ${esc(pnPara(n))} · ${esc(fmtT(n.t))}${pnNovo(n)?" · novo":""}</div></div>${pnNovo(n)?`<button class="hj-l" data-act="pnLi" data-id="${n.id}">Entendi</button>`:""}<button class="hj-l" data-act="pnFeito" data-id="${n.id}">Marcar feito</button></div>`).join("")||`<div class="hj-mu">Nenhum post-it aberto.</div>`}
+      <div class="hj-linha"><button class="hj-l" data-go="postits">Ver todos (${pns.length})</button><button class="hj-l" data-act="pnNovo">+ Post-it</button></div></div>
+  </div><div class="hj-pilha">
+    <div class="hj-cd"><div class="hj-n">Agenda de hoje</div><ul class="hj-lista" style="margin:0">${a.comHora.map(x=>`<li><span class="hj-h">${esc(x.h)}</span><span class="hj-x">${x.r?esc(x.r)+" · ":""}${esc(x.t||"")}</span></li>`).join("")}
+      <li><span class="hj-h">hoje</span><span class="hj-x hj-mu">${a.pz} prazo${a.pz===1?"":"s"} · ${a.tf} tarefa${a.tf===1?"":"s"}</span></li>
+      ${a.lm.length?`<li><span class="hj-ponto"></span><span class="hj-x">${a.lm.length} lembrete${a.lm.length>1?"s":""}</span><button class="hj-l" data-go="lembretes">Ver</button></li>`:""}
+      <li><span class="hj-h">sala</span><span class="hj-x hj-mu">Sala de reunião</span><button class="hj-l" data-act="salaAbrir">Reservar</button></li></ul>
+      <div class="hj-linha"><button class="hj-l" data-go="calendario">Abrir a agenda</button></div></div>
+    <div class="hj-cd"><div class="hj-n">Protocolo da semana</div>${p.L.length?`<div class="hj-linha" style="margin:0"><span class="hj-barra"><i style="width:${Math.round(p.feitos*100/p.L.length)}%"></i></span><span>${p.feitos} de ${p.L.length}</span>${p.hj?`<span class="hj-mu">· ${p.hj} hoje</span>`:""}</div>
+      ${p.prox?`<div class="hj-mu" style="margin-top:6px">Próximo: ${esc(p.prox.prot.cod)} · ${esc(pzLabel(p.prox))}</div>`:""}
+      <div class="hj-linha">${p.prox?`<button class="hj-l" data-pt="det" data-id="${p.prox.id}">Abrir e protocolar</button>`:""}<button class="hj-l" data-pt="abrir">Ver a semana</button><details class="hj-mais"><summary class="hj-l">⋯</summary><span><button class="hj-l" data-pc2="wa" data-n="Alan">Cobrar Alan no WhatsApp</button></span></details></div>`:`<div class="hj-mu">Nenhuma semana importada.</div><div class="hj-linha"><button class="hj-l" data-pt="abrir">Importar</button></div>`}
+      ${p.pend.length?`<div class="hj-alerta"><span class="hj-ponto"></span> ${p.pend.length} sem confirmação · <button class="hj-l hj-sub" data-pc2="abrir">Abrir</button></div>`:""}</div>
+    <div class="hj-cd"><div class="hj-n">Equipe agora</div><ul class="hj-lista" style="margin:0">${["Ellen","Alan","Evaldo"].map(n=>{ const x=hjAtrasadasDe(n); return `<li><span class="hj-av">${hjIni(n)}</span><span class="hj-x">${n} <span class="hj-mu">· ${x} atrasada${x===1?"":"s"}</span></span><button class="hj-l" data-act="pnNovo">+ Post-it</button></li>`; }).join("")}</ul>
+      <div class="hj-linha"><button class="hj-l" data-go="central">Painel de gestão</button></div></div>
+    ${cb!=null?`<div class="hj-cd"><div class="hj-n">Cobranças de hoje</div><div>${cb?`<span class="hj-ponto"></span> ${cb} alerta${cb>1?"s":""} (prescrição, parcelas, próxima ação)`:"Nenhum alerta hoje."}</div><div class="hj-linha"><button class="hj-l" data-go="cobrancas">Abrir cobranças</button></div></div>`:""}
+    <div class="hj-cd"><div class="hj-n">Atalhos</div><button class="hj-pill" data-act="salaAbrir">Agenda da sala</button><button class="hj-pill" data-act="atNovo">+ Novo cliente</button><button class="hj-pill" data-act="ideaQuick">Nova ideia</button><button class="hj-pill" data-go="casos">Esteira</button><button class="hj-pill" data-go="fluxos">Fluxos</button><button class="hj-pill" data-gtab="manual">Manual (POP)</button><button class="hj-pill" data-gtab="trilha">Trilha</button><button class="hj-pill" data-gtab="biblioteca">Biblioteca</button></div>
+  </div></div></div>`;
+}
+
+function hjFim(){
+  const eu=hjEu();
+  const feitas=tfLista().filter(t=>t.done && t.doneBy===eu && hjMesmoDia(t.doneEm)).length;
+  const enc=tfLista().filter(t=>t.enc && t.enc.quem===eu && hjMesmoDia(t.enc.em)).length;
+  let pz=0; try{ pz=pzAll().filter(p=>p.done && p.doneBy===eu && hjMesmoDia(p.doneEm)).length; }catch(e){}
+  const abertos=cxMinhas().filter(t=>cxData(t) && cxData(t)<=cxHoje()).slice(0,5);
+  const cand=cxMinhas().slice(0,8);
+  if(!Array.isArray(ui.hj.pri)) ui.hj.pri=cand.slice(0,3).map(t=>t.id);
+  const d=hjDia(); const encerrado=d && d.em===isoDia();
+  const sexta=new Date().getDay()===5;
+  return `<div class="hj-wrap hj-estreito"><div class="hj-mu">${esc(hjDataLonga())} · ${hjHM()}</div><h1 class="hj-h1">Encerrar o dia</h1><div class="hj-sub">${encerrado?"Você já encerrou hoje às "+hjHM(new Date(d.salvoEm||Date.now()))+". Pode ajustar e encerrar de novo.":"Dois minutos para amanhã começar sozinho."}</div>
+  <div class="hj-cd"><div class="hj-n">1 · O que você fez hoje</div><div class="hj-big hj-m">${feitas} tarefa${feitas===1?"":"s"} concluída${feitas===1?"":"s"}, ${enc} encaminhada${enc===1?"":"s"}, ${pz} prazo${pz===1?"":"s"} cumprido${pz===1?"":"s"}.</div><div class="hj-linha"><button class="hj-l" data-hj="copiar">Copiar resumo do dia</button></div></div>
+  <div class="hj-cd"><div class="hj-n">2 · O que ficou aberto</div><ul class="hj-lista" style="margin:0">${abertos.map(t=>hjLinha(t,"fim")).join("")||`<li><span class="hj-x hj-mu">Nada de hoje ficou aberto.</span></li>`}</ul><div class="hj-mu" style="margin-top:8px">Cada um vai para amanhã, para alguém da equipe, ou fica onde está.</div></div>
+  <div class="hj-cd"><div class="hj-n">3 · Suas 3 prioridades de amanhã</div><div class="hj-mu" style="margin-bottom:6px">Sugestão: as mais antigas. Clique para trocar (até 3).</div>${cand.map(t=>{ const k=ui.hj.pri.indexOf(t.id); return `<div class="hj-chk${k>=0?" on":""}" data-hj="pri" data-id="${t.id}"><span class="hj-bx">${k>=0?k+1:""}</span><span>${esc(t.txt||"")}${t.pessoa&&psGet(t.pessoa)?` <span class="hj-mu">· ${esc(psGet(t.pessoa).nome)}</span>`:""}</span></div>`; }).join("")||`<div class="hj-mu">Nada aberto para escolher.</div>`}</div>
+  <div class="hj-cd"><div class="hj-n">4 · Onde você parou</div><textarea class="hj-in" id="hjParei" rows="3" placeholder="Uma frase para você mesmo amanhã de manhã.">${esc(ui.hj.parei!=null?ui.hj.parei:(d&&d.parei)||"")}</textarea></div>
+  <div class="hj-cd"><div class="hj-n">5 · Para a equipe</div><div class="hj-linha" style="margin:0"><button class="hj-l" data-mpp="aviso-novo">+ Fixar um aviso</button><button class="hj-l" data-act="pnNovo">+ Post-it</button></div></div>
+  <div class="hj-cd"><div class="hj-n">${sexta?"Hoje é sexta":"Na sexta"}</div><div class="hj-mu">Fechar e planejar a semana, a pauta da reunião semanal e o resumo da semana.</div><div class="hj-linha"><button class="hj-l" data-go="semana">Fechar e planejar a semana</button><button class="hj-l" data-gtab="reuniao">Reunião semanal</button><button class="hj-l" data-act="gResumoCopy">Copiar resumo da semana</button></div></div>
+  <div class="hj-acoes"><span class="hj-grow"></span><button class="hj-b hj-pri" data-hj="encerrar">Encerrar o dia</button></div></div>`;
+}
+
+function hjView(){
+  if(!ui.hj.aba) ui.hj.aba=hjAbaPadrao();
+  const corpo = ui.hj.aba==="manha" ? hjManha() : ui.hj.aba==="fim" ? hjFim() : hjDurante();
+  return `<div class="hj">${hjTopo()}${hjMenu()}${corpo}</div>`;
+}
+function hjSalvarDia(){
+  const eu=hjEu(); const txt=(($("#hjParei")||{}).value||"").trim();
+  snap();
+  if(!S.prefs || typeof S.prefs!=="object") S.prefs={};
+  if(!S.prefs[eu] || typeof S.prefs[eu]!=="object") S.prefs[eu]={};
+  S.prefs[eu].dia={em:isoDia(), parei:txt, pri:(ui.hj.pri||[]).slice(0,3), salvoEm:Date.now()};
+  logA("encerrou o dia no Mapa"+(txt?": “"+txt+"”":""));
+  ui.hj.parei=null; save(); render();
+  toast("Dia encerrado. Amanhã o Mapa começa daqui.", ()=>{ undo(); render(); });
+}
+function hjResumoTexto(){
+  const eu=hjEu();
+  const feitas=tfLista().filter(t=>t.done && t.doneBy===eu && hjMesmoDia(t.doneEm));
+  const enc=tfLista().filter(t=>t.enc && t.enc.quem===eu && hjMesmoDia(t.enc.em));
+  return "Resumo do dia · "+hjDataLonga()+"\n\nConcluídas ("+feitas.length+"):\n"+feitas.map(t=>"- "+(t.txt||"")).join("\n")+"\n\nEncaminhadas ("+enc.length+"):\n"+enc.map(t=>"- "+(t.txt||"")+" → "+t.resp).join("\n");
+}
+document.addEventListener("click", e=>{
+  if(ui.hj.rec && !(e.target.closest && e.target.closest(".hj-recw"))){ ui.hj.rec=false; if(ui.view==="dia") setTimeout(()=>{ if(ui.view==="dia") render(); },0); }
+  const b=e.target.closest && e.target.closest("[data-hj]"); if(!b) return;
+  e.preventDefault();
+  const a=b.dataset.hj;
+  if(a==="aba"){ ui.hj.aba=b.dataset.v; ui.hj.passo=0; render(); window.scrollTo(0,0); }
+  else if(a==="prox"){ if((ui.hj.passo||0)<4){ ui.hj.passo=(ui.hj.passo||0)+1; render(); } else { try{ localStorage.setItem("hj-comecou-"+hjEu(), isoDia()); }catch(x){} ui.hj.aba="dia"; ui.hj.passo=0; render(); window.scrollTo(0,0); } }
+  else if(a==="ant"){ ui.hj.passo=Math.max(0,(ui.hj.passo||0)-1); render(); }
+  else if(a==="pular"){ try{ localStorage.setItem("hj-comecou-"+hjEu(), isoDia()); }catch(x){} ui.hj.aba="dia"; ui.hj.passo=0; render(); }
+  else if(a==="fila"){ ui.hj.fila=!ui.hj.fila; ui.hj.aba="dia"; render(); }
+  else if(a==="menu"){ ui.hj.menu=!ui.hj.menu; render(); }
+  else if(a==="rec"){ ui.hj.rec=!ui.hj.rec; render(); }
+  else if(a==="pri"){ const id=b.dataset.id; const L=Array.isArray(ui.hj.pri)?ui.hj.pri:[]; const k=L.indexOf(id); if(k>=0) L.splice(k,1); else if(L.length<3) L.push(id); else toast("Escolha até 3. Tire uma antes."); ui.hj.pri=L; ui.hj.parei=(($("#hjParei")||{}).value); render(); }
+  else if(a==="encerrar") hjSalvarDia();
+  else if(a==="copiar"){ const t=hjResumoTexto(); try{ navigator.clipboard.writeText(t).then(()=>toast("Resumo do dia copiado.")); }catch(x){ toast("Não consegui copiar."); } }
+  else if(a==="vera"){ try{ mpeVeraAbrir(true); }catch(x){ toast("A Vera não abriu agora."); } }
+});
+document.addEventListener("input", e=>{ if(e.target && e.target.id==="hjParei") ui.hj.parei=e.target.value; });
+document.addEventListener("click", e=>{ const b=e.target.closest && e.target.closest("[data-hj-tema]"); if(!b) return; setTimeout(()=>{ b.textContent=document.documentElement.getAttribute("data-theme")==="dark"?"Claro":"Escuro"; },0); });
+(function(){
+  const st=document.createElement("style"); st.id="hjStyle";
+  st.textContent = ""
+  + ".hj{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#e6e6e2;--hs:#f0f0ec;--ha:#2f5d62;--ho:#ffffff;--hr:#b4553f;font-family:'Geist','Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--ht);background:var(--hb);min-height:100vh}"
+  + "html[data-theme='dark'] .hj{--hb:#1c1d20;--hc:#232428;--ht:#d9dadc;--hm:#9a9ca1;--hl:#303136;--hs:#2a2b30;--ha:#8db3b0;--ho:#1c1d20;--hr:#d58c78}"
+  + "body.hj-on{background:var(--hj-fundo,#f7f7f5)}html[data-theme='dark'] body.hj-on{--hj-fundo:#1c1d20}"
+  + "body.hj-on .rail,body.hj-on .top,body.hj-on .pn-wrap,body.hj-on .pn-fab,body.hj-on #pdFab,body.hj-on .pd-fab,body.hj-on .ch-fab,body.hj-on #chFab,body.hj-on .mob-btn,body.hj-on #ptFaixa,body.hj-on #maMesa,body.hj-on .pd-banner{display:none!important}"
+  + "body.hj-on .app{grid-template-columns:minmax(0,1fr)!important;background:transparent!important}body.hj-on::before{display:none!important}body.hj-on .content{max-width:none!important;padding:0!important}"
+  + ".hj *{box-sizing:border-box}.hj button{font:inherit;color:inherit;cursor:pointer}"
+  + ".hj-top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--hl);position:sticky;top:0;background:var(--hb);z-index:30;flex-wrap:wrap}"
+  + ".hj-top>*{flex-shrink:0}.hj-marca{font-size:15px;font-weight:600;white-space:nowrap}"
+  + ".hj-mu{color:var(--hm)}.hj-grow{flex:1}"
+  + ".hj-b{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--hl);background:var(--hc);color:var(--ht);white-space:nowrap}"
+  + ".hj-b.hj-pri{background:var(--ha);color:var(--ho);border-color:var(--ha);font-weight:500}.hj-b.hj-lnk{border:none;background:none;color:var(--hm)}"
+  + ".hj-busca{display:flex;align-items:center;gap:8px;border:1px solid var(--hl);background:var(--hc);border-radius:10px;padding:7px 12px;color:var(--hm);min-width:200px;font-size:13px;white-space:nowrap}"
+  + ".hj-kbd{margin-left:auto;font-size:11px;border:1px solid var(--hl);border-radius:5px;padding:0 5px}"
+  + ".hj-tabs{display:flex;gap:4px;background:var(--hs);padding:4px;border-radius:12px}"
+  + ".hj-tabs button{font-size:13px;padding:7px 14px;border-radius:9px;border:none;background:none;color:var(--hm);white-space:nowrap}"
+  + ".hj-tabs button.on{background:var(--hc);color:var(--ht);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}"
+  + ".hj-recw{position:relative}.hj-pop{position:absolute;right:0;top:38px;background:var(--hc);border:1px solid var(--hl);border-radius:12px;padding:6px;display:flex;flex-direction:column;min-width:180px;z-index:40;box-shadow:0 10px 30px rgba(0,0,0,.12)}"
+  + ".hj-pop button{border:none;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-size:13px}.hj-pop button:hover{background:var(--hs)}"
+  + ".hj-wrap{max-width:1000px;margin:0 auto;padding:26px 22px 70px}.hj-wrap.hj-estreito{max-width:760px}"
+  + ".hj-h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0;font-family:inherit}"
+  + ".hj-sub{color:var(--hm);margin:6px 0 20px}"
+  + ".hj-cd{background:var(--hc);border:1px solid var(--hl);border-radius:16px;padding:16px 18px;margin-bottom:12px}"
+  + ".hj-passos{display:flex;gap:6px;margin-bottom:18px}.hj-passos i{flex:1;height:4px;border-radius:4px;background:var(--hl)}.hj-passos i.f{background:var(--ha)}"
+  + ".hj-n{font-size:12px;color:var(--hm);margin-bottom:6px;display:flex;align-items:center;gap:6px}"
+  + ".hj-big{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px;line-height:1.3}.hj-big.hj-m{font-size:18px}"
+  + ".hj-lista{margin:12px 0 0;padding:0;list-style:none}"
+  + ".hj-lista>li{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--hl);flex-wrap:wrap}"
+  + ".hj-lista>li.hj-cx{display:block}.hj-lista>li.hj-cx .cx-row{border:0;padding:0;background:none}"
+  + ".hj-h{width:64px;color:var(--hm);font-variant-numeric:tabular-nums;flex:none;font-size:13px}"
+  + ".hj-x{flex:1;min-width:180px}.hj-cli{color:var(--ha);text-decoration:none;font-weight:500}"
+  + ".hj-av{width:22px;height:22px;border-radius:50%;background:var(--hs);color:var(--hm);display:inline-grid;place-items:center;font-size:9px;font-weight:600;flex:none;border:1px solid var(--hl)}"
+  + ".hj-ponto{width:6px;height:6px;border-radius:50%;background:var(--hr);display:inline-block;flex:none}"
+  + ".hj-l{border:none;background:none;color:var(--hm);padding:6px;font-size:13px;white-space:nowrap}.hj-l:hover{color:var(--ht)}.hj-l.hj-sub{padding:0;text-decoration:underline}"
+  + ".hj-acoes{display:flex;gap:8px;margin-top:16px;align-items:center}"
+  + ".hj-linha{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:8px}"
+  + ".hj-in{width:100%;border:1px solid var(--hl);border-radius:12px;padding:10px 12px;font:inherit;background:var(--hb);color:var(--ht);resize:vertical}"
+  + ".hj-prev{font-size:12px;color:var(--hm);margin:6px 2px 0}"
+  + ".hj-sel{font:inherit;font-size:13px;border:none;background:none;color:var(--hm)}"
+  + ".hj-cols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:14px;align-items:start}.hj-pilha .hj-cd{margin-bottom:14px}"
+  + ".hj-barra{height:6px;border-radius:6px;background:var(--hs);overflow:hidden;width:110px;display:inline-block;vertical-align:middle}.hj-barra i{display:block;height:100%;background:var(--ha)}"
+  + ".hj-alerta{color:var(--hr);font-size:13px;margin-top:6px}"
+  + ".hj-post{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--hl)}.hj-c{width:8px;height:8px;border-radius:2px;margin-top:6px;flex:none}.hj-pt{flex:1;cursor:pointer;min-width:0}.hj-pq{font-size:12px}"
+  + ".hj-pill{display:inline-block;font-size:12px;color:var(--hm);border:1px solid var(--hl);border-radius:8px;padding:3px 8px;margin:3px 4px 0 0;background:none}"
+  + ".hj-chk{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--hl);cursor:pointer}.hj-bx{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--hm);flex:none;display:grid;place-items:center;font-size:11px}.hj-chk.on .hj-bx{background:var(--ha);border-color:var(--ha);color:var(--ho)}"
+  + ".hj-ex{font-size:12px;color:var(--hm);border-left:2px solid var(--hl);padding-left:10px;margin-top:22px;line-height:1.6}"
+  + ".hj-mais{display:inline-block;position:relative}.hj-mais summary{list-style:none;display:inline-block}.hj-mais summary::-webkit-details-marker{display:none}.hj-mais>span{position:absolute;right:0;top:28px;background:var(--hc);border:1px solid var(--hl);border-radius:10px;padding:4px;z-index:20;white-space:nowrap}"
+  + ".hj-sombra{position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:50}"
+  + ".hj-menu{position:fixed;left:0;top:0;bottom:0;width:270px;background:var(--hc);border-right:1px solid var(--hl);padding:16px 12px;z-index:51;overflow:auto}"
+  + ".hj-g{font-size:12px;color:var(--hm);margin:14px 8px 4px}.hj-mi{display:block;width:100%;text-align:left;border:none;background:none;padding:6px 8px;border-radius:8px;font-size:13px}.hj-mi:hover{background:var(--hs)}.hj-mi.on{background:var(--hs);font-weight:600}"
+  + "@media (max-width:860px){.hj-cols{grid-template-columns:1fr}.hj-top{padding:10px 12px}.hj-busca{min-width:0}.hj-wrap{padding:18px 14px 60px}}";
+  document.head.appendChild(st);
+  if(!document.getElementById("apFont-geist")){ const l=document.createElement("link"); l.id="apFont-geist"; l.rel="stylesheet"; l.href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"; document.head.appendChild(l); }
+})();
+const hjRenderBase = render;
+render = function(){
+  if(ui.view==="dia" && !hjPode()) ui.view="hoje";
+  hjRenderBase();
+  try{
+    const nc=$("#nav-central");
+    if(nc && !$("#nav-dia")) nc.insertAdjacentHTML("beforebegin", `<button class="nav" data-go="dia" id="nav-dia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg><span>Hoje</span></button>`);
+    const nd=$("#nav-dia"); if(nd){ nd.style.display=hjPode()?"":"none"; nd.classList.toggle("on", ui.view==="dia"); }
+    document.body.classList.toggle("hj-on", ui.view==="dia");
+    if(ui.view!=="dia"){ ui.hj.menu=false; ui.hj.rec=false; return; }
+    const c=$("#content"); if(c) c.innerHTML=hjView();
+    if(ui.cx.ed){ const e=$("#cxEd"); if(e){ e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }
+  }catch(e){ console.warn("hoje p31", e); }
+};
+const hjAposBase = aposLogin;
+aposLogin = async function(){
+  const r = await hjAposBase.apply(this, arguments);
+  try{ if(hjPode() && (ui.view==="central" || ui.view==="hoje")){ ui.view="dia"; ui.hj.aba=""; render(); } }catch(e){}
+  return r;
+};
+/* ================= fim do Pacote 31 · tela HOJE ================= */
 
 /* ================= INÍCIO ================= */
 render();
