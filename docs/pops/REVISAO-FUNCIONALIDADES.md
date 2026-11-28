@@ -41,4 +41,4 @@ Cruzamento das 33 telas do Mapa com os projetos e manuais do Cowork (skills `pop
 4. CRM: **decidido em 28/11, o WhatsApp 9955 continua como CRM de contatos no Mapa**. A fila da Vera, se entrar, entra como um bloco dentro dele ou na Hoje, sem tirar o cadastro.
 5. Documentos e Biblioteca: **decidido em 28/11, Central de Documentos do caso** (pasta do Drive na estrutura padrão + modelos da área) e Biblioteca por área e etapa, com modelos e prompts, aberta de dentro da esteira.
 6. Manual e Trilha: **decidido em 28/11, saem de Painel e dados para Manuais e método** (Painel e dados continua com Cópias, Baixar e Restaurar). A Trilha vira "Primeiros passos" por pessoa.
-7. Publicar o Pacote 31 agora (após cópia no Dropbox) ou depois desta revisão.
+7. Publicar: **decidido em 28/11, publicar o Pacote 31 agora**, assim que houver cópia atual no Dropbox (trava 3). As demais decisões viram os pacotes seguintes.
