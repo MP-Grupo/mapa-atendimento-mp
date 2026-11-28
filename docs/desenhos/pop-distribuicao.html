@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POP · Distribuição dos casos</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px}
+.mu{color:var(--mu)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.wrap{max-width:880px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:17px;font-weight:600;margin:30px 0 4px}
+.sub{color:var(--mu);margin:6px 0 18px;max-width:720px;line-height:1.6}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--ln);align-items:flex-start}
+.plano .k{width:150px;flex:none;color:var(--mu);font-size:12.5px;padding-top:1px;line-height:1.45}
+.plano .x{flex:1;line-height:1.6}
+.plano .x b{font-weight:600}
+.op{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px;margin-top:10px}
+.op.rec{border-color:var(--ac)}
+.op h3{font-size:15px;font-weight:600;margin:0 0 4px;display:flex;gap:8px;align-items:baseline}
+.op h3 span{font-size:12px;font-weight:500;color:var(--ac)}
+.op p{margin:4px 0 0;color:var(--mu);line-height:1.6}
+.op ul{margin:8px 0 0;padding-left:18px;line-height:1.7}
+.tab{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.tab th{text-align:left;font-weight:500;color:var(--mu);padding:6px 4px;border-bottom:1px solid var(--ln)}
+.tab td{padding:7px 4px;border-bottom:1px solid var(--ln)}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:24px;line-height:1.6}
+@media (max-width:760px){.plano .k{width:96px}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Manuais e método · POP</span><span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap">
+<div class="mu" style="font-size:12.5px">Pronto para aprovar · decisões do Gabriel em 28/11</div>
+<h1>Distribuição dos casos</h1>
+<div class="sub">Quem conduz cada caso depois que o cliente fecha. A ideia é que todo caso tenha uma pessoa responsável por ele do começo ao fim, e que cada um saiba, sem precisar perguntar, o que é seu.</div>
+
+<h2>Como está hoje</h2>
+<div class="sub" style="margin-bottom:4px">Casos no Jurídico (47), por área, segundo a cópia de 27/11. As mesmas áreas aparecem com pessoas diferentes, o que mostra que a decisão tem sido feita caso a caso.</div>
+<table class="tab">
+<tr><th>Área</th><th>Com o Gabriel</th><th>Com o Alan</th><th>Outros</th></tr>
+<tr><td>Cível</td><td>4</td><td>3</td><td></td></tr>
+<tr><td>Cobrança</td><td>1</td><td>5</td><td>1</td></tr>
+<tr><td>Família</td><td>3</td><td>1</td><td>1</td></tr>
+<tr><td>Sucessões</td><td>3</td><td>3</td><td></td></tr>
+<tr><td>Consumidor</td><td>2</td><td>1</td><td></td></tr>
+<tr><td>Criminal</td><td>2</td><td>1</td><td></td></tr>
+<tr><td>Trabalhista</td><td>2</td><td></td><td>1</td></tr>
+<tr><td>Tributário</td><td></td><td>3</td><td></td></tr>
+<tr><td>Federal</td><td></td><td>2</td><td></td></tr>
+<tr><td>Empresarial, Imobiliário, Holding, Previdenciário</td><td>5</td><td></td><td></td></tr>
+<tr><td>Administrativo</td><td>1</td><td>1</td><td></td></tr>
+<tr><td>Outra área</td><td></td><td></td><td>1</td></tr>
+<tr><td><b>Total</b></td><td><b>23</b></td><td><b>20</b></td><td><b>4</b></td></tr>
+</table>
+<div class="mu" style="font-size:12.5px;margin-top:6px">"Outros": casos registrados no nome da Ellen ou do Evaldo.</div>
+
+<h2>A regra</h2>
+<div class="op rec"><h3>1. Por etapa do trabalho <span>escolhida em 28/11</span></h3>
+<p>Cada um cuida de um momento do caso, que é como vocês já se descrevem.</p>
+<ul><li><b>Gabriel:</b> triagem, consulta, retorno e fechamento.</li>
+<li><b>Alan:</b> todo caso fechado que vai para a Justiça: produz as peças, protocola e acompanha o andamento.</li>
+<li><b>Evaldo:</b> cobranças da MP Grupo (extrajudicial e as ações que nascem delas), a esteira de Negócios e os casos que ele mesmo trouxer.</li></ul>
+<p>Por que recomendo: combina com o que cada um faz melhor e com a esteira que já existe (Atendimento → Jurídico, e Negócios/Cobranças à parte).</p></div>
+<h2 style="font-size:14px;color:var(--mu);font-weight:500">Formas consideradas e não escolhidas</h2><div class="op"><h3>2. Por área do direito</h3>
+<p>Cada área tem um dono fixo (por exemplo, Cível e Tributário com o Alan, Família e Sucessões com o Gabriel, Cobrança com o Evaldo). Fácil de entender, mas concentra trabalho quando uma área cresce.</p></div>
+<div class="op"><h3>3. Por carga</h3>
+<p>O caso novo vai para quem está com menos casos em andamento. Equilibra o volume, mas mistura áreas e perde a especialização.</p></div>
+
+<h2>Como a regra funciona no Mapa</h2>
+<ul class="plano">
+<li><span class="k">Na passagem</span><span class="x">Ao arrastar o caso de Fechamento para o Jurídico, o Mapa pergunta <b>quem conduz</b> e já sugere pela regra escolhida. Hoje a passagem cria a tarefa "Kit recebido" sempre para o Alan.</span></li>
+<li><span class="k">Um responsável</span><span class="x">Todo caso tem uma pessoa responsável e, se quiser, quem apoia. A Ellen apoia, mas não fica como responsável de caso jurídico.</span></li>
+<li><span class="k">Contato do cliente</span><span class="x">Depois que o caso fecha, o cliente fala com quem conduz o caso. A passagem inclui uma mensagem de apresentação ao cliente. <span class="mu">Decidido em 28/11.</span></span></li>
+<li><span class="k">Exceções</span><span class="x">Qualquer um dos três pode puxar um caso para si, deixando registrado o motivo.</span></li>
+<li><span class="k">Carteira atual</span><span class="x">Os 47 casos de hoje são revistos aos poucos, alguns por semana, na <b>Reunião semanal</b> que já existe, aplicando a regra. <span class="mu">Decidido em 28/11.</span></span></li>
+</ul>
+
+<div class="ex">Rascunho sem nomes de clientes, com números da cópia de 27/11. Nada foi mudado no Mapa.</div>
+</div>
+<script>document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};</script>
+</body>
+</html>

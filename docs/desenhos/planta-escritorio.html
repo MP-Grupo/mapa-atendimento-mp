@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planta do escritório virtual M&amp;P</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#2F5D62;--on:#FFFFFF;--late:#B4553F}
+.escuro{--bg:#1C1D20;--cd:#232428;--tx:#D9DADC;--mu:#9A9CA1;--ln:#303136;--soft:#2A2B30;--ac:#8DB3B0;--on:#1C1D20;--late:#D58C78}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;transition:background .3s,color .3s}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px;white-space:nowrap}
+.mu{color:var(--mu)}
+.btn{font:inherit;font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd);color:var(--tx);cursor:pointer;white-space:nowrap}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px}
+.tabs button{font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;border:none;background:none;color:var(--mu);cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--cd);color:var(--tx);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-0.02em;margin:0}
+h2{font-size:18px;font-weight:600;margin:28px 0 4px}
+.sub{color:var(--mu);margin:6px 0 20px;max-width:720px;line-height:1.5}
+.cd{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px}
+.grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.sala{cursor:pointer;transition:border-color .2s}
+.sala:hover,.sala.on{border-color:var(--ac)}
+.sala .t{font-size:16px;font-weight:600;margin-bottom:2px}
+.sala .q{font-size:12px;color:var(--mu);margin-bottom:10px}
+.sala ul{margin:0;padding:0;list-style:none}
+.sala li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--ln);font-size:13px}
+.sala li span:last-child{color:var(--mu);white-space:nowrap}
+.det{display:none;margin-top:10px;font-size:13px;line-height:1.55;color:var(--mu)}
+.sala.on .det{display:block}
+.det b{color:var(--tx);font-weight:600}
+.tag{display:inline-block;font-size:11px;color:var(--mu);border:1px solid var(--ln);border-radius:6px;padding:1px 6px;margin-left:4px}
+.flux{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:4px}
+.et{flex:1;min-width:118px;position:relative;padding:0 6px}
+.et .b{border:1px solid var(--ln);background:var(--cd);border-radius:12px;padding:10px;height:100%}
+.et .n{font-size:11px;color:var(--mu)}
+.et .nm{font-weight:600;font-size:13px;margin:2px 0 4px}
+.et .q{font-size:12px;color:var(--mu);line-height:1.4}
+.et:not(:last-child)::after{content:"";position:absolute;right:-5px;top:50%;width:10px;height:1px;background:var(--mu)}
+.grp{font-size:12px;color:var(--mu);margin:16px 0 6px;display:flex;gap:8px;align-items:center}
+.grp i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.ponto{width:6px;height:6px;border-radius:50%;background:var(--late);display:inline-block;margin-right:4px;vertical-align:middle}
+.plano li{display:flex;gap:14px;padding:12px 0;border-top:1px solid var(--ln);align-items:flex-start}
+.plano{margin:0;padding:0;list-style:none}
+.plano .k{width:92px;flex:none;color:var(--mu);font-size:12px;padding-top:2px}
+.plano .x{flex:1}
+.plano .x b{display:block;font-weight:600;margin-bottom:2px}
+.plano .x span{color:var(--mu);font-size:13px;line-height:1.45}
+.plano .s{font-size:12px;color:var(--mu);white-space:nowrap}
+.dois{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Planta do escritório virtual</span><span style="flex:1"></span>
+<div class="tabs" id="tabs"><button data-t="planta" class="on">1 · As salas</button><button data-t="cliente">2 · O caminho do cliente</button><button data-t="plano">3 · Ordem da obra</button></div>
+<span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap" id="w"></div>
+<script>
+const SALAS=[
+ {t:'Minha mesa',q:'Dia a dia · onde você começa e termina',l:[['Hoje (Começar, Durante, Encerrar)','novo'],['Agenda','21 compromissos'],['Semana e rituais','6 rituais'],['Tarefas e Caixa rápida','152 tarefas'],['Anotar (janelinha)','']],
+  d:'<b>Hoje junta</b> o que está espalhado na Meu dia e no Painel de gestão. <b>Agenda</b> é o Calendário de hoje, com prazos, tarefas, lembretes e sala juntos. <b>Muda:</b> só a disposição. <b>Dados:</b> tarefas, eventos, lembretes e planoSemana continuam os mesmos.'},
+ {t:'Atendimento',q:'Casos e prazos · do contato ao fechamento',l:[['Esteira A (5 etapas, portões e travas)','7 casos'],['Pessoas (cadastro)','304 pessoas'],['WhatsApp 9955 (fila)','vazio hoje'],['Documentos do caso (pasta do Drive)','50 pastas']],
+  d:'<b>É a recepção do escritório.</b> A Ellen trabalha aqui. A esteira A continua com os portões (sinal no Pix, documentos, procuração e contrato) e as travas em Viabilidade e Fechamento. <b>Muda:</b> o cartão do caso fica mais limpo e cada etapa mostra o passo a passo de Fluxos. <b>Dados:</b> casos, chk, registros e funil intactos.'},
+ {t:'Jurídico',q:'Casos e prazos · produção e protocolo',l:[['Esteira B (Em produção, Protocolado)','47 casos'],['Prazos e Protocolo da semana','88 prazos'],['Sala do Alan (Peça pronta, Protocolei)','novo atalho'],['Processos administrativos','vazio hoje']],
+  d:'<b>É a sala do Alan.</b> Os botões Peça pronta e Protocolei já existem em Prazos e ganham uma tela simples só dele. A importação da semana (CSV ou arquivo do Claude) continua. <b>Dados:</b> prazos e prot intactos.'},
+ {t:'Cobrança e negócios',q:'Casos e prazos · o que entra de dinheiro',l:[['Cobranças (C0 a C6, régua, acordo, kit)','81 cobranças'],['Esteira C · MP Grupo Negócios','2 casos'],['Meu financeiro (só sócios)','tabela própria']],
+  d:'<b>Controle do que entra.</b> A régua D0 a D+30, os acordos e o kit judicial ficam como estão. O Financeiro continua só seu, na tabela própria. <b>Muda:</b> os alertas de prescrição viram um número na Minha mesa, e não uma lista longa.'},
+ {t:'Equipe',q:'Comunicação com os colaboradores',l:[['Mural de avisos (com "Li")','já existe'],['Post-its','26'],['Pedidos (decisão, urgente)','1 aberto'],['Chat da equipe','tabela própria'],['Lembretes','3'],['Sala de reunião','agenda própria']],
+  d:'<b>É o corredor do escritório:</b> tudo o que é conversa com a equipe num lugar só. O aviso fixado vira o Mural. <b>Futuro:</b> recados dentro do caso e aviso no celular pelo app instalado.'},
+ {t:'Gestão',q:'Só sócios · o que você controla',l:[['Gestão (Painel de gestão refeito)','redesenhar'],['Visão do gestor e Minha equipe','8 contadores'],['Perfis e acessos','master'],['Para validar, pendências, reunião semanal','18 · 4/15']],
+  d:'<b>Só o master e os sócios veem.</b> O Painel de gestão de hoje sai da entrada e vira esta sala. Tudo o que ele tem continua aqui, e o redesenho fica para depois.'},
+ {t:'Manuais e método',q:'Como o escritório trabalha',l:[['Fluxos (roteiros com passos)','5 fluxos'],['Biblioteca (listas e mensagens)','7 · 3'],['Manual (POP) e Trilha da equipe','20 itens'],['Roteiros e Ideias','3 ideias']],
+  d:'<b>Sugestão (você decide):</b> Biblioteca, Manual e Trilha hoje moram dentro de "Painel e dados". Proponho que ganhem lugar aqui, para responder "o que fazer agora" por área do direito e etapa da esteira, a ideia da Kamilly. Nada sai de Painel e dados sem a sua ordem.'},
+ {t:'Integrações',q:'O que liga o Mapa ao mundo',l:[['Banco (Supabase) e cópias automáticas','até 300 cópias'],['Google Drive (pastas dos casos)','50 pastas'],['WhatsApp (copiar, cobrar, 9955)','links'],['eProc e DJEN (importar prazos)','em breve'],['Claude (assistente e agentes)','preparar']],
+  d:'<b>Ficam como estão</b> e passam a ser vistas numa tela só, em Ajustes. Agentes de IA: uma lista única e uma função de chamada, que hoje abre o projeto do Claude.'},
+ {t:'Ajustes',q:'Configuração',l:[['Aparência (Folha entra aqui)','novo visual'],['Painel e dados (cópias, baixar, restaurar)','essencial'],['Importar dados · Instalar o app','']],
+  d:'<b>Painel e dados nunca sai.</b> As Cópias automáticas, Baixar cópia e Restaurar ficam aqui, como manda o regimento. A identidade Folha entra como uma opção da Aparência.'}];
+function planta(){return `<h1>As salas do escritório</h1><div class="sub">Os 33 itens do menu de hoje, agrupados como salas de um escritório. Nada some: cada sala mostra as telas que já existem e quanto dado tem nelas. Clique numa sala para ver o que muda.</div>
+<div class="grade">${SALAS.map((s,i)=>`<div class="cd sala" data-i="${i}"><div class="t">${s.t}</div><div class="q">${s.q}</div><ul>${s.l.map(x=>`<li><span>${x[0]}</span><span>${x[1]}</span></li>`).join('')}</ul><div class="det">${s.d}</div></div>`).join('')}</div>
+<div class="ex">Os números são da cópia de 27/11. Os 51 conjuntos de dados continuam exatamente como estão: a obra muda as telas, não os dados.</div>`}
+const A=[['1','Contato','Ellen','Registrar a origem e o resumo. Entra pelo WhatsApp, pela recepção ou por um cliente da base.','0 casos'],['2','Agendamento e consulta','Ellen e Gabriel','Portão: sinal de R$ 100 no Pix, consulta feita e saldo pago.','4 casos · 2 parados'],['3','Viabilidade','Ellen','Trava. Portão: todos os documentos recebidos. Cria as tarefas de prazo.','3 casos · 2 parados'],['4','Retorno','Gabriel e Ellen','Apresentar o parecer e a proposta.','0 casos'],['5','Fechamento','Ellen','Trava. Portão: honorários pagos, procuração e contrato assinados.','0 casos']];
+const B=[['B1','Em produção','Alan','Kit recebido. Peça em andamento.','22 casos'],['B2','Protocolado','Alan','Protocolo da semana, P1 a Pn.','25 casos'],['B3','Concluído','Alan','Caso encerrado.','0 casos']];
+const C=[['N1','Entrada','Gabriel','','0'],['N2','Documentos e análise','Ellen e Gabriel','','2 casos'],['N3','Em andamento','Gabriel e Evaldo','','0'],['N4','Concluído','Gabriel','','0']];
+const et=L=>`<div class="flux">${L.map(e=>`<div class="et"><div class="b"><div class="n">${e[0]} · ${e[2]}</div><div class="nm">${e[1]}</div><div class="q">${e[3]}</div><div class="q" style="margin-top:6px;color:var(--tx)">${/parad/.test(e[4])?'<span class="ponto"></span>':''}${e[4]}</div></div></div>`).join('')}</div>`;
+function cliente(){return `<h1>O caminho do cliente</h1><div class="sub">É o desenho que já existe no seu Mapa, em Atendimentos e casos. A obra não muda as etapas: deixa o caminho visível e faz cada etapa abrir o passo a passo e os modelos certos.</div>
+<div class="grp">Esteira A · Atendimento · Gabriel e Ellen · 7 casos ativos, 2 não fecharam</div>${et(A)}
+<div class="grp">Quando fecha, passa ao Jurídico: o Mapa cria a tarefa "Kit recebido" para o Alan</div>${et(B)}
+<div class="dois" style="margin-top:12px"><div class="cd"><div style="font-weight:600;margin-bottom:4px">Esteira C · MP Grupo Negócios</div><div class="mu" style="font-size:13px;line-height:1.5">Entrada, Documentos e análise, Em andamento, Concluído ou Não seguiu. Gabriel e Evaldo. 2 casos.</div></div><div class="cd"><div style="font-weight:600;margin-bottom:4px">Cobrança</div><div class="mu" style="font-size:13px;line-height:1.5">Do C0 (ficha) ao C6 (kit judicial), depois Ajuizada, Cumprimento, Pago ou Encerrada. 81 cobranças, régua D0 a D+30.</div></div></div>
+<div class="cd" style="margin-top:12px"><div style="font-weight:600;margin-bottom:6px">Em cada etapa, o que a obra acrescenta</div><div class="mu" style="font-size:13px;line-height:1.7">1. O passo a passo daquela etapa, tirado de Fluxos.<br>2. As mensagens e listas prontas da Biblioteca, já com o nome do cliente.<br>3. A pasta do caso no Drive e os registros, como hoje.<br>4. Um aviso vermelho só quando o caso está parado há mais de 7 dias.</div></div>`}
+const P=[['Pacote 31','Visual Folha','A identidade aprovada entra na Aparência, claro e escuro. Você testa sozinho e aplica para todos quando quiser.','pequeno'],['Pacote 32','Minha mesa: tela Hoje','Começar, Durante e Encerrar o dia. A Meu dia de hoje fica ao lado até você aprovar a troca.','médio'],['Pacote 33','Menu em salas','Os 33 itens nos grupos da planta. Só reorganiza.','pequeno'],['Pacote 34','Atendimento','Esteira A mais limpa, com passo a passo e modelos em cada etapa.','médio'],['Pacote 35','Jurídico e Sala do Alan','Prazos e protocolo numa tela simples para o Alan.','médio'],['Pacote 36','Cobrança e negócios','Mesma régua e mesmos dados, visual novo e alertas resumidos.','médio'],['Pacote 37','Equipe','Mural, post-its, pedidos, chat e lembretes num lugar só.','médio'],['Pacote 38','Gestão (só sócios)','O Painel de gestão refeito, com tudo o que ele tem hoje.','grande'],['Pacote 39','Manuais e método','"O que fazer agora" por área e etapa, juntando Fluxos, Biblioteca, Manual e Trilha.','grande'],['Depois','Futuro preparado','Agentes de IA, recados no caso, aviso no celular, escritório 3D.','a combinar']];
+function plano(){return `<h1>A ordem da obra</h1><div class="sub">Uma sala por vez, cada uma com a sua ficha. Antes de cada uma: print de como é hoje, a lista das funções, o desenho no navegador e o seu ok.</div>
+<ul class="plano">${P.map(p=>`<li><span class="k">${p[0]}</span><span class="x"><b>${p[1]}</b><span>${p[2]}</span></span><span class="s">esforço ${p[3]}</span></li>`).join('')}</ul>
+<div class="cd" style="margin-top:18px"><div style="font-weight:600;margin-bottom:6px">Como os seus dados ficam protegidos em toda a obra</div><div class="mu" style="font-size:13px;line-height:1.7">1. Antes de publicar: uma cópia nova no Dropbox, que você baixa em Painel e dados.<br>2. Conto os 51 conjuntos de dados antes e depois. Se algum número cair, não publico.<br>3. Nenhum conjunto de dados é apagado nem renomeado. Telas novas devolvem intacto o que não usam.<br>4. Teste sempre na cópia de estudo, desligada do banco.<br>5. Só publico com o seu "aprovado, publica", e dá para voltar em 1 passo.</div></div>`}
+const st={t:'planta'};
+function draw(){const w=document.getElementById('w');w.innerHTML=st.t==='planta'?planta():st.t==='cliente'?cliente():plano();
+document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===st.t));
+document.querySelectorAll('.sala').forEach(s=>s.onclick=()=>s.classList.toggle('on'));}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;draw()});
+document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};
+draw();
+</script>
+</body>
+</html>

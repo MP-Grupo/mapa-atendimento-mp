@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POP · Cobrança extrajudicial (MP Grupo)</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px}
+.mu{color:var(--mu)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.wrap{max-width:880px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:17px;font-weight:600;margin:30px 0 4px}
+.sub{color:var(--mu);margin:6px 0 18px;max-width:720px;line-height:1.6}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--ln);align-items:flex-start}
+.plano .k{width:160px;flex:none;color:var(--mu);font-size:12.5px;padding-top:1px;line-height:1.45}
+.plano .x{flex:1;line-height:1.6}
+.plano .x b{font-weight:600}
+.orig{display:block;font-size:12px;color:var(--mu);margin-top:3px}
+.msg{background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin-top:8px;line-height:1.6;white-space:pre-wrap;font-size:13.5px}
+.tab{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.tab td{padding:7px 4px;border-bottom:1px solid var(--ln)}
+.tab td:last-child{text-align:right;color:var(--mu);white-space:nowrap}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:24px;line-height:1.6}
+@media (max-width:760px){.plano .k{width:96px}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Manuais e método · POP</span><span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap">
+<div class="mu" style="font-size:12.5px">Em construção · atualizado na madrugada de 28/11 com a skill cobranca-mp</div>
+<h1>Cobrança extrajudicial</h1>
+<div class="sub">Da chegada da cobrança da empresa credora até o pagamento, o acordo ou a ação na Justiça. Quase tudo já existe no Mapa, na tela Cobranças: este POP organiza a ordem e quem faz o quê.</div>
+
+<h2>Passo a passo</h2>
+<ul class="plano">
+<li><span class="k">C0 · Ficha do crédito<br>quem recebe a cobrança</span><span class="x">Cadastrar credor, devedor, título, vencimento e valor. O Mapa lista o que falta e já tem a mensagem pronta para pedir ao credor os dados que faltam.<span class="orig">Tela Cobranças · ficha C0 e "pendências da ficha"</span></span></li>
+<li><span class="k">Liberar a ficha<br>Evaldo</span><span class="x">Definir os <b>limites de acordo</b> (desconto, entrada, número de parcelas) e fazer a <b>verificação de conflito de interesse</b>. Sem esses dois, a cobrança não avança.<span class="orig">Exigência da ficha C0, marcada no Mapa como "(Dr.)"</span></span></li>
+<li><span class="k">C1 a C3 · Análise<br>Evaldo</span><span class="x">Conferir o título, a <b>data de prescrição</b> (o Mapa sugere pela lei de cada título: nota promissória, cheque, duplicata) e o cálculo atualizado.<span class="orig">Prescrição sugerida com fundamento legal · "conferir sempre"</span></span></li>
+<li><span class="k">C4 · Régua<br>Evaldo</span><span class="x">Cinco contatos com mensagens prontas: D0 primeiro contato · D+3 lembrete e parcelamento · D+7 proposta com prazo · D+15 último contato amigável · D+30 notificação extrajudicial.<span class="orig">Régua da tela Cobranças</span></span></li>
+<li><span class="k">C5 · Acordo<br>Evaldo</span><span class="x">Registrar o acordo dentro dos limites; o Mapa gera as parcelas, avisa o vencimento e tem as mensagens de lembrete e de atraso.</span></li>
+<li><span class="k">C6 · Kit judicial<br>Evaldo</span><span class="x">Sem acordo depois da régua: montar o kit (petição, procuração, título, planilha, documentos da empresa, notificação) e escolher a ação (execução, monitória, cobrança).<span class="orig">Kit de 6 itens da tela Cobranças</span></span></li>
+<li><span class="k">Ajuizada em diante<br>Evaldo</span><span class="x">Acompanhar até o pagamento, o cumprimento de sentença ou o encerramento.</span></li>
+<li><span class="k">Ao credor<br>Evaldo</span><span class="x">Prestar contas a cada empresa: o Mapa já monta o resumo de cada cobrança (fase, valor, recebido, em aberto, pendências).<span class="orig">Resumo da cobrança · visão por credor</span></span></li>
+</ul>
+
+<h2>Exemplo de mensagem que já existe</h2>
+<div class="msg">Olá, [devedor]! Aqui é [quem envia], do M&amp;P, falando em nome de [credor].
+Consta em aberto [título] no valor de [valor], vencido em [data].
+Para regularizar, podemos enviar Pix ou boleto. Como prefere?</div>
+<div class="mu" style="font-size:12px;margin-top:4px">Régua · D0 (as outras quatro também estão prontas)</div>
+
+<h2>Onde a carteira está hoje</h2>
+<div class="sub" style="margin-bottom:4px">81 cobranças cadastradas (cópia de 27/11). Quase todas esperam a liberação da ficha para começar a régua.</div>
+<table class="tab">
+<tr><td>Na ficha (C0), esperando liberação</td><td>80</td></tr>
+<tr><td>Com kit judicial em montagem</td><td>1</td></tr>
+<tr><td>Sem limites de acordo definidos</td><td>todas</td></tr>
+<tr><td>Sem verificação de conflito registrada</td><td>todas</td></tr>
+<tr><td>Sem endereço do devedor</td><td>60</td></tr>
+<tr><td>Sem telefone do devedor</td><td>51</td></tr>
+<tr><td>Sem data de vencimento</td><td>39</td></tr>
+</table>
+<div class="mu" style="font-size:12.5px;margin-top:6px">Sugestão: limites de acordo padrão por credor (o Mapa já permite) liberam dezenas de fichas de uma vez.</div>
+
+<h2>Respostas encontradas nos manuais do escritório (madrugada de 28/11)</h2>
+<div class="sub" style="margin-bottom:4px">A skill <b>cobranca-mp</b> (v1.1, 18/11) já responde parte das perguntas. O que segue abaixo vem dela.</div>
+<ul class="plano">
+<li><span class="k">Papéis</span><span class="x"><b>Gabriel:</b> entrada do credor, limites de acordo e aprovação. <b>Evaldo:</b> operação da cobrança e protocolo. <b>Alan:</b> revisão da peça. <b>Ellen:</b> documentos, procuração e ZapSign.</span></li>
+<li><span class="k">Limites</span><span class="x">Quem define é o Gabriel (desconto máximo, entrada mínima, número de parcelas). Fora dos limites, o Evaldo leva ao Gabriel com uma recomendação.</span></li>
+<li><span class="k">Régua</span><span class="x">Dias úteis, das 8h às 20h. Só com o devedor, nunca com terceiros. Sem constrangimento (CDC) e só o dado necessário (LGPD). Todo contato registrado.</span></li>
+<li><span class="k">Notificação D+30</span><span class="x">Por e-mail, WhatsApp e carta com AR quando possível, com prazo de 5 dias úteis.</span></li>
+<li><span class="k">Acordo</span><span class="x">Termo assinado pelo devedor e por 2 testemunhas (vira título executivo), com vencimento antecipado e multa. Sem timbre.</span></li>
+<li><span class="k">Ir à Justiça</span><span class="x">Antes, considerar o protesto do título. Título vivo vai para execução; prescrito ou só prova escrita vai para o JEC (até 40 salários; empresa autora só se ME/EPP) ou monitória. Nada vai a protocolo sem aprovação do Gabriel e revisão do Alan.</span></li>
+<li><span class="k">Honorários</span><span class="x">"Conforme o contrato da casa": ficam fora do POP, como os do escritório.</span></li>
+<li><span class="k">Depois do protocolo</span><span class="x">Mensagem à Ellen para registrar no Mapa (ficha do credor, caso no Jurídico, tarefas de acompanhamento) e no Juridiq.</span></li>
+</ul>
+<h2>O que ainda falta vocês me contarem</h2>
+<ul class="plano">
+<li><span class="k">1 · Limites padrão</span><span class="x">Valores de desconto, entrada e parcelas por empresa credora, para liberar as 80 fichas.</span></li>
+<li><span class="k">2 · Conflito</span><span class="x">O que é verificar conflito de interesse aqui (por exemplo, o devedor não é cliente do escritório)?</span></li>
+<li><span class="k">3 · Canal</span><span class="x">De qual número de WhatsApp a régua sai, e quem envia no dia a dia: o Evaldo ou a Ellen?</span></li>
+<li><span class="k">4 · Assinatura</span><span class="x">Quem assina a notificação do D+30?</span></li>
+<li><span class="k">5 · Valor mínimo</span><span class="x">Há um valor abaixo do qual não vale ir à Justiça?</span></li>
+<li><span class="k">6 · Prestação de contas</span><span class="x">De quanto em quanto tempo cada empresa recebe o resumo, e por onde?</span></li>
+<li><span class="k">7 · Responsável</span><span class="x">As 80 cobranças hoje no nome da Ellen passam para o Evaldo?</span></li>
+</ul>
+<div class="ex">Rascunho montado com o que já está na tela Cobranças do Mapa (cópia de 27/11), sem nomes de credores ou devedores. Nada foi mudado no Mapa.</div>
+</div>
+<script>document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POP · Triagem e retorno ao cliente</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px}
+.mu{color:var(--mu)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.wrap{max-width:880px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:17px;font-weight:600;margin:30px 0 4px}
+.sub{color:var(--mu);margin:6px 0 18px;max-width:720px;line-height:1.6}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--ln);align-items:flex-start}
+.plano .k{width:150px;flex:none;color:var(--mu);font-size:12.5px;padding-top:1px;line-height:1.45}
+.plano .x{flex:1;line-height:1.6}
+.plano .x b{font-weight:600}
+.orig{display:block;font-size:12px;color:var(--mu);margin-top:3px}
+.msg{background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin-top:8px;line-height:1.6;white-space:pre-wrap}
+.q li{padding:12px 0}
+.q .x{line-height:1.6}
+.q textarea{width:100%;margin-top:8px;border:1px solid var(--ln);border-radius:10px;padding:8px 10px;font:inherit;background:var(--cd);color:var(--tx);resize:vertical;min-height:40px}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:24px;line-height:1.6}
+@media (max-width:760px){.plano .k{width:96px}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Manuais e método · POP</span><span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap">
+<div class="mu" style="font-size:12.5px">Em revisão · Gabriel · atualizado com as respostas de 28/11</div>
+<h1>Triagem e retorno ao cliente</h1>
+<div class="sub">Do primeiro atendimento até a decisão do cliente. Define se o caso é viável, quem conduz, quanto custa e como o cliente recebe a resposta. Montado a partir do que já está escrito no Mapa (roteiros "Contato" e "Cliente que já está na base" e as dicas da esteira de Atendimento).</div>
+
+<h2>Quando usar</h2>
+<ul class="plano">
+<li><span class="k">Começa</span><span class="x">Quando o cliente pagou o sinal da consulta e o horário está confirmado (etapa <b>Agendamento e consulta</b>).</span></li>
+<li><span class="k">Consulta</span><span class="x">R$ 250,00, com sinal de R$ 100,00 para confirmar o horário; o valor é abatido na proposta se o cliente fechar. <span class="mu">Em teste, principalmente com quem já procurou o escritório antes e não seguiu.</span></span></li>
+<li><span class="k">Termina</span><span class="x">Quando o cliente decide: fechou (vai para o Jurídico) ou não fechou (fica guardado para retomar o contato no futuro).</span></li>
+<li><span class="k">Responsáveis</span><span class="x"><b>Gabriel</b> conduz a consulta, o estudo e o retorno. <b>Ellen</b> agenda, cobra documentos, transcreve e prepara a papelada.</span></li>
+</ul>
+
+<h2>Passo a passo</h2>
+<ul class="plano">
+<li><span class="k">0 · Resumo do caso<br>Ellen</span><span class="x">Mandar ao Gabriel, pelo WhatsApp "Gabriel Atendimento", o resumo do caso com os dados básicos.<span class="orig">Resposta do Gabriel em 28/11 · resolve a dúvida anotada no roteiro "Entrada pelo WhatsApp"</span></span></li>
+<li><span class="k">1 · Consulta<br>Gabriel</span><span class="x">Ouvir o relato completo, pedir os documentos e combinar o que o cliente vai enviar. Gravar a reunião no iPad e mandar para a Ellen.<span class="orig">Roteiro "Contato", passo Primeiro atendimento · dica da etapa Agendamento e consulta</span></span></li>
+<li><span class="k">2 · Depois da consulta<br>Ellen</span><span class="x">Transcrever a gravação, pedir os documentos que faltam e montar a pasta do cliente no Drive.<span class="orig">Roteiro "Cliente que já está na base", passo Dia da reunião / Pós reunião</span></span></li>
+<li><span class="k">3 · Documentos<br>Ellen · até 3 dias</span><span class="x">Cobrar a lista de documentos do caso. O caso só avança quando chegar tudo: aí começa a contar o prazo do retorno.<span class="orig">Portão da etapa Viabilidade: "Todos os documentos recebidos"</span></span></li>
+<li><span class="k">4 · Estudo<br>Gabriel · até 5 dias úteis</span><span class="x">Com o relato e os documentos, rodar a <b>análise de viabilidade do escritório</b> (skill de análise de caso): fundamento do pedido, jurisprudência e se o caso pode ser ajuizado. Na mesma análise, estimar o valor a propor, pela tabela interna de honorários. Definir quem conduz o processo.<span class="orig">Resposta do Gabriel em 28/11 · dica da etapa Retorno</span></span></li>
+<li><span class="k">5 · Preparar o retorno<br>Ellen</span><span class="x">Deixar prontos: <b>procuração</b>, <b>contrato de honorários</b> e um <b>breve relatório do estudo</b>, sem entregar o estudo completo. Agendar a reunião de retorno.<span class="orig">Roteiro "Contato", passo Retorno</span></span></li>
+<li><span class="k">6 · Retorno<br>Gabriel · até 7 dias úteis</span><span class="x"><b>Viável:</b> apresentar o estudo e a proposta, abatendo os R$ 250,00 da consulta.<br><b>Não viável:</b> entregar um parecer por escrito.<span class="orig">Dica da etapa Retorno</span></span></li>
+<li><span class="k">7 · Decisão<br>Gabriel avisa a Ellen</span><span class="x"><b>Fechou:</b> honorários iniciais pagos, procuração e contrato assinados → o caso passa ao Jurídico com o kit completo.<br><b>Não fechou:</b> guardar a pasta e registrar o motivo, para retomar o contato no futuro.<span class="orig">Portões da etapa Fechamento · roteiro "Contato", passos finais</span></span></li>
+</ul>
+
+<h2>Mensagens prontas que já existem</h2>
+<div class="msg">Olá, [nome]! Finalizamos a análise inicial do seu caso. Agora vamos agendar nossa próxima reunião para conversarmos sobre a análise e os próximos passos. Para você, fica melhor pela manhã ou à tarde?</div>
+<div class="mu" style="font-size:12px;margin-top:4px">Biblioteca · "Viabilidade"</div>
+<div class="msg">Oi, [Nome]! Tudo bem? Aqui é a Ellen. Passando para avisar que o Dr. Gabriel finalizou a análise do seu caso e já preparamos toda a documentação por aqui! Vamos agendar a nossa reunião de retorno?</div>
+<div class="mu" style="font-size:12px;margin-top:4px">Roteiro "Cliente que já está na base" · passo Retorno</div>
+
+<h2>Decisões registradas</h2>
+<ul class="plano">
+<li><span class="k">Viabilidade</span><span class="x">Feita pela análise de caso do escritório (skill), com relato e documentos.</span></li>
+<li><span class="k">Honorários</span><span class="x">Tabela interna do escritório. Fica com o Gabriel e não entra neste POP.</span></li>
+<li><span class="k">Consulta</span><span class="x">R$ 250,00 com sinal de R$ 100,00, em teste.</span></li>
+<li><span class="k">Resumo do caso</span><span class="x">Chega pelo WhatsApp "Gabriel Atendimento".</span></li>
+</ul>
+<h2>Ainda a criar</h2>
+<ul class="plano">
+<li><span class="k">Distribuição dos casos</span><span class="x">Quando o caso fica com o Gabriel, quando vai para o Alan e quando vai para o Evaldo. Hoje é decidido caso a caso; precisa de uma regra combinada entre os três. <span class="mu">Vira um POP próprio.</span></span></li>
+<li><span class="k">Modelo do breve relatório</span><span class="x">Proposta de estrutura fixa, curta, sem entregar o estudo completo:
+<div class="msg" style="margin-top:8px">1. O que o cliente nos contou (em 3 a 5 linhas)
+2. O que analisamos (documentos e pontos verificados)
+3. Nossa avaliação (viável ou não, em linguagem simples)
+4. Caminho que recomendamos e o que ele envolve
+5. Próximos passos e prazo para decidir</div><span class="mu" style="display:block;margin-top:6px">Para você aprovar ou ajustar. Depois vira modelo na Biblioteca.</span></span></li>
+</ul>
+<div class="ex">Rascunho montado só com o que já está no Mapa (cópia de 27/11). Quando você responder, eu completo o POP, ele vai para Manuais e método e fica ligado às etapas Agendamento e consulta, Viabilidade, Retorno e Fechamento da esteira. Nada foi mudado no Mapa.</div>
+</div>
+<script>document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};</script>
+</body>
+</html>

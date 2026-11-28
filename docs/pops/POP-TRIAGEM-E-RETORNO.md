@@ -24,3 +24,14 @@ Responsáveis: Gabriel (consulta, estudo, retorno) e Ellen (agenda, documentos, 
 5. Próximos passos e prazo para decidir
 
 Origem: roteiros "Contato", "Cliente que já está na base" e "Entrada pelo WhatsApp"; dicas e portões da esteira de Atendimento.
+
+## Complemento da madrugada de 28/11 (a partir dos manuais do escritório no Cowork)
+Fontes: skills `pop-mp` (manual v0.1), `analise-caso-mp` (modos Triagem e Repasse) e `triagem-whatsapp-cliente`.
+
+- **Passo 4, Estudo:** a análise de viabilidade segue o modo Triagem da skill de análise de caso, que entrega: área, resumo em 1 ou 2 frases, viabilidade Alta / Média / Baixa / Depende de documentos, urgência de prazo, o que falta do cliente, próximo passo e qual contrato padrão da área usar. Regra da casa: não prometer resultado; o que falta vira pendência, nunca suposição.
+- **Conflito de interesse** entra na triagem (manual, fluxo 2), antes de agendar a reunião. [VALIDAR: como se verifica]
+- **Recusa:** caso que não segue recebe recusa cordial ou encaminhamento, com o motivo registrado (manual, fluxo 2). Hoje a esteira guarda isso em "Não fechou".
+- **Breve relatório do estudo:** a estrutura proposta (5 itens) coincide com a saída da Triagem; manter "sem entregar o ouro".
+- **Passagem ao Jurídico:** o "kit" é a Ficha de Repasse do manual (ver POP-REPASSE-AO-JURIDICO.md).
+- **Prompts:** o manual cita prompts por função (acolhimento, qualificação, triagem, roteiro de reunião, dossiê, proposta, fechamento, boas-vindas). O Mapa pode oferecer cada um na etapa certa. [PREENCHER: textos no Kit de Gestão]
+- **Divergência a validar:** o manual v0.1 põe o primeiro contato e a triagem com o Gabriel; no Mapa de hoje o primeiro contato é da Ellen e a triagem do Gabriel. O POP segue o Mapa. [VALIDAR]

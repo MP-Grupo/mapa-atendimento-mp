@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desenho · Hoje como começo do dia</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#2F5D62;--on:#FFFFFF;--late:#B4553F}
+.escuro{--bg:#1C1D20;--cd:#232428;--tx:#D9DADC;--mu:#9A9CA1;--ln:#303136;--soft:#2A2B30;--ac:#8DB3B0;--on:#1C1D20;--late:#D58C78}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;transition:background .3s,color .3s}
+.top{display:flex;align-items:center;gap:10px;padding:14px 22px;border-bottom:1px solid var(--ln)}
+.top b{font-size:15px}
+.mu{color:var(--mu)}
+.late{color:var(--late)}
+.btn{font:inherit;font-size:13px;padding:8px 14px;border-radius:10px;border:1px solid var(--ln);background:var(--cd);color:var(--tx);cursor:pointer}
+.btn.pri{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.btn.lnk{border:none;background:none;color:var(--mu);padding:8px 6px}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px}
+.tabs button{font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;border:none;background:none;color:var(--mu);cursor:pointer}
+.tabs button.on{background:var(--cd);color:var(--tx);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.wrap{max-width:760px;margin:0 auto;padding:28px 22px 60px}
+h1{font-size:30px;font-weight:600;letter-spacing:-0.02em;margin:0}
+.sub{color:var(--mu);margin:6px 0 22px}
+.cd{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:18px 20px}
+.passos{display:flex;gap:6px;margin-bottom:18px}
+.passos i{flex:1;height:4px;border-radius:4px;background:var(--ln)}
+.passos i.f{background:var(--ac)}
+.n{font-size:12px;color:var(--mu);margin-bottom:6px}
+.big{font-size:22px;font-weight:600;letter-spacing:-0.01em;margin:0 0 6px}
+.lista{margin:14px 0 0;padding:0;list-style:none}
+.lista li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)}
+.lista li span.h{width:52px;color:var(--mu);font-variant-numeric:tabular-nums}
+.lista li .x{flex:1}
+.av{width:22px;height:22px;border-radius:50%;background:var(--soft);color:var(--mu);display:inline-grid;place-items:center;font-size:9px;font-weight:600;flex:none;border:1px solid var(--ln)}
+.ponto{width:6px;height:6px;border-radius:50%;background:var(--late);display:inline-block}
+.acoes{display:flex;gap:8px;margin-top:18px;align-items:center}
+.nota{width:100%;min-height:70px;border:1px solid var(--ln);border-radius:12px;padding:10px 12px;font:inherit;background:var(--bg);color:var(--tx);resize:none}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--ln);cursor:pointer}
+.chk .b{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--mu);flex:none;margin-top:1px;display:grid;place-items:center;font-size:12px}
+.chk.on .b{background:var(--ac);border-color:var(--ac);color:var(--on)}
+.cols{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px}
+.pill{display:inline-block;font-size:12px;color:var(--mu);border:1px solid var(--ln);border-radius:8px;padding:3px 8px;margin:3px 4px 0 0}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Hoje</span><span style="flex:1"></span>
+ <div class="tabs" id="tabs"><button data-t="manha" class="on">Começar o dia</button><button data-t="dia">Durante o dia</button><button data-t="fim">Encerrar o dia</button></div>
+ <span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap" id="w"></div>
+<script>
+const st={t:'manha',p:0,pri:[0,1,2],ok:{}};
+const PASSOS=[
+ {k:'Onde você parou',t:()=>`<div class="big">Sexta você parou na revisão do contrato do caso de Família.</div><div class="mu">É o que você escreveu ao encerrar o dia. As 3 prioridades que você escolheu para hoje:</div><ul class="lista">${['Prioridade 1 escolhida na sexta','Prioridade 2 escolhida na sexta','Prioridade 3 escolhida na sexta'].map((x,i)=>`<li><span class="h">${i+1}</span><span class="x">${x}</span></li>`).join('')}</ul>`},
+ {k:'Sua agenda de hoje',t:()=>`<div class="big">Nenhum compromisso seu hoje.</div><div class="mu">Na equipe: Alan tem um compromisso às 09:00. O seu próximo é terça às 10:00.</div><ul class="lista"><li><span class="h">09:00</span><span class="x">Compromisso do Alan</span><span class="av">AL</span></li><li><span class="h">ter 10:00</span><span class="x">Seu compromisso</span><span class="av">GA</span></li></ul>`},
+ {k:'Prazos',t:()=>`<div class="big">2 prazos vencem hoje. 6 da semana passada estão sem confirmação.</div><div class="mu">O Alan começa pelo próximo da fila. Você só confere.</div><ul class="lista"><li><span class="ponto"></span><span class="x">6 protocolos sem confirmação</span><button class="btn lnk">Abrir</button></li><li><span class="h">hoje</span><span class="x">2 prazos da nova semana</span><button class="btn lnk">Ver</button></li><li><span class="h">semana</span><span class="x">16 prazos até sexta</span><button class="btn lnk">Ver a semana</button></li></ul>`},
+ {k:'Recados',t:()=>`<div class="big">1 post-it novo e 1 lembrete atrasado.</div><div class="mu">Nenhum pedido esperando decisão.</div><ul class="lista"><li><span class="av">EL</span><span class="x">Post-it da Ellen para todos</span><button class="btn lnk">Ler</button></li><li><span class="ponto"></span><span class="x">Lembrete atrasado desde sexta</span><button class="btn lnk">Ver</button></li><li><span class="av">EV</span><span class="x">2 post-its do Evaldo ainda não lidos pelo Alan</span><button class="btn lnk">Ver</button></li></ul>`},
+ {k:'Suas 3 decisões',t:()=>`<div class="big">Comece por estas 3.</div><div class="mu">São as tarefas suas mais antigas. As outras ficam na fila.</div><ul class="lista">${['Tarefa atrasada desde 06/11','Tarefa atrasada desde 07/11','Tarefa atrasada desde 10/11'].map(x=>`<li><span class="ponto"></span><span class="x">${x}</span><button class="btn lnk">Feito</button><button class="btn lnk">Encaminhar</button><button class="btn lnk">Adiar</button></li>`).join('')}</ul><div class="mu" style="margin-top:10px">Na fila: mais 46 tarefas suas atrasadas · Ver a fila</div>`}];
+function manha(){const p=PASSOS[st.p];return `<div class="mu">Segunda, 30 de novembro · 08:10</div><h1>Bom dia, Gabriel.</h1><div class="sub">Cinco passos, uns três minutos. Depois o Mapa abre no seu dia de trabalho.</div>
+<div class="passos">${PASSOS.map((_,i)=>`<i class="${i<=st.p?'f':''}"></i>`).join('')}</div>
+<div class="cd"><div class="n">Passo ${st.p+1} de 5 · ${p.k}</div>${p.t()}
+<div class="acoes">${st.p?'<button class="btn" id="ant">Voltar</button>':''}<span style="flex:1"></span><button class="btn lnk" id="pul">Pular tudo</button><button class="btn pri" id="prox">${st.p<4?'Próximo':'Começar o dia'}</button></div></div>
+<div class="ex">A Vera pode ler cada passo em voz alta, como já faz hoje no resumo de entrada. Simulação da segunda de manhã com os números reais da cópia de 27/11, sem nomes de clientes.</div>`}
+function dia(){return `<div class="mu">Segunda, 30 de novembro</div><h1>Seu dia</h1><div class="sub">O que você escolheu de manhã, em ordem. O resto do Mapa está no menu.</div>
+<div class="cols"><div class="cd"><div class="n">Agora</div><div class="big" style="font-size:18px">Prioridade 1 escolhida na sexta</div><div class="acoes" style="margin-top:10px"><button class="btn pri">Feito</button><button class="btn">Encaminhar</button><button class="btn lnk">Adiar</button></div>
+<div class="n" style="margin-top:20px">Depois</div><ul class="lista" style="margin:0"><li><span class="x">Prioridade 2</span></li><li><span class="x">Prioridade 3</span></li><li><span class="x mu">3 decisões da manhã · 2 feitas</span></li></ul>
+<div class="n" style="margin-top:20px">Anotar rápido</div><input class="nota" style="min-height:0" placeholder="cliente: o que fazer #dono prazo !"></div>
+<div style="display:flex;flex-direction:column;gap:14px"><div class="cd"><div class="n">Agenda de hoje</div><ul class="lista" style="margin:0"><li><span class="h">09:00</span><span class="x">Alan · compromisso</span></li><li><span class="h">—</span><span class="x mu">2 prazos · 1 tarefa</span></li></ul></div>
+<div class="cd"><div class="n">Protocolo da semana</div><div>0 de 16 protocolados</div><div class="mu" style="margin-top:4px">Próximo: P1 · hoje</div></div>
+<div class="cd"><div class="n">Atalhos do Mapa</div><span class="pill">Caixa rápida</span><span class="pill">Esteira</span><span class="pill">Post-its</span><span class="pill">Pedidos</span><span class="pill">Chat</span><span class="pill">Gestão</span></div></div></div>
+<div class="ex">Tudo o que hoje está na Meu dia continua existindo: aqui fica só o que você escolheu fazer. Os outros blocos ficam a um clique.</div>`}
+const ABERTAS=[['Tarefa de hoje que ficou aberta','Adiar para amanhã'],['Tarefa atrasada que você tocou hoje','Adiar para amanhã'],['Pedido da Ellen sem resposta','Responder amanhã']];
+function fim(){return `<div class="mu">Segunda, 30 de novembro · 18:20</div><h1>Encerrar o dia</h1><div class="sub">Dois minutos para amanhã começar sozinho.</div>
+<div class="cd"><div class="n">1 · O que você fez hoje</div><div class="big" style="font-size:18px">4 tarefas concluídas, 2 encaminhadas, 1 prazo conferido.</div></div>
+<div class="cd" style="margin-top:12px"><div class="n">2 · O que ficou aberto</div>${ABERTAS.map((a,i)=>`<div class="chk ${st.ok[i]?'on':''}" data-i="${i}"><span class="b">${st.ok[i]?'✓':''}</span><span style="flex:1">${a[0]}</span><span class="mu">${a[1]} ▾</span></div>`).join('')}<div class="mu" style="margin-top:8px">Cada um vai para amanhã, para alguém da equipe, ou fica onde está.</div></div>
+<div class="cd" style="margin-top:12px"><div class="n">3 · Suas 3 prioridades de amanhã</div><div class="mu" style="margin-bottom:6px">Sugestão: as mais antigas e o que vence amanhã. Troque se quiser.</div>${['Tarefa atrasada mais antiga','Prazo que vence amanhã','Tarefa que você adiou hoje'].map((x,i)=>`<div class="chk on"><span class="b">${i+1}</span><span>${x}</span></div>`).join('')}</div>
+<div class="cd" style="margin-top:12px"><div class="n">4 · Onde você parou</div><textarea class="nota" placeholder="Uma frase para você mesmo amanhã de manhã."></textarea></div>
+<div class="acoes"><span class="mu">Na sexta, este passo também abre o "Fechar a semana", que já existe.</span><span style="flex:1"></span><button class="btn pri">Encerrar o dia</button></div>`}
+function draw(){const w=document.getElementById('w');w.innerHTML=st.t==='manha'?manha():st.t==='dia'?dia():fim();
+document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===st.t));
+const nx=document.getElementById('prox');if(nx)nx.onclick=()=>{if(st.p<4){st.p++;draw()}else{st.t='dia';draw()}};
+const an=document.getElementById('ant');if(an)an.onclick=()=>{st.p--;draw()};
+const pu=document.getElementById('pul');if(pu)pu.onclick=()=>{st.t='dia';draw()};
+document.querySelectorAll('.chk[data-i]').forEach(c=>c.onclick=()=>{st.ok[c.dataset.i]=!st.ok[c.dataset.i];draw()});}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;st.p=0;draw()});
+document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};
+draw();
+</script>
+</body>
+</html>

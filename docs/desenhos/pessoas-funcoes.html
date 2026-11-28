@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pessoas, funções e POPs · escritório M&amp;P</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF;--late:#B4553F}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E;--late:#CC8572}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px;white-space:nowrap}
+.mu{color:var(--mu)}.late{color:var(--late)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px;flex-wrap:wrap}
+.tabs button{font-size:13px;padding:7px 14px;border-radius:9px;border:none;background:none;color:var(--mu);white-space:nowrap}
+.tabs button.on{background:var(--cd);color:var(--tx);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:18px;font-weight:600;margin:28px 0 6px}
+.sub{color:var(--mu);margin:6px 0 20px;max-width:740px;line-height:1.6}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--ln);align-items:flex-start}
+.plano .k{width:150px;flex:none;color:var(--mu);font-size:12.5px;padding-top:1px}
+.plano .x{flex:1;line-height:1.6}
+.plano .x b{font-weight:600}
+.pop{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--ln);align-items:baseline}
+.pop .n{flex:1}
+.pop .s{font-size:12.5px;white-space:nowrap}
+.s.ok{color:var(--ac)}.s.meio{color:var(--mu)}.s.falta{color:var(--mu)}
+.aviso{border-left:2px solid var(--ln);padding:8px 12px;margin:14px 0;background:var(--cd);border-radius:0 10px 10px 0;font-size:13.5px;line-height:1.6}
+.dois{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cd{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:22px;line-height:1.6}
+@media (max-width:860px){.dois{grid-template-columns:1fr}.plano .k{width:100px}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Pessoas, funções e POPs</span><span style="flex:1"></span>
+<div class="tabs" id="tabs"><button data-t="geral" class="on">Visão geral</button><button data-t="GA">Gabriel</button><button data-t="EL">Ellen</button><button data-t="AL">Alan</button><button data-t="EV">Evaldo</button><button data-t="pops">POPs a criar</button></div>
+<span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap" id="w"></div>
+<script>
+const P={
+GA:{nome:'Gabriel',cargo:'Triagem, retorno aos clientes e gestão',
+ resumo:'Responsável pela triagem dos casos novos, pelo retorno aos clientes e pela gestão do escritório. Acompanha o trabalho de toda a equipe e assume qualquer etapa quando é preciso.',
+ itens:[['Acesso','Acompanha todas as áreas, configura o Mapa e define o acesso de cada pessoa.'],
+  ['Na esteira','Atendimento: Agendamento e consulta, e Retorno (com a Ellen). Negócios: Entrada. Acompanha Jurídico e Cobranças pela Gestão.'],
+  ['Começar o dia','Onde parei e prioridades · agenda · prazos sem confirmação · recados · 3 decisões. Já está pronto.'],
+  ['Durante o dia','Agora / Depois · Caixa rápida · Blocos de decisão às 11:00 e às 16:30 (rituais que já existem na Semana).'],
+  ['Encerrar o dia','O que fez · o que ficou · 3 prioridades de amanhã · onde parei. Na sexta, Fechar e Planejar a semana.'],
+  ['Telas dele','Hoje · Gestão · Recados · Agenda · Meu financeiro · páginas da equipe.'],
+  ['Ritmo','Agenda cheia: vale passar parte das tarefas para a Ellen. Há passos de fluxo da equipe esperando a validação dele.']],
+ pops:[['Triagem e retorno ao cliente','meio','rascunho pronto, faltam 2 itens'],['Distribuição dos casos entre Gabriel, Alan e Evaldo','ok','por etapa do trabalho · texto pronto'],['Modelo do breve relatório do estudo','meio','estrutura proposta'],['Bloco de decisão (pedidos Decisão e Urgente)','meio','o ritual existe, falta o passo a passo'],['Planejar e fechar a semana','meio','os rituais existem na tela Semana'],['Validar passos dos fluxos da equipe','ok','já existe: "Para você validar"']]},
+EL:{nome:'Ellen',cargo:'Atendimento, documentos e agenda',
+ resumo:'Responsável pelo atendimento, do primeiro contato ao fechamento, pelos documentos dos clientes e pela agenda do Gabriel. Apoia o escritório na organização do dia a dia.',
+ itens:[['Acesso','Atendimento, agenda e documentos. Propõe ajustes, que Gabriel, Alan e Evaldo validam (regra que já existe no Mapa).'],
+  ['Na esteira','Atendimento: Contato, Agendamento e consulta, Viabilidade (documentos) e Fechamento. É a dona da esteira A.'],
+  ['Começar o dia','Recados do Gabriel · agenda do Gabriel de hoje · quem precisa de retorno hoje · documentos faltando.'],
+  ['Durante o dia','Esteira de atendimento com o passo a passo de cada etapa · mensagens prontas da Biblioteca · pastas dos clientes.'],
+  ['Encerrar o dia','Resumo para o Gabriel: atendidos, agendados, documentos recebidos, o que travou. Na sexta, o resumo da semana (ritual que já existe).'],
+  ['Telas dela','Hoje (dela) · Atendimento · Agenda · Pessoas · Documentos · Recados · Biblioteca.'],
+  ['Ritmo','Ritmo bom. Hoje aparece como responsável pelas cobranças cadastradas, que podem passar para quem conduz a MP Grupo.']],
+ pops:[['Entrada pelo WhatsApp','ok','roteiro pronto, 6 passos'],['Cliente chega no escritório','ok','roteiro pronto, 6 passos'],['Contato (do primeiro contato ao fechamento)','ok','roteiro pronto, 6 passos'],['Cliente que já está na base','ok','roteiro pronto, 8 passos'],['Cliente que procura, mas não dá retorno','falta','o roteiro existe e está vazio'],['Agenda e documentos do Gabriel','falta'],['Lista de documentos por área (Família, Previdenciário…)','meio','é uma missão da Trilha'],['Cobrar a consulta (sinal no Pix)','meio','é uma competência da Trilha e portão da esteira'],['Montar o kit do caso para o jurídico','meio','competência da Trilha'],['Organizar as pastas no Drive','meio','competência da Trilha']]},
+AL:{nome:'Alan',cargo:'Peças e processos',
+ resumo:'Responsável pela produção das peças e pelo andamento dos processos, desde a chegada do caso fechado até o protocolo.',
+ itens:[['Acesso','Acompanha todas as áreas, valida e aprova, e participa da Gestão.'],
+  ['Na esteira','Jurídico: Em produção (22 casos) e Protocolado (25). Recebe a passagem do Atendimento ("Kit recebido").'],
+  ['Começar o dia','Prazos de hoje e da semana · publicações novas · protocolos sem confirmação · peças em produção.'],
+  ['Durante o dia','Sala do Alan: Peça pronta e Protocolei (botões que já existem em Prazos) · fila P1 a Pn.'],
+  ['Encerrar o dia','Confirmar os protocolos do dia (a cobrança pelo WhatsApp já existe) · o que fica para amanhã.'],
+  ['Telas dele','Hoje (dele) · Sala do Alan · Prazos e Protocolo · Casos (Jurídico) · Recados.'],
+  ['Ritmo','Fila de prazos e peças cheia. A Sala do Alan ajuda a enxergar a ordem do dia.']],
+ pops:[['Receber o caso do Atendimento (kit)','meio','a passagem cria a tarefa, falta o passo a passo'],['Produzir e revisar a peça','falta'],['Protocolar e confirmar o evento no eProc','meio','os botões existem, falta o passo a passo'],['Ler publicações e criar prazos','meio','a importação da semana existe'],['Andamento até o protocolo','falta','está em "Em breve"']]},
+EV:{nome:'Evaldo',cargo:'Cobranças, prospecção e processos',
+ resumo:'Responsável pelas cobranças extrajudiciais da MP Grupo, pela prospecção de novos credores e pelos processos que conduz. As empresas confiam as cobranças ao escritório, que negocia antes de ir à Justiça.',
+ itens:[['Acesso','Cobranças (já liberadas para ele), Negócios e os processos que conduz. Valida e aprova, e participa da Gestão.'],
+  ['Na esteira','Negócios: Em andamento (com o Gabriel). Cobranças: da ficha (C0) ao kit judicial (C6), depois Ajuizada, Pago ou Encerrada.'],
+  ['Começar o dia','Régua do dia (D0, D+3, D+7, D+15, D+30) · parcelas vencendo · prescrições perto · acordos para fechar.'],
+  ['Durante o dia','Painel por credor (cada empresa e as cobranças dela, que já existe em "Por cliente") · contatos · propostas de acordo · prospecção.'],
+  ['Encerrar o dia','Registrar contatos e próximo passo de cada cobrança tocada · o que vira processo.'],
+  ['Telas dele','Hoje (dele) · Cobranças · Negócios · Casos que ele toca · Recados.'],
+  ['Ritmo','Carteira de cobranças de vários credores já cadastrada, esperando a condução dele.']],
+ pops:[['Cadastrar o credor e as cobranças recebidas','meio','a ficha C0 existe'],['Régua extrajudicial (D0 a D+30)','meio','a régua existe, falta o passo a passo'],['Proposta e registro de acordo','meio','a etapa Acordo existe'],['Quando ajuizar e montar o kit judicial','meio','o kit de 6 itens existe'],['Prospectar novos credores','falta'],['Prestar contas ao credor','falta']]}};
+const avisos=`<div class="aviso"><b>Decisões que são suas</b> (eu não mudo sem o seu "aprovado"):<br>1. Confirmar o acesso do <b>Evaldo</b>: as Cobranças já abrem para ele (só ficam fechadas para quem for bloqueado de propósito); falta conferir Negócios.<br>2. Passar para o <b>Evaldo</b> as cobranças que hoje estão com a Ellen como responsável (80 de 81), ou deixar a Ellen no registro e o Evaldo na condução.<br>3. A Ellen ver a agenda e os documentos do Gabriel: já vê; confirmar se continua assim.</div>`;
+function pessoa(k){const p=P[k];return `<div class="mu" style="font-size:12.5px">Visível para Gabriel, Alan, Evaldo e ${p.nome}</div><h1>${p.nome}</h1><div class="sub">${p.resumo}</div>
+<ul class="plano">${p.itens.map(i=>`<li><span class="k">${i[0]}</span><span class="x">${i[1]}</span></li>`).join('')}</ul>
+<h2>POPs de ${p.nome}</h2><div class="mu" style="margin-bottom:6px">Passo a passo de cada função e em que ponto cada um está.</div>
+${p.pops.map(x=>`<div class="pop"><span class="n">${x[0]}${x[2]?` <span class="mu">· ${x[2]}</span>`:''}</span><span class="s ${x[1]}">${x[1]==='ok'?'pronto':x[1]==='meio'?'em construção':'a escrever'}</span></div>`).join('')}
+${k==='EV'?avisos:''}`}
+function geral(){return `<div class="mu" style="font-size:12.5px">Visível para Gabriel, Alan e Evaldo · cada pessoa vê a própria página</div><h1>Pessoas, funções e POPs</h1><div class="sub">Cada pessoa com a sua área de responsabilidade, uma página Hoje que conduz o dia e os POPs que mostram como fazer cada coisa. Tudo parte do que o Mapa já tem.</div>
+<ul class="plano">${['GA','EL','AL','EV'].map(k=>{const p=P[k];const ok=p.pops.filter(x=>x[1]==='ok').length, mm=p.pops.filter(x=>x[1]==='meio').length, f=p.pops.filter(x=>x[1]==='falta').length;return `<li><span class="k">${p.nome}</span><span class="x"><b>${p.cargo}</b><br><span class="mu">${p.resumo}</span><br><span class="mu">POPs: ${ok} pronto${ok===1?"":"s"} · ${mm} em construção · ${f} a escrever</span></span><button class="btn" data-ir="${k}">Abrir</button></li>`}).join('')}</ul>
+<div class="dois" style="margin-top:18px"><div class="cd"><b>Como as páginas conduzem cada um</b><div class="mu" style="margin-top:6px;line-height:1.7">1. A Hoje de cada pessoa mostra a etapa dela na esteira.<br>2. Cada etapa abre o POP certo e as mensagens prontas.<br>3. Os portões e travas da esteira (que já existem) impedem pular passo.<br>4. Gabriel, Alan e Evaldo acompanham tudo pela Gestão.</div></div>
+<div class="cd"><b>Onde os POPs moram</b><div class="mu" style="margin-top:6px;line-height:1.7">Em Manuais e método, juntando Fluxos (roteiros), Manual (POP), Trilha (competências e missões) e Biblioteca (mensagens). Cada POP fica ligado a uma etapa da esteira e a uma pessoa.</div></div></div>
+${avisos}<div class="ex">Números da cópia de 27/11, sem nomes de clientes. Isto é um plano para você aprovar; nada foi mudado no Mapa.</div>`}
+function pops(){const L=[];['GA','EL','AL','EV'].forEach(k=>P[k].pops.forEach(x=>{if(x[1]!=='ok')L.push([P[k].nome,x[0],x[1],x[2]])}));
+return `<div class="mu" style="font-size:12.5px">Visível para Gabriel, Alan e Evaldo</div><h1>POPs a criar</h1><div class="sub">O que ainda vamos escrever ou completar, por pessoa. Sugestão de ordem: primeiro os que ainda não existem, depois os que estão em construção.</div>
+${L.sort((a,b)=>(a[2]==='falta'?0:1)-(b[2]==='falta'?0:1)).map(x=>`<div class="pop"><span class="mu" style="width:70px">${x[0]}</span><span class="n">${x[1]}${x[3]?` <span class="mu">· ${x[3]}</span>`:''}</span><span class="s ${x[2]}">${x[2]==='meio'?'em construção':'a escrever'}</span></div>`).join('')}
+<div class="ex">Cada POP pode ser escrito em conversa: você conta como faz, eu organizo no formato do Mapa e você aprova.</div>`}
+const st={t:'geral'};
+function draw(){const w=document.getElementById('w');w.innerHTML=st.t==='geral'?geral():st.t==='pops'?pops():pessoa(st.t);
+document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===st.t));
+document.querySelectorAll('[data-ir]').forEach(b=>b.onclick=()=>{st.t=b.dataset.ir;draw();scrollTo(0,0)});}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;draw();scrollTo(0,0)});
+document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};
+draw();
+</script>
+</body>
+</html>

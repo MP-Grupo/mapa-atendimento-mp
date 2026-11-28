@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório da noite · 28/11</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px}
+.mu{color:var(--mu)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.wrap{max-width:880px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:17px;font-weight:600;margin:30px 0 4px}
+.sub{color:var(--mu);margin:6px 0 18px;max-width:720px;line-height:1.6}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--ln);align-items:flex-start}
+.plano .k{width:170px;flex:none;color:var(--mu);font-size:12.5px;padding-top:1px;line-height:1.45}
+.plano .x{flex:1;line-height:1.6}
+.plano .x b{font-weight:600}
+.cd{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px;margin-top:10px}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:24px;line-height:1.6}
+@media (max-width:760px){.plano .k{width:100px}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Relatório da noite</span><span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap">
+<div class="mu" style="font-size:12.5px">Para o Gabriel · madrugada de 28 para 29 de novembro</div>
+<h1>Bom dia. Eis o que fiz enquanto você dormia.</h1>
+<div class="sub">Tudo dentro das regras: nada publicado, nada no banco, nenhuma decisão sua tomada por mim. O trabalho está na cópia de estudo deste computador e no ramo de teste <b>pacote-31-folha</b>.</div>
+
+<h2>1 · O que você pode abrir agora</h2>
+<ul class="plano">
+<li><span class="k">O Mapa de estudo</span><span class="x"><a href="/index.html">localhost:5501/index.html</a> · Hoje, Recados, Agenda, e agora <b>Atendimento e casos, Prazos e Cobranças</b> também no visual Folha (caixas finas, títulos sem maiúsculas, nada de verde nas abas). O miolo dessas telas ainda é o antigo, só o visual mudou.</span></li>
+<li><span class="k">Os POPs</span><span class="x"><a href="/pop-triagem.html">Triagem e retorno</a> · <a href="/pop-distribuicao.html">Distribuição dos casos</a> · <a href="/pop-cobranca.html">Cobrança extrajudicial</a>, agora com as respostas que achei nos manuais.</span></li>
+<li><span class="k">O plano das pessoas</span><span class="x"><a href="/pessoas-funcoes.html">Pessoas, funções e POPs</a> · <a href="/planta-escritorio.html">Planta do escritório</a>.</span></li>
+</ul>
+
+<h2>2 · O que aprendi nos seus projetos do Cowork</h2>
+<div class="sub" style="margin-bottom:4px">Li as skills do escritório: <b>pop-mp</b> (o manual), <b>cobranca-mp</b>, <b>analise-caso-mp</b>, <b>triagem-whatsapp-cliente</b>, e as duas tarefas agendadas (<b>revisor-atendimento-whatsapp</b> e <b>varredura-prazos-leads-mp</b>).</div>
+<ul class="plano">
+<li><span class="k">Os agentes já existem</span><span class="x">A "Vera" é o revisor do JuriChat, com regras claras de tom. O agente de "Prazos" é a varredura matinal do Gmail. "Triagem" é o modo Triagem da análise de caso. "Cobrança" é a skill C0–C6, igual à tela do Mapa. A lista de agentes do Mapa pode apontar para eles. Registrei em <b>docs/pops/AGENTES-DO-ESCRITORIO.md</b>.</span></li>
+<li><span class="k">O formato de POP da casa</span><span class="x">Passos numerados, cada um com responsável, prazo ou gatilho, ferramenta ou prompt, etiqueta e onde salva no Dropbox; depois "próxima ação" e "pontos a validar". Vou adotar esse formato no Mapa.</span></li>
+<li><span class="k">Cobrança: 8 respostas</span><span class="x">A skill já diz quem define os limites (você), como a régua funciona (dias úteis, 8h às 20h, só com o devedor), como vai a notificação do D+30 (e-mail, WhatsApp e AR, 5 dias úteis), como se formaliza o acordo (2 testemunhas) e que nada vai a protocolo sem a sua aprovação e a revisão do Alan. Ficaram 7 perguntas menores.</span></li>
+<li><span class="k">Repasse ao Jurídico</span><span class="x">O "kit" tem nome e formato: a <b>Ficha de Repasse</b>, com 13 partes. Virou um POP próprio (docs/pops/POP-REPASSE-AO-JURIDICO.md), que liga o Fechamento da Ellen à produção do Alan ou do Evaldo.</span></li>
+<li><span class="k">Uma divergência</span><span class="x">O manual v0.1 põe o primeiro contato com você; no Mapa de hoje é da Ellen. O manual também ainda não conhece a Ellen nem o Evaldo. Deixei marcado para você validar.</span></li>
+</ul>
+
+<h2>3 · O que ficou guardado no repositório (ramo de teste, sem publicar)</h2>
+<ul class="plano">
+<li><span class="k">docs/pops/</span><span class="x">PESSOAS-E-FUNCOES · POP-TRIAGEM-E-RETORNO (com o complemento dos manuais) · POP-DISTRIBUICAO-DOS-CASOS · POP-REPASSE-AO-JURIDICO · POP-COBRANCA-EXTRAJUDICIAL · AGENTES-DO-ESCRITORIO. Nenhum tem nome de cliente.</span></li>
+<li><span class="k">docs/desenhos/</span><span class="x">Cópia dos desenhos desta noite (planta, pessoas, POPs, Hoje), para não dependerem da pasta temporária.</span></li>
+<li><span class="k">index.html</span><span class="x">Só estilos novos para Atendimento, Prazos e Cobranças no visual Folha. Nenhuma linha antiga alterada.</span></li>
+</ul>
+
+<h2>4 · Decisões que só você pode tomar</h2>
+<ul class="plano">
+<li><span class="k">Publicar</span><span class="x">O Pacote 31 inteiro (Folha, Hoje, moldura, Agenda, Recados, telas afinadas) espera a sua cópia no Dropbox e o "aprovado, publica". Depois de publicado, a equipe só vê quando você ligar a Folha na Aparência.</span></li>
+<li><span class="k">Modelo do relatório</span><span class="x">Aprovar a estrutura de 5 itens do breve relatório do estudo.</span></li>
+<li><span class="k">Cobrança</span><span class="x">As 7 perguntas que faltam, e se as 80 cobranças no nome da Ellen passam ao Evaldo.</span></li>
+<li><span class="k">Divergência do manual</span><span class="x">Primeiro contato: Ellen (como no Mapa) ou Gabriel (como no manual)?</span></li>
+</ul>
+
+<h2>5 · O que eu faria em seguida</h2>
+<div class="cd"><div style="line-height:1.8">1. Publicar o Pacote 31 e você ligar a Folha só para você por uns dias.<br>2. Construir a Hoje da <b>Ellen</b>, com a esteira de Atendimento abrindo o POP certo em cada etapa (os 4 roteiros dela já estão prontos).<br>3. Ligar a lista de agentes do Mapa às skills que já existem no Cowork.<br>4. Levar os POPs de Cobrança e de Repasse ao Alan e ao Evaldo para validar.</div></div>
+
+<div class="ex">Cópia de estudo e desenhos: pasta temporária deste computador; se ela sumir, os textos continuam em docs/pops e docs/desenhos no ramo de teste. Dados: cópia de 27/11, sem nomes de clientes nestas páginas.</div>
+</div>
+<script>document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};</script>
+</body>
+</html>
