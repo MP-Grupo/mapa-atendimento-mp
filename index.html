@@ -6940,7 +6940,7 @@ const FOLHA_EXTRA = ''
   + 'html:root[data-theme="dark"] .pn-card button,html:root[data-theme="dark"] .pn-card .lnk,html:root[data-theme="dark"] .pn-card a{color:var(--accent)!important}';
 AP_LINGS.folha = {n:"Folha", ref:"", sub:"aprovada em 28/11/2026", desc:"Papel claro quente, uma cor petróleo, letra Geist, vermelho só para atraso. Escuro em grafite suave.", f:"geist", r:[16,10,8], cards:"borda", dens:"normal", menu:"claro",
   extra:FOLHA_EXTRA,
-  l:{bg:"#f7f7f5",s:"#ffffff",s2:"#f0f0ec",s3:"#e8e8e3",line:"#e6e6e2",fg:"#1f2328",muted:"#6b7075",accent:"#2f5d62",a2:"#244a4e",soft:"#e3ecec"},
+  l:{bg:"#f7f7f5",s:"#ffffff",s2:"#f0f0ec",s3:"#e8e8e3",line:"#e6e6e2",fg:"#1f2328",muted:"#6b7075",accent:"#41716f",a2:"#355f5d",soft:"#e6eeed"},
   d:{bg:"#1c1d20",s:"#232428",s2:"#2a2b30",s3:"#313237",line:"#303136",fg:"#d9dadc",muted:"#9a9ca1",accent:"#8db3b0",a2:"#a8c7c4",soft:"#2b3535"}};
 function mpfSouVidro(a){ return !!a && a.ling==="vidro"; }
 function mpfPessoal(){ const p=apLS("mp-fundo"); return (p && typeof p==="object") ? p : null; }
@@ -13765,7 +13765,7 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
 (function(){
   const st=document.createElement("style"); st.id="hjStyle";
   st.textContent = ""
-  + ".hj{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#e6e6e2;--hs:#f0f0ec;--ha:#2f5d62;--ho:#ffffff;--hr:#b4553f;font-family:'Geist','Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--ht);background:var(--hb);min-height:100vh}"
+  + ".hj{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#e6e6e2;--hs:#f0f0ec;--ha:#41716f;--ho:#ffffff;--hr:#b4553f;font-family:'Geist','Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--ht);background:var(--hb);min-height:100vh}"
   + "html[data-theme='dark'] .hj{--hb:#1c1d20;--hc:#232428;--ht:#d9dadc;--hm:#9a9ca1;--hl:#303136;--hs:#2a2b30;--ha:#8db3b0;--ho:#1c1d20;--hr:#d58c78}"
   + "body.hj-on{background:var(--hj-fundo,#f7f7f5)}html[data-theme='dark'] body.hj-on{--hj-fundo:#1c1d20}"
   + "body.hj-on .rail,body.hj-on .pn-wrap,body.hj-on .pn-fab,body.hj-on #pdFab,body.hj-on .pd-fab,body.hj-on .ch-fab,body.hj-on #chFab,body.hj-on .mob-btn,body.hj-on #ptFaixa,body.hj-on #maMesa,body.hj-on .pd-banner{display:none!important}"
@@ -13869,7 +13869,16 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
   + "header.top .hj-tabs{padding:4px;border-radius:12px}header.top .hj-tabs button{font-size:13px;padding:7px 14px;border-radius:9px}"
   + "body.hj-shell .top .search{padding:7px 12px!important;font-size:13px!important;border-radius:10px!important}"
   + "#hjTopL .hj-marca{font-size:15px}"
-  + ".hj-tok{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#ecece8;--hs:#f0f0ec;--ha:#2f5d62;--ho:#ffffff;--hr:#b4553f}"
+  + "body.hj-shell .cal-side h3{font-size:13px!important;font-weight:600!important;letter-spacing:0!important;margin:0 0 6px!important;font-family:inherit!important}"
+  + "body.hj-shell .cal-side .cal-it b{font-size:12.5px!important;font-weight:500!important}body.hj-shell .cal-side .cal-it small{font-size:11.5px!important}"
+  + "body.hj-shell .cal-it{border-left:2px solid var(--k)!important;border-radius:0!important;padding:5px 8px!important;margin:0 0 4px!important;grid-template-columns:40px minmax(0,1fr) auto auto!important}"
+  + "body.hj-shell .av-mini{background:var(--surface-2)!important;color:var(--muted)!important;border:1px solid var(--line);width:18px!important;height:18px!important;font-size:9px!important}"
+  + "body.hj-shell .seg button.on,body.hj-shell .seg .on{background:var(--surface)!important;color:var(--fg)!important;box-shadow:0 1px 2px rgba(0,0,0,.06);font-weight:600}"
+  + "body.hj-shell .seg{background:var(--surface-2)!important;border:none!important;padding:3px!important;border-radius:10px!important}body.hj-shell .seg button{font-size:12.5px!important;padding:4px 12px!important;border-radius:8px!important}"
+  + "body.hj-shell .cal-c .cal-n{background:none!important;color:var(--fg)!important}body.hj-shell .cal-c.hj .cal-n,body.hj-shell .cal-c.hoje .cal-n{color:var(--accent)!important;font-weight:700!important;text-decoration:underline;text-underline-offset:3px}"
+  + "body.hj-shell .cal-c.sel{box-shadow:inset 0 0 0 1px var(--fg)!important;background:var(--surface)!important}"
+  + "body.hj-shell .cal-nav{gap:6px}body.hj-shell .cal-nav h2,body.hj-shell .cal-nav b{font-size:15px!important;font-weight:600!important}"
+  + ".hj-tok{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#ecece8;--hs:#f0f0ec;--ha:#41716f;--ho:#ffffff;--hr:#b4553f}"
   + "html[data-theme='dark'] .hj-tok{--hb:#1c1d20;--hc:#232428;--ht:#d9dadc;--hm:#9a9ca1;--hl:#2c2d32;--hs:#2a2b30;--ha:#8db3b0;--ho:#1c1d20;--hr:#d58c78}"
   + "#hjMenuRoot{font-family:'Geist','Segoe UI',system-ui,sans-serif;color:var(--ht);font-size:13px}#hjMenuRoot button{font:inherit;color:inherit;cursor:pointer}"
   + "body.hj-shell .rail,body.hj-shell .pn-fab,body.hj-shell #chatFab,body.hj-shell #pdFab,body.hj-shell .pd-fab,body.hj-shell .mob-btn{display:none!important}"
@@ -13896,7 +13905,7 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
   + "body.hj-shell .cal-wd{font-size:11px;color:var(--muted);font-weight:500}"
   + "body.hj-shell .ag-tp{background:none!important;color:var(--muted)!important;border:1px solid var(--line)!important;font-weight:500!important;font-size:11.5px!important;padding:2px 9px!important;display:inline-flex;align-items:center;gap:5px}body.hj-shell .ag-tp::before{content:\"\";width:6px;height:6px;border-radius:50%;background:var(--k)}"
   + "body.hj-shell .cal-side{border-radius:12px!important;padding:12px!important}body.hj-shell .cal-it{border-left-width:2px!important;padding:4px 6px!important;font-size:12.5px;border-top:0!important}body.hj-shell .cal-h{font-size:11.5px}"
-  + "body.hj-shell .k-ev{--k:#2f5d62}body.hj-shell .k-tf{--k:#8a7a5a}body.hj-shell .k-pz{--k:#b4553f}body.hj-shell .k-lm{--k:#9a8452}body.hj-shell .k-cb{--k:#5f7d6a}body.hj-shell .k-adm{--k:#7a6f96}body.hj-shell .k-sala{--k:#5a6f8a}body.hj-shell .k-aniv{--k:#a5707f}"
+  + "body.hj-shell .k-ev{--k:#41716f}body.hj-shell .k-tf{--k:#8a7a5a}body.hj-shell .k-pz{--k:#b4553f}body.hj-shell .k-lm{--k:#9a8452}body.hj-shell .k-cb{--k:#5f7d6a}body.hj-shell .k-adm{--k:#7a6f96}body.hj-shell .k-sala{--k:#5a6f8a}body.hj-shell .k-aniv{--k:#a5707f}"
   + "html[data-theme='dark'] body.hj-shell .k-ev{--k:#8db3b0}html[data-theme='dark'] body.hj-shell .k-tf{--k:#c4b48e}html[data-theme='dark'] body.hj-shell .k-pz{--k:#d58c78}html[data-theme='dark'] body.hj-shell .k-lm{--k:#cdb784}html[data-theme='dark'] body.hj-shell .k-cb{--k:#9cbba7}html[data-theme='dark'] body.hj-shell .k-adm{--k:#b2a8cf}html[data-theme='dark'] body.hj-shell .k-sala{--k:#9db0c9}html[data-theme='dark'] body.hj-shell .k-aniv{--k:#d3a2b0}";
   document.head.appendChild(fino);
   if(!document.getElementById("apFont-geist")){ const l=document.createElement("link"); l.id="apFont-geist"; l.rel="stylesheet"; l.href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"; document.head.appendChild(l); }
@@ -13937,7 +13946,7 @@ render = function(){
     if(!M){ document.body.insertAdjacentHTML("beforeend", `<div id="hjMenuRoot" class="hj-tok"></div>`); M=$("#hjMenuRoot"); }
     if(!shell) ui.hj.menu=false;
     M.innerHTML=shell?hjMenu():"";
-    if(shell && ui.view==="postits"){ const c=$("#content"); if(c){ c.innerHTML=rcView(); const el=$("#rcTxt"); if(el && ui.rc.rasc){ el.value=ui.rc.rasc; } } ui.hj.rec=false; return; }
+    if(shell && ui.view==="postits"){ const c=$("#content"); if(c){ c.innerHTML=rcxView(); const el=$("#rcTxt"); if(el && ui.rc.rasc){ el.value=ui.rc.rasc; } } ui.hj.rec=false; return; }
     if(ui.view!=="dia"){ ui.hj.rec=false; return; }
     const c=$("#content"); if(c) c.innerHTML=hjView();
     if(ui.cx.ed){ const e=$("#cxEd"); if(e){ e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }
@@ -13957,18 +13966,30 @@ aposLogin = async function(){
 ui.rc = ui.rc || {sel:"", para:"Todos", cor:"amarelo", feitos:false, resp:""};
 const RC_TIPO = {amarelo:"Aviso", azul:"Pendência", rosa:"Urgente", verde:"Ideia"};
 const RC_PONTO = {amarelo:"#d9c68c", azul:"#9db9d6", rosa:"#d9a3b4", verde:"#9cbba7"};
-function rcFalta(n){
+function rcxFalta(n){
   if(n.feito) return [];
   const l=n.lidoPor||[];
   if(n.para==="Todos") return ["Gabriel","Ellen","Alan","Evaldo"].filter(x=>x!==n.quem && !l.includes(x));
   if(n.para && n.para!=="Só eu" && n.para!==n.quem && !l.includes(n.para)) return [n.para];
   return [];
 }
-function rcLinha(n){
-  const f=rcFalta(n);
-  return `<div class="rcx-row${ui.rc.sel===n.id?" sel":""}" data-rc="ver" data-id="${n.id}"><span class="rcx-dot" style="background:${RC_PONTO[n.cor]||RC_PONTO.amarelo}"></span><div class="rcx-tx"><div class="rcx-l1">${esc(String(n.texto||"").split("\n")[0])}${pnNovo(n)?`<span class="rcx-nv">novo</span>`:""}</div><div class="rcx-l2">De ${esc(n.quem)} p/ ${esc(pnPara(n))} · ${esc(fmtT(n.t))} · ${RC_TIPO[n.cor]||"Aviso"}${n.feito?" · feito":(f.length?" · não lido por "+esc(f.join(", ")):(n.para==="Só eu"?"":" · lido por todos"))}</div></div></div>`;
+function rcxFmt(s){ return esc(String(s||"")).replace(/\*([^*\n]+)\*/g, "<b>$1</b>"); }
+function rcxTitulo(n){ const L=String(n.texto||"").split("\n").map(x=>x.trim()).filter(Boolean); return (L[0]||"").replace(/\*/g,""); }
+function rcxCorpo(n){ const L=String(n.texto||"").split("\n"); let k=L.findIndex(x=>x.trim()); return L.slice(k+1).join("\n").replace(/^\n+/,""); }
+function rcxStatus(n){
+  if(n.feito) return "Feito"+(n.feitoPor?" por "+n.feitoPor:"");
+  const f=rcxFalta(n);
+  if(n.para==="Só eu") return "Só para você";
+  return f.length ? "Falta ler: "+f.join(", ") : "Lido por todos";
 }
-function rcView(){
+function rcxLinha(n){
+  const nv=pnNovo(n); const urg=n.cor==="rosa";
+  return `<div class="rcx-row${ui.rc.sel===n.id?" sel":""}${nv?" nv":""}" data-rc="ver" data-id="${n.id}">
+    <div class="rcx-tx"><div class="rcx-l0"><span>${esc(n.quem)} → ${esc(pnPara(n))}</span><span class="rcx-dt">${esc(fmtT(n.t))}</span></div>
+    <div class="rcx-l1">${esc(rcxTitulo(n))}</div>
+    <div class="rcx-l2"><span>${esc(rcxStatus(n))}</span><span class="${urg?"rcx-urg":"rcx-tp"}">${RC_TIPO[n.cor]||"Aviso"}</span></div></div></div>`;
+}
+function rcxView(){
   const eu=ui.me||"";
   const vis=pnAll().filter(pnVisivel);
   const ab=vis.filter(n=>!n.feito), fe=vis.filter(n=>n.feito).sort((a,b)=>(b.feitoEm||0)-(a.feitoEm||0));
@@ -13977,25 +13998,27 @@ function rcView(){
   if(!ui.rc.sel || !pnGet(ui.rc.sel)){ const f=(G[0][1][0]||G[1][1][0]||G[2][1][0]); ui.rc.sel=f?f.id:""; }
   const n=pnGet(ui.rc.sel);
   const resp=ui.rc.resp?pnGet(ui.rc.resp):null;
-  const lista = G.filter(g=>g[1].length).map(g=>`<div class="rcx-grp">${g[0]} · ${g[1].length}</div>`+g[1].map(rcLinha).join("")).join("")
-    + `<button class="rcx-grp rcx-grpb" data-rc="feitos">Concluídos · ${fe.length} ${ui.rc.feitos?"▾":"›"}</button>` + (ui.rc.feitos?fe.slice(0,30).map(rcLinha).join(""):"");
-  const ler = n ? `<div class="rcx-tag"><span class="rcx-dot" style="background:${RC_PONTO[n.cor]||RC_PONTO.amarelo}"></span> ${RC_TIPO[n.cor]||"Aviso"} · ${n.feito?"feito":"aberto"}</div>
-      <div class="rcx-txt">${esc(n.texto||"")}</div>
-      <div class="hj-mu rcx-meta">De <b>${esc(n.quem)}</b> para <b>${esc(pnPara(n))}</b> · ${esc(fmtT(n.t))}<br>${esc(pnOnde(n))}${(n.lidoPor||[]).length?"<br>Lido por: "+esc(n.lidoPor.join(", ")):""}${n.feito&&n.feitoPor?"<br>Concluído por "+esc(n.feitoPor)+(n.feitoEm?" em "+esc(fmtT(n.feitoEm)):""):""}</div>
+  const aberto=ui.rc.esc || resp || (ui.rc.rasc||"").trim();
+  const lista = G.filter(g=>g[1].length).map(g=>`<div class="rcx-grp">${g[0]} <span>${g[1].length}</span></div>`+g[1].map(rcxLinha).join("")).join("")
+    + `<button class="rcx-grp rcx-grpb" data-rc="feitos">Concluídos <span>${fe.length}</span> ${ui.rc.feitos?"▾":"›"}</button>` + (ui.rc.feitos?fe.slice(0,30).map(rcxLinha).join(""):"");
+  const corpo = n ? rcxCorpo(n) : "";
+  const ler = n ? `<div class="rcx-hd"><span>De <b>${esc(n.quem)}</b> para <b>${esc(pnPara(n))}</b></span><span>${esc(fmtT(n.t))}</span></div>
+      <h2 class="rcx-tit">${esc(rcxTitulo(n))}</h2>
+      ${corpo?`<div class="rcx-corpo">${rcxFmt(corpo)}</div>`:""}
+      <div class="rcx-meta">${n.cor==="rosa"?`<span class="rcx-urg">Urgente</span> · `:`${RC_TIPO[n.cor]||"Aviso"} · `}${esc(rcxStatus(n))}${(n.lidoPor||[]).length&&!n.feito?" · lido por "+esc(n.lidoPor.join(", ")):""} · ${esc(pnOnde(n))}</div>
       <div class="rcx-acts">${pnNovo(n)?`<button class="hj-b" data-act="pnLi" data-id="${n.id}">Entendi</button>`:""}<button class="hj-b hj-pri" data-act="pnFeito" data-id="${n.id}">${n.feito?"Reabrir":"Marcar feito"}</button>
         ${n.quem!==eu?`<button class="hj-l" data-rc="responder" data-id="${n.id}">Responder</button>`:""}<button class="hj-l" data-cx="pnVira" data-id="${n.id}">Virar tarefa</button><button class="hj-l" data-act="pnIr" data-id="${n.id}">Ir para a página</button>${(n.quem===eu||isApprover())?`<button class="hj-l" data-cx="pnEditar" data-id="${n.id}">Editar</button><button class="hj-l rcx-del" data-act="pnDel" data-id="${n.id}">Excluir</button>`:""}</div>`
-    : `<div class="hj-mu">Nenhum recado aberto. Escreva um à esquerda.</div>`;
-  const paras=(typeof PN_PARA!=="undefined"?PN_PARA:["Todos","Gabriel","Ellen","Alan","Evaldo","Só eu"]).filter(x=>x!==eu);
-  return `<div class="hj"><div class="hj-wrap"><div class="hj-mu">Equipe</div><h1 class="hj-h1">Recados</h1><div class="hj-sub">Os post-its numa caixa só: a lista à esquerda, o recado aberto à direita. A cor diz o tipo do recado.</div>
+    : `<div class="hj-mu">Nenhum recado aberto.</div>`;
+  const paras=(typeof PN_PARA!=="undefined"?PN_PARA:["Todos","Gabriel","Ellen","Alan","Evaldo"]).filter(x=>x!==eu);
+  return `<div class="hj"><div class="hj-wrap"><div class="hj-mu">Equipe</div><h1 class="hj-h1">Recados</h1><div class="hj-sub">Os post-its numa caixa só. Clique num recado para ler.</div>
     <div class="rcx-cols"><div>
-      <div class="hj-cd rcx-esc">${resp?`<div class="hj-mu" style="margin-bottom:6px">Respondendo a ${esc(resp.quem)}: “${esc(String(resp.texto||"").split("\n")[0].slice(0,60))}” <button class="hj-l" data-rc="semresp">cancelar</button></div>`:""}
-        <textarea class="hj-in" id="rcTxt" rows="2" placeholder="Escrever um recado…"></textarea>
-        <div class="rcx-chips"><span class="hj-mu">Para</span>${paras.map(x=>`<button class="rcx-chip${ui.rc.para===x?" on":""}" data-rc="para" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>
-        <div class="rcx-chips"><span class="hj-mu">Tipo</span>${Object.keys(RC_TIPO).map(c=>`<button class="rcx-chip${ui.rc.cor===c?" on":""}" data-rc="cor" data-v="${c}"><span class="rcx-dot" style="background:${RC_PONTO[c]}"></span> ${RC_TIPO[c]}</button>`).join("")}<span class="hj-grow"></span><button class="hj-b hj-pri" data-rc="enviar">Enviar</button></div></div>
-      <div class="hj-cd rcx-lista">${lista||`<div class="hj-mu">Nenhum recado aberto.</div>`}</div>
+      <div class="hj-cd rcx-esc${aberto?" on":""}">${resp?`<div class="hj-mu rcx-resp">Respondendo a ${esc(resp.quem)}: “${esc(rcxTitulo(resp).slice(0,60))}” <button class="hj-l" data-rc="semresp">cancelar</button></div>`:""}
+        <textarea class="rcx-in" id="rcTxt" rows="${aberto?3:1}" placeholder="Escrever um recado…" data-rcfoco="1"></textarea>
+        ${aberto?`<div class="rcx-chips"><span class="hj-mu">Para</span>${(resp?[resp.quem]:paras).map(x=>`<button class="rcx-chip${(resp?resp.quem:ui.rc.para)===x?" on":""}" data-rc="para" data-v="${esc(x)}">${esc(x)}</button>`).join("")}<span class="rcx-sep"></span><span class="hj-mu">Tipo</span>${Object.keys(RC_TIPO).map(c=>`<button class="rcx-chip${ui.rc.cor===c?" on":""}" data-rc="cor" data-v="${c}">${RC_TIPO[c]}</button>`).join("")}<span class="hj-grow"></span><button class="hj-l" data-rc="fechar">Cancelar</button><button class="hj-b hj-pri" data-rc="enviar">Enviar</button></div>`:""}</div>
+      <div class="rcx-lista">${lista||`<div class="hj-mu">Nenhum recado aberto.</div>`}</div>
     </div><div class="hj-cd rcx-ler">${ler}</div></div></div></div>`;
 }
-function rcEnviar(){
+function rcxEnviar(){
   const el=$("#rcTxt"); const txt=((el||{}).value||"").trim();
   if(!txt){ if(el) el.focus(); toast("Escreva o recado antes de enviar."); return; }
   if(!ui.me){ whoModal(false); toast("Antes, escolha quem é você."); return; }
@@ -14005,8 +14028,9 @@ function rcEnviar(){
   const novo={id:uid(), t:Date.now(), quem:ui.me, pagina:resp?(resp.pagina||"hoje"):"hoje", cliente:resp?(resp.cliente||""):"", passo:resp?(resp.passo||""):"", para, texto:resp?"Resposta: "+txt:txt, cor:ui.rc.cor, feito:false, feitoPor:"", feitoEm:0, pessoa:"", lidoPor:[]};
   pnAll().push(novo);
   logA((resp?"respondeu um post-it de "+resp.quem:"colocou um post-it para "+(para==="Todos"?"todos":para))+" (Recados)");
-  ui.rc.sel=novo.id; ui.rc.resp=""; ui.rc.rasc=""; save(); render(); toast("Recado enviado para "+(para==="Todos"?"todos":para)+".");
+  ui.rc.sel=novo.id; ui.rc.resp=""; ui.rc.rasc=""; ui.rc.esc=false; save(); render(); toast("Recado enviado para "+(para==="Todos"?"todos":para)+".");
 }
+document.addEventListener("focusin", e=>{ if(e.target && e.target.dataset && e.target.dataset.rcfoco && !ui.rc.esc){ ui.rc.esc=true; render(); setTimeout(()=>{ const el=$("#rcTxt"); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); } },0); } });
 document.addEventListener("click", e=>{
   const b=e.target.closest && e.target.closest("[data-rc]"); if(!b) return;
   e.preventDefault();
@@ -14016,29 +14040,36 @@ document.addEventListener("click", e=>{
   else if(a==="feitos"){ ui.rc.feitos=!ui.rc.feitos; guarda(); render(); }
   else if(a==="para"){ ui.rc.para=b.dataset.v; guarda(); render(); }
   else if(a==="cor"){ ui.rc.cor=b.dataset.v; guarda(); render(); }
-  else if(a==="responder"){ ui.rc.resp=b.dataset.id; guarda(); render(); setTimeout(()=>{ const el=$("#rcTxt"); if(el) el.focus(); },30); }
+  else if(a==="responder"){ ui.rc.resp=b.dataset.id; ui.rc.esc=true; guarda(); render(); setTimeout(()=>{ const el=$("#rcTxt"); if(el) el.focus(); },30); }
   else if(a==="semresp"){ ui.rc.resp=""; guarda(); render(); }
-  else if(a==="enviar") rcEnviar();
+  else if(a==="enviar") rcxEnviar();
+  else if(a==="fechar"){ ui.rc.esc=false; ui.rc.resp=""; ui.rc.rasc=""; render(); }
 });
 (function(){
   const st=document.createElement("style"); st.id="rcStyle";
   st.textContent = ""
-  + ".rcx-cols{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:start}"
-  + ".rcx-chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12.5px}"
-  + ".rcx-chip{font-size:12.5px;padding:3px 10px;border-radius:99px;border:1px solid var(--hl);background:none;color:var(--hm);display:inline-flex;align-items:center;gap:5px}"
-  + ".rcx-chip.on{border-color:var(--ha);color:var(--ht);background:var(--hs)}"
-  + ".rcx-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}"
-  + ".rcx-grp{font-size:12px;color:var(--hm);margin:12px 0 2px;display:block;border:none;background:none;padding:0;text-align:left}.rcx-grp:first-child{margin-top:0}.rcx-grpb{cursor:pointer}"
-  + ".rcx-row{display:flex;gap:10px;align-items:flex-start;padding:11px 6px;border-top:1px solid var(--hl);cursor:pointer;border-radius:8px}"
-  + ".rcx-row:hover,.rcx-row.sel{background:var(--hs)}.rcx-row .rcx-dot{margin-top:6px}"
-  + ".rcx-tx{flex:1;min-width:0}.rcx-l1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}.rcx-l2{font-size:12.5px;color:var(--hm);margin-top:2px}"
-  + ".rcx-nv{font-size:10.5px;color:var(--ha);border:1px solid var(--ha);border-radius:6px;padding:0 5px;margin-left:6px;font-weight:500}"
-  + ".rcx-ler{position:sticky;top:64px}.rcx-tag{font-size:12px;color:var(--hm);display:flex;align-items:center;gap:6px}"
-  + ".rcx-txt{white-space:pre-wrap;line-height:1.55;font-size:14px;margin:10px 0 12px;max-height:46vh;overflow:auto}"
-  + ".rcx-meta{font-size:12.5px;line-height:1.6}.rcx-meta b{color:var(--ht);font-weight:500}"
-  + ".rcx-acts{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border-top:1px solid var(--hl);padding-top:10px;margin-top:12px}"
+  + ".rcx-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px;align-items:start}"
+  + ".rcx-esc{padding:10px 14px}.rcx-in{width:100%;border:none;background:none;font:inherit;font-size:14px;color:var(--ht);resize:none;outline:none;padding:4px 0}"
+  + ".rcx-esc.on .rcx-in{border-bottom:1px solid var(--hl);margin-bottom:4px}.rcx-resp{font-size:12.5px;margin-bottom:4px}"
+  + ".rcx-chips{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12.5px}.rcx-sep{width:10px}"
+  + ".rcx-chip{font-size:12.5px;padding:2px 9px;border-radius:7px;border:1px solid transparent;background:none;color:var(--hm)}.rcx-chip:hover{color:var(--ht)}"
+  + ".rcx-chip.on{border-color:var(--hl);color:var(--ht);background:var(--hc);box-shadow:0 1px 2px rgba(0,0,0,.05)}"
+  + ".rcx-lista{margin-top:14px}"
+  + ".rcx-grp{font-size:12px;color:var(--hm);margin:18px 0 4px;display:block;border:none;background:none;padding:0 2px;text-align:left;font-weight:500}.rcx-grp span{font-weight:400;margin-left:2px}.rcx-lista>.rcx-grp:first-child{margin-top:0}.rcx-grpb{cursor:pointer}"
+  + ".rcx-row{position:relative;padding:11px 12px;border-top:1px solid var(--hl);cursor:pointer}"
+  + ".rcx-row:hover{background:var(--hc)}.rcx-row.sel{background:var(--hc);box-shadow:inset 2px 0 0 var(--ha)}"
+  + ".rcx-tx{min-width:0}.rcx-l0{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--hm)}.rcx-dt{white-space:nowrap}"
+  + ".rcx-l1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;margin:2px 0 1px}.rcx-row.nv .rcx-l1{font-weight:600}"
+  + ".rcx-l2{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--hm)}"
+  + ".rcx-tp{color:var(--hm)}.rcx-urg{color:var(--hr)}"
+  + ".rcx-ler{position:sticky;top:64px;padding:24px 28px;max-height:calc(100vh - 90px);overflow:auto}"
+  + ".rcx-hd{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--hm)}.rcx-hd b{color:var(--ht);font-weight:500}"
+  + ".rcx-tit{font-size:20px;font-weight:600;letter-spacing:-.01em;line-height:1.3;margin:12px 0 10px;font-family:inherit}"
+  + ".rcx-corpo{white-space:pre-wrap;font-size:14.5px;line-height:1.7;color:var(--ht);max-width:62ch}"
+  + ".rcx-meta{font-size:12.5px;color:var(--hm);margin-top:18px;line-height:1.6}"
+  + ".rcx-acts{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:14px}"
   + ".rcx-del{color:var(--hr)!important}"
-  + "@media (max-width:860px){.rcx-cols{grid-template-columns:1fr}.rcx-ler{position:static}}";
+  + "@media (max-width:860px){.rcx-cols{grid-template-columns:1fr}.rcx-ler{position:static;max-height:none}}";
   document.head.appendChild(st);
 })();
 /* ================= fim do Pacote 31 · RECADOS ================= */
