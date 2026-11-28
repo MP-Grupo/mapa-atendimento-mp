@@ -13722,6 +13722,7 @@ document.addEventListener("click", e=>{
   const b=e.target.closest && e.target.closest("[data-hj]"); if(!b) return;
   e.preventDefault();
   const a=b.dataset.hj;
+  if(a==="voltar"){ const h=ui.hj.hist||[]; const v=h.pop(); ui.hj.voltando=true; go(v||"dia"); return; }
   if(a==="aba"){ ui.hj.aba=b.dataset.v; ui.hj.passo=0; render(); window.scrollTo(0,0); }
   else if(a==="prox"){ if((ui.hj.passo||0)<4){ ui.hj.passo=(ui.hj.passo||0)+1; render(); } else { try{ localStorage.setItem("hj-comecou-"+hjEu(), isoDia()); }catch(x){} ui.hj.aba="dia"; ui.hj.passo=0; render(); window.scrollTo(0,0); } }
   else if(a==="ant"){ ui.hj.passo=Math.max(0,(ui.hj.passo||0)-1); render(); }
@@ -13826,6 +13827,9 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
   + "body.hj-shell .top .search{max-width:260px;padding:5px 10px!important;font-size:12.5px!important;border-radius:8px!important}"
   + "body.hj-shell .top .me{padding:2px 8px 2px 2px;font-size:12.5px}body.hj-shell .top .me .av{width:22px;height:22px;font-size:10px}"
   + "body.hj-shell .top .search kbd{display:none}body.hj-shell .savechip{font-size:12px;padding:3px 8px;max-width:130px}body.hj-shell .vc-sel{font-size:12px;padding:3px 6px;max-width:118px}body.hj-shell .top{flex-wrap:nowrap!important}body.hj-shell .top .search{min-width:0;flex:0 1 220px}body.hj-shell .top .btn.idea{display:none!important}body.hj-shell .top .me span:last-child{max-width:70px;overflow:hidden;text-overflow:ellipsis}"
+  + ".hj-marcab{border:none;background:none;padding:0 2px;cursor:pointer;color:var(--ht);font:inherit}"
+  + "body.hj-shell .top .vc-sel{appearance:none;-webkit-appearance:none;border:1px solid var(--line)!important;background:var(--surface) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7075' stroke-width='1.4'/%3E%3C/svg%3E\") no-repeat right 8px center!important;border-radius:8px!important;padding:4px 24px 4px 9px!important;font-size:12.5px!important;font-weight:500!important;color:var(--fg)!important;height:auto!important;box-shadow:none!important}"
+  + "body.hj-shell .top .me{border:1px solid var(--line)!important;background:var(--surface)!important;border-radius:8px!important;font-weight:500!important}"
   + "#hjTopL{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:4px}#hjTopL .hj-marca{font-size:14px;font-weight:600;white-space:nowrap}#hjTela{white-space:nowrap;font-size:13px}"
   + "header.top .hj-b{font-size:12.5px;padding:4px 10px;border-radius:8px;border:1px solid var(--hl);background:var(--hc);color:var(--ht);cursor:pointer}header.top .hj-b.hj-lnk{border:none;background:none;color:var(--hm)}"
   + "header.top .hj-tabs{display:flex;gap:3px;background:var(--hs);padding:3px;border-radius:10px;margin:0 auto}header.top .hj-tabs button{font-size:12.5px;padding:4px 12px;border-radius:7px;border:none;background:none;color:var(--hm);white-space:nowrap;cursor:pointer}header.top .hj-tabs button.on{background:var(--hc);color:var(--ht);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}"
@@ -13853,15 +13857,21 @@ render = function(){
     if(nc && !$("#nav-dia")) nc.insertAdjacentHTML("beforebegin", `<button class="nav" data-go="dia" id="nav-dia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg><span>Hoje</span></button>`);
     const nd=$("#nav-dia"); if(nd){ nd.style.display=hjPode()?"":"none"; nd.classList.toggle("on", ui.view==="dia"); }
     document.body.classList.toggle("hj-on", ui.view==="dia");
-    if(ui.hj.ultView!==ui.view){ ui.hj.menu=false; ui.hj.rec=false; ui.hj.ultView=ui.view; }
+    if(ui.hj.ultView!==ui.view){
+      if(!Array.isArray(ui.hj.hist)) ui.hj.hist=[];
+      if(ui.hj.voltando) ui.hj.voltando=false;
+      else if(ui.hj.ultView) ui.hj.hist.push(ui.hj.ultView);
+      if(ui.hj.hist.length>30) ui.hj.hist.shift();
+      ui.hj.menu=false; ui.hj.rec=false; ui.hj.ultView=ui.view;
+    }
     const shell=hjShell();
     document.body.classList.toggle("hj-shell", shell);
     const top=$("header.top");
     if(top){
       top.classList.toggle("hj-tok", shell);
       let L=$("#hjTopL");
-      if(shell && !L){ top.insertAdjacentHTML("afterbegin", `<span id="hjTopL"><button class="hj-b" data-hj="menu">Menu</button><b class="hj-marca">Mapa M&amp;P</b><span class="hj-mu" id="hjTela"></span></span>`); L=$("#hjTopL"); }
-      if(L){ L.style.display=shell?"":"none"; const nv=$("#nav-"+ui.view+" span"); const tela=ui.view==="dia"?"Hoje":(nv?nv.textContent:""); const te=$("#hjTela"); if(te) te.textContent=tela?"· "+tela:""; }
+      if(shell && !L){ top.insertAdjacentHTML("afterbegin", `<span id="hjTopL"><button class="hj-b" data-hj="menu">Menu</button><button class="hj-b hj-lnk" data-hj="voltar" id="hjVoltar" title="Voltar para a tela anterior">‹ Voltar</button><button class="hj-marca hj-marcab" data-go="dia" title="Ir para Hoje">Mapa M&amp;P</button><span class="hj-mu" id="hjTela"></span></span>`); L=$("#hjTopL"); }
+      if(L){ L.style.display=shell?"":"none"; const vb=$("#hjVoltar"); if(vb) vb.style.display=(ui.view!=="dia" && (ui.hj.hist||[]).length)?"":"none"; const nv=$("#nav-"+ui.view+" span"); const tela=ui.view==="dia"?"Hoje":(nv?nv.textContent:""); const te=$("#hjTela"); if(te) te.textContent=tela?"· "+tela:""; }
       let T=$("#hjTabs");
       if(shell && ui.view==="dia"){ if(!T){ const s=top.querySelector(".search")||L; s.insertAdjacentHTML("afterend", `<div class="hj-tabs" id="hjTabs"></div>`); T=$("#hjTabs"); } T.innerHTML=hjTabsHtml(); }
       else if(T) T.remove();
