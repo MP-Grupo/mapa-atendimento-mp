@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Revisão das funcionalidades · Mapa × Cowork</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
+.top b{font-size:15px}
+.mu{color:var(--mu)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px;flex-wrap:wrap}
+.tabs button{font-size:13px;padding:7px 14px;border-radius:9px;border:none;background:none;color:var(--mu);white-space:nowrap}
+.tabs button.on{background:var(--cd);color:var(--tx);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:17px;font-weight:600;margin:30px 0 4px}
+.sub{color:var(--mu);margin:6px 0 18px;max-width:760px;line-height:1.6}
+.row{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1fr) 96px;gap:14px;padding:12px 0;border-top:1px solid var(--ln);align-items:start}
+.row.h{color:var(--mu);font-size:12px;border-top:none;padding-bottom:4px}
+.row .n{font-weight:600}
+.row .n small{display:block;font-weight:400;color:var(--mu);font-size:12px;margin-top:2px}
+.row .x{line-height:1.6;font-size:13.5px}
+.tag{font-size:12px;padding:2px 9px;border-radius:7px;border:1px solid var(--ln);color:var(--mu);white-space:nowrap;display:inline-block}
+.tag.m{color:var(--ac);border-color:var(--ac)}
+.cd{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px;margin-top:10px}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--ln)}
+.plano .k{width:170px;flex:none;color:var(--mu);font-size:12.5px}
+.plano .x{flex:1;line-height:1.6}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:24px;line-height:1.6}
+@media (max-width:860px){.row{grid-template-columns:1fr;gap:6px}.row.h{display:none}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Revisão das funcionalidades</span><span style="flex:1"></span>
+<div class="tabs" id="tabs"><button data-t="res" class="on">Resumo</button><button data-t="dia">Dia a dia</button><button data-t="casos">Casos e prazos</button><button data-t="eq">Equipe</button><button data-t="soc">Gestão e método</button><button data-t="dec">Decisões</button></div>
+<span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap" id="w"></div>
+<script>
+const T={m:'manter',j:'juntar',e:'melhorar',d:'depois'};
+const R={
+dia:[
+['Hoje (nova)','Começar, Durante e Encerrar o dia; onde parei; 3 decisões; agenda da semana.','O revisor do WhatsApp (Vera) e a varredura matinal do Gmail entregam exatamente o que o passo "Recados" e o passo "Prazos" pedem. A rotina diária do Cockpit de Conversão (priorizar, abordar, agendar, fechar, cadastrar) é a rotina do Durante o dia.','Ligar os dois agentes à Hoje: o resumo da Vera e a varredura entram como cartões, em vez de você abrir o Cowork.','e'],
+['Meu dia (antiga)','26 blocos numa tela só.','Nada no Cowork depende dela.','Fica em Só sócios como "Meu dia (como era)" até você aprovar a troca.','m'],
+['Painel de gestão','Indicadores, alertas, Mesa do Alan, Caixa rápida.','O Painel de Cobrança do Cowork tem o "Retrato do dia" e a "Fila do dia": um número por sala e a fila de ações. É o modelo para a Gestão.','Vira a sala Gestão (só sócios), redesenhada depois no padrão Retrato do dia + fila.','d'],
+['Agenda (Calendário)','Compromissos, prazos, tarefas, lembretes, sala e aniversários.','A varredura de prazos manda itens para "verificar no PJe/eSAJ". A Ellen cuida da sua agenda.','Manter; acrescentar o filtro "só o Gabriel" para a Ellen e o botão "mandar para a varredura" nos prazos sem data certa.','e'],
+['Semana (plano e rituais)','Plano da semana, 6 rituais, 5 regras, pautas.','O manual tem revisão mensal (15 min) e semestral do método.','Manter; o Encerrar o dia de sexta abre o Fechar a semana (já previsto).','m'],
+['Anotar (janelinha)','Captura rápida em janela separada.','O Cockpit cadastra "campos padronizados no Juridique".','Manter; estudar se a anotação já pode nascer com os campos do Juridique.','m'],
+['Tarefas e Caixa rápida','152 tarefas; Encaminhar, Adiar, Folha do dia.','Regra do revisor: "toda resposta nasce acoplada a uma tarefa". O painel do Advogado: "toda tarefa com dono: Gabriel ou Alan".','Manter; garantir dono em toda tarefa criada por agente.','m'],
+['WhatsApp 9955 (CRM)','Vazio (0 contatos).','O CRM real é o Jurichat; o Cockpit exporta cadastro para o Juridique; o painel de cobrança exige opt-in da WhatsApp Cloud API.','Não construir um segundo CRM. A tela vira a "fila do WhatsApp": o que a Vera preparou para você responder, com link para o Jurichat.','j'],
+],
+casos:[
+['Atendimentos e casos (esteiras A, B, C)','58 casos; portões e travas; passagem ao Jurídico cria "Kit recebido".','O manual descreve 9 fluxos transversais (primeiro contato → encerramento) e o painel do Analista tem 5 ações rápidas (resposta WhatsApp, triagem, dossiê, prova, repasse).','Cada etapa abre o POP e a ação rápida certa. A passagem pede "quem conduz" e leva a Ficha de Repasse (13 partes). Divergência a decidir: primeiro contato com a Ellen (Mapa) ou com o Gabriel (manual).','e'],
+['Pessoas','304 cadastros com busca.','O painel do Advogado tem a Ficha de entrada com os campos que a análise precisa (parte adversa, fato gerador, valor, documentos em mãos e pendentes, conflito verificado, link da pasta no Drive).','Acrescentar à ficha do cliente os campos da Ficha de entrada; "conflito verificado" passa a ser um campo da pessoa.','e'],
+['Prazos e Protocolo da semana','88 prazos; P1 a Pn; Peça pronta; Protocolei; cobrança por WhatsApp.','A varredura matinal lista prazos do Gmail; o painel do Advogado calcula prescrição e decadência com data-base e artigo em todo caso.','Manter; a Sala do Alan nasce daqui. Prescrição e decadência passam a aparecer no caso, não só na cobrança.','e'],
+['Cobranças','81 cobranças, régua D0 a D+30, acordo, kit C6.','Duas réguas convivem: a do Mapa e da skill cobranca-mp (D0, +3, +7, +15, +30) e a do Painel de Cobrança do Cowork, de 04/08 (E0 preventivo antes de vencer, E1 lembrete cordial sem falar "dívida", E2 renegociação, E3 formal, E4 aviso pré-jurídico, E5 em D+45 vira processo com o Alan; exige opt-in; devedor que contesta escala para advogado). O painel tem ainda "alçada por credor": desconto à vista, parcelas, entrada mínima, piso e valor acima do qual escala.','Escolher uma régua só e trazer a "alçada por credor" para o Mapa (resolve as 80 fichas paradas). Trazer "Retrato do dia", "Fila do dia" e "Escalonamentos que precisam de gente".','e'],
+['Documentos','Vazio.','A Central de Documentos do Cowork busca no Drive; o manual define a pasta padrão por cliente (01 Documentos, 02 Dossiê, 03 Petições, 04 Contrato, 05 Encerrado) e os contratos padrão por área.','Juntar: Documentos vira a Central de Documentos do caso (pasta do Drive + modelos por área), e não uma lista solta.','j'],
+['Processos administrativos','Vazio.','A skill iptu trata execução fiscal e processo administrativo fiscal; o manual pergunta se é uma 9ª área.','Manter a tela; decidir se é área formal. Enquanto isso, fica em Casos e prazos.','m'],
+],
+eq:[
+['Recados (post-its)','26 post-its, agora em caixa de recados.','O revisor prepara "unidades de atendimento" (cliente, categoria, resposta pronta, tarefa).','Manter; um recado pode virar tarefa (já feito) e a Vera pode deixar recados.','m'],
+['Lembretes','3 lembretes com hora e repetição.','Lembretes de protocolo e prazo vão para o Google Agenda com alerta (skill de cobrança).','Manter; estudar o aviso no celular (Web Push) para lembretes e recados no caso.','m'],
+['Pedidos (decisão, urgente)','1 aberto; blocos de decisão às 11:00 e 16:30.','O revisor separa "urgência real" de "pode esperar" e "é do Alan".','Manter; usar as mesmas categorias do revisor nos pedidos.','m'],
+['Chat da equipe','Tabela própria.','Nada no Cowork.','Manter.','m'],
+['Bloco rápido','1 item.','Nada no Cowork.','Manter; candidato a se juntar ao Anotar, só com a sua ordem.','m'],
+['Sala de reunião','Agenda própria (sala.html).','Nada no Cowork.','Manter.','m'],
+],
+soc:[
+['Gestão (Painel refeito)','A fazer.','Retrato do dia e Fila do dia do Painel de Cobrança; "Visão do gestor" atual.','Redesenhar depois, no padrão Retrato do dia.','d'],
+['Meu financeiro','Tabela própria, só você.','O Cockpit tem "lógica de honorários (ajuste à sua tabela)": a tabela interna fica com você.','Manter; fora dos POPs.','m'],
+['Perfis da equipe','master, sócio, equipe; acesso por área.','O manual diz: nenhuma etapa fica sem dono.','Manter; os papéis já batem com a planta.','m'],
+['Fluxos (roteiros)','5 fluxos, 18 passos esperando validação.','São a versão viva dos fluxos transversais do manual (que ainda está na v0.1, com [VALIDAR]).','Os Fluxos do Mapa passam a ser a fonte da verdade dos POPs; o manual do Cowork aponta para eles.','e'],
+['Roteiros (atendimentos)','Esteira antiga, 0 itens.','Substituída pela esteira A.','Manter visível em Manuais e método como histórico; não remover sem a sua ordem.','m'],
+['Ideias','3 ideias, votos e conversa.','OpMaster: cada ajuste de padrão vira "ajuste de padrão" registrado.','Manter; ideias aprovadas viram mudança de POP com registro de versão.','m'],
+['Biblioteca (listas e mensagens)','7 listas, 3 mensagens.','O manual pede uma biblioteca de modelos por área (contratos, notificação, proposta, procuração) e 17 prompts por função.','Melhorar: Biblioteca por área e etapa, com os modelos e os prompts, aberta de dentro do caso.','e'],
+['Manual (POP) e Trilha','POP dentro de Painel e dados; Trilha com 6 missões, 6 cenários, 8 competências.','A skill pop-mp é o manual oficial, no formato responsável · prazo · ferramenta · etiqueta · próxima ação.','Manual sai de Painel e dados para Manuais e método (com sua ordem) e adota o formato da skill. A Trilha vira o "Primeiros passos" por pessoa.','e'],
+['Aparência','Linguagens visuais; Folha entra agora.','Nada no Cowork.','Manter.','m'],
+['Painel e dados','Cópias automáticas, baixar, restaurar.','Essencial pelo regimento.','Manter, nunca sai.','m'],
+['Importar dados e Instalar o app','Importação e instalação.','OpMaster importa e exporta JSON.','Manter.','m'],
+['Em breve (5)','Autenticador, Extensões, DJEN, Agente de IA, Andamento até o protocolo.','Agente de IA: já existe em forma de skills; DJEN e Andamento: a varredura e a Sala do Alan cobrem parte.','Agente de IA sai de "em breve": a lista de agentes aponta para as skills. Os outros ficam.','e'],
+]};
+function tabela(k){return `<div class="row h"><span>Função</span><span>Hoje no Mapa</span><span>O que o Cowork e os manuais dizem</span><span>Proposta</span></div>`+R[k].map(r=>`<div class="row"><span class="n">${r[0]}<small>${r[1]}</small></span><span class="x">${r[2]}</span><span class="x">${r[3]}</span><span><span class="tag ${r[4]==='e'||r[4]==='j'?'m':''}">${T[r[4]]}</span></span></div>`).join('')}
+function resumo(){const all=[].concat(R.dia,R.casos,R.eq,R.soc);const c={m:0,j:0,e:0,d:0};all.forEach(r=>c[r[4]]++);
+return `<div class="mu" style="font-size:12.5px">Para Gabriel · 28/11/2026 · cruza as 33 telas do Mapa com os projetos e manuais do Cowork</div><h1>Revisão das funcionalidades</h1><div class="sub">Nada some. Para cada função: o que ela é hoje, o que os seus projetos do Cowork já dizem sobre ela e a proposta. ${all.length} funções revisadas: ${c.m} manter como estão, ${c.e} melhorar, ${c.j} juntar com outra, ${c.d} redesenhar depois.</div>
+<h2>O que o Cowork tem e o Mapa ainda não usa</h2>
+<ul class="plano">
+<li><span class="k">Agentes prontos</span><span class="x">Revisor do WhatsApp (a Vera), varredura matinal de prazos e leads, Analista de casos (triagem, dossiê, prova, repasse), Agente Advogado (porta única de entrada, com travas de qualidade), Agente de Cobrança (C0 a C6). A lista de agentes do Mapa pode apontar para eles hoje.</span></li>
+<li><span class="k">Ficha de entrada</span><span class="x">O Agente Advogado exige campos que o Mapa não tem na pessoa: parte adversa, fato gerador, valor envolvido, documentos em mãos e pendentes, conflito verificado, link da pasta. Com 3 campos essenciais vazios, devolve diligências em vez de análise.</span></li>
+<li><span class="k">Travas de qualidade</span><span class="x">Prescrição e decadência com data-base em todo caso; cada fato marcado provado, alegado ou a provar; cenário pior com custo; toda tarefa com dono. São regras que a esteira do Mapa pode cobrar nos portões.</span></li>
+<li><span class="k">Alçada por credor</span><span class="x">No Painel de Cobrança: desconto à vista, parcelas, entrada mínima, piso e valor acima do qual escala. É o que falta para liberar as 80 fichas paradas.</span></li>
+<li><span class="k">Retrato do dia e Fila do dia</span><span class="x">O padrão de painel do Cowork: um número por área e a fila de ações do dia, com os "escalonamentos que precisam de gente" à parte. Serve para a Gestão e para a Hoje de cada pessoa.</span></li>
+<li><span class="k">Pasta padrão e modelos</span><span class="x">O manual define a pasta por cliente (01 a 05) e um contrato padrão por área. A Central de Documentos busca no Drive. Documentos e Biblioteca do Mapa podem nascer disso.</span></li>
+</ul>
+<h2>Divergências que só você resolve</h2>
+<ul class="plano">
+<li><span class="k">Duas réguas de cobrança</span><span class="x">Mapa e skill: D0, +3, +7, +15, +30. Painel do Cowork (04/08): E0 a E5, com lembrete preventivo antes de vencer, "sem falar dívida" no primeiro contato, jurídico em D+45 e opt-in obrigatório. Qual vale?</span></li>
+<li><span class="k">Primeiro contato</span><span class="x">Manual v0.1: Gabriel. Mapa e roteiros da Ellen: Ellen. O POP segue o Mapa até você dizer o contrário.</span></li>
+<li><span class="k">Onde mora a verdade</span><span class="x">O manual do Cowork (pop-mp) ou os Fluxos do Mapa? Proponho: os Fluxos do Mapa são a fonte; a skill aponta para eles.</span></li>
+<li><span class="k">CRM</span><span class="x">Jurichat continua sendo o CRM; o "WhatsApp 9955" do Mapa vira só a fila preparada pela Vera. Confirma?</span></li>
+</ul>
+<div class="ex">Fontes: skills pop-mp, cobranca-mp, analise-caso-mp, triagem-whatsapp-cliente; tarefas agendadas revisor-atendimento-whatsapp e varredura-prazos-leads-mp; artefatos do Cowork (OpMaster, Cockpit de Conversão, Central de Documentos, Painel do Advogado, Painel do Analista, Painel de Cobrança). Números do Mapa: cópia de 27/11. Sem nomes de clientes. Nada foi mudado no Mapa; a publicação do Pacote 31 está em espera.</div>`}
+function decisoes(){return `<h1>Decisões</h1><div class="sub">As que destravam a obra. Respondendo estas, eu sigo sozinho com o resto.</div>
+<ul class="plano">
+<li><span class="k">1 · Régua de cobrança</span><span class="x">D0 a D+30 (Mapa e skill) ou E0 a E5 até D+45 (painel do Cowork), ou uma fusão: preventivo antes de vencer + os 5 contatos + jurídico em D+45?</span></li>
+<li><span class="k">2 · Primeiro contato</span><span class="x">Ellen (como está no Mapa) ou Gabriel (como está no manual)?</span></li>
+<li><span class="k">3 · Fonte da verdade dos POPs</span><span class="x">Fluxos do Mapa, com o manual do Cowork apontando para eles?</span></li>
+<li><span class="k">4 · WhatsApp 9955</span><span class="x">Vira a fila preparada pela Vera, com o CRM continuando no Jurichat?</span></li>
+<li><span class="k">5 · Documentos e Biblioteca</span><span class="x">Documentos vira a Central de Documentos do caso (Drive + modelos por área) e a Biblioteca ganha os prompts por função?</span></li>
+<li><span class="k">6 · Manual e Trilha</span><span class="x">Saem de Painel e dados para Manuais e método? (Painel e dados continua com Cópias, Baixar e Restaurar.)</span></li>
+<li><span class="k">7 · Publicar</span><span class="x">O Pacote 31 pode ir ao ar depois da cópia no Dropbox, ou espera esta revisão virar os próximos pacotes?</span></li>
+</ul>`}
+const st={t:'res'};
+function draw(){const w=document.getElementById('w');const tit={dia:'Dia a dia',casos:'Casos e prazos',eq:'Equipe',soc:'Gestão, método e ajustes'};
+w.innerHTML=st.t==='res'?resumo():st.t==='dec'?decisoes():`<h1>${tit[st.t]}</h1><div class="sub">Função por função. "Manter" não quer dizer intocável: quer dizer que ela já faz o que precisa.</div>${tabela(st.t)}`;
+document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===st.t));}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{st.t=b.dataset.t;draw();scrollTo(0,0)});
+document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};
+draw();
+</script>
+</body>
+</html>
