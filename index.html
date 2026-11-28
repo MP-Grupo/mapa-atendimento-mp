@@ -6909,6 +6909,32 @@ const MPF_FUNDOS = {
 const MPF_VIDRO_COR = {bg:"#061214",s:"rgba(9,24,27,.6)",s2:"rgba(255,255,255,.07)",s3:"rgba(255,255,255,.12)",line:"rgba(255,255,255,.14)",fg:"#eef5f6",muted:"#c9dadd",accent:"#5fb7bd",a2:"#86cdd2",soft:"rgba(95,183,189,.22)"};
 AP_LINGS.vidro = {n:"Vidro M&P", ref:"", sub:"cartões de vidro sobre as araucárias", desc:"Fundo do planalto com araucárias, cartões translúcidos e verde-água. Sempre escuro. Cada pessoa escolhe o próprio fundo.", f:"atual", r:[20,12,10], cards:"vidro", dens:"normal", menu:"vidro",
   l:Object.assign({}, MPF_VIDRO_COR), d:Object.assign({}, MPF_VIDRO_COR)};
+
+/* ================= Pacote 31 · linguagem FOLHA (Ficha 04, 28/11/2026) ================= */
+/* Identidade aprovada pelo Gabriel em 28/11: papel claro quente, uma cor petróleo, letra Geist, vermelho só para atraso. */
+/* Escuro em grafite suave, sem preto puro. Só acrescenta uma opção na Aparência: ninguém vê nada até "Aplicar para todos". */
+/* Não mexe em dados: a escolha continua guardada em S.aparencia, no mesmo formato de sempre. */
+const FOLHA_EXTRA = ''
+  + 'html:root{--warn:#8a6a3a;--warn-soft:#f1ece2;--danger:#b4553f;--danger-soft:#f6e9e4;--ok:#3f6b5a;--ok-soft:#e6eeea;--idea:#5f6470;--idea-soft:#eeeeee;--shadow:none}'
+  + 'html:root[data-theme="dark"]{--warn:#c9a97a;--warn-soft:#302b24;--danger:#d58c78;--danger-soft:#33292a;--ok:#8fb8a5;--ok-soft:#263029;--idea:#b0b3bb;--idea-soft:#2b2c30;--shadow:none}'
+  + '.ngrp{text-transform:none!important;letter-spacing:0!important;font-size:12px!important;font-weight:500!important}'
+  + '.nav{font-weight:500!important}.nav.on{font-weight:600!important}'
+  + '.nav .dot{background:var(--surface-3)!important;color:var(--fg)!important;font-weight:600}'
+  + '.card,.pg-sec,.pf-one,.tf-box,.pf-b,.ind{box-shadow:none!important}'
+  + '.btn{font-weight:500!important}.btn.primary{font-weight:600!important}'
+  + 'h1,h2,h3{font-weight:600!important}'
+  + '.av,.av.g,.av.a,.av.x{background:var(--surface-3)!important;color:var(--muted)!important;border:1px solid var(--line)}'
+  + '.tag{background:var(--surface-2)!important;color:var(--muted)!important}'
+  + '.top{background:var(--bg)!important}.rail{background:var(--bg)!important}'
+  + '.pn-banner{background:var(--surface)!important;border:1px solid var(--line)!important;color:var(--fg)!important}.pn-banner *{color:var(--fg)!important}'
+  + '.pn-card{filter:saturate(.55)}'
+  + 'html:root[data-theme="dark"] .pn-card{filter:none;background:var(--surface-2)!important;color:var(--fg)!important;border:1px solid var(--line)!important}'
+  + 'html:root[data-theme="dark"] .pn-card *{color:inherit}'
+  + 'html:root[data-theme="dark"] .pn-card button,html:root[data-theme="dark"] .pn-card .lnk,html:root[data-theme="dark"] .pn-card a{color:var(--accent)!important}';
+AP_LINGS.folha = {n:"Folha", ref:"", sub:"aprovada em 28/11/2026", desc:"Papel claro quente, uma cor petróleo, letra Geist, vermelho só para atraso. Escuro em grafite suave.", f:"geist", r:[16,10,8], cards:"borda", dens:"normal", menu:"claro",
+  extra:FOLHA_EXTRA,
+  l:{bg:"#f7f7f5",s:"#ffffff",s2:"#f0f0ec",s3:"#e8e8e3",line:"#e6e6e2",fg:"#1f2328",muted:"#6b7075",accent:"#2f5d62",a2:"#244a4e",soft:"#e3ecec"},
+  d:{bg:"#1c1d20",s:"#232428",s2:"#2a2b30",s3:"#313237",line:"#303136",fg:"#d9dadc",muted:"#9a9ca1",accent:"#8db3b0",a2:"#a8c7c4",soft:"#2b3535"}};
 function mpfSouVidro(a){ return !!a && a.ling==="vidro"; }
 function mpfPessoal(){ const p=apLS("mp-fundo"); return (p && typeof p==="object") ? p : null; }
 function mpfEscolha(a){
