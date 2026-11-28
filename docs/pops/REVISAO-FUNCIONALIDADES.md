@@ -35,7 +35,7 @@ Cruzamento das 33 telas do Mapa com os projetos e manuais do Cowork (skills `pop
 | Em breve | Agente de IA sai de "em breve" (aponta para as skills) | melhorar |
 
 ## Divergências (só o Gabriel resolve)
-1. Régua de cobrança: D0–D+30 (Mapa/skill) × E0–E5 até D+45 com preventivo e opt-in (painel do Cowork, 04/08).
+1. Régua de cobrança: **decidido em 28/11, fusão C** (D-5, D0, D+3, D+7, D+15, D+30, D+45), com alçada por credor, aceite do devedor e escalonamentos. Ver POP-COBRANCA-EXTRAJUDICIAL.md.
 2. Primeiro contato: Ellen (Mapa) × Gabriel (manual v0.1).
 3. Fonte da verdade dos POPs: Fluxos do Mapa (proposta) × skill pop-mp.
 4. CRM: Jurichat continua; WhatsApp 9955 vira só a fila da Vera.

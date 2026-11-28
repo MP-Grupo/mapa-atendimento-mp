@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Decisão · Régua de cobrança</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F7F5;--cd:#FFFFFF;--tx:#1F2328;--mu:#6B7075;--ln:#E6E6E2;--soft:#F0F0EC;--ac:#41716F;--on:#FFFFFF}
+.escuro{--bg:#1A1B1E;--cd:#212225;--tx:#CDCED1;--mu:#909297;--ln:#2C2D31;--soft:#26272B;--ac:#84ABA8;--on:#1A1B1E}
+*{box-sizing:border-box}
+body{margin:0;font-family:Geist,system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:var(--bg);z-index:5}
+.top b{font-size:15px}.mu{color:var(--mu)}
+.btn{font-size:13px;padding:7px 12px;border-radius:10px;border:1px solid var(--ln);background:var(--cd)}
+.wrap{max-width:960px;margin:0 auto;padding:26px 22px 70px}
+h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
+h2{font-size:17px;font-weight:600;margin:30px 0 6px}
+.sub{color:var(--mu);margin:6px 0 18px;max-width:740px;line-height:1.6}
+.tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.op{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px 18px}
+.op.rec{border-color:var(--ac)}
+.op h3{font-size:15px;font-weight:600;margin:0 0 2px}
+.op .de{font-size:12px;color:var(--mu);margin-bottom:10px}
+.st{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--ln);font-size:13px}
+.st b{width:54px;flex:none;font-weight:600;color:var(--mu);font-size:12px;padding-top:1px}
+.st.n b{color:var(--ac)}
+.pc{font-size:12.5px;color:var(--mu);margin-top:10px;line-height:1.6}
+.plano{margin:0;padding:0;list-style:none}
+.plano li{display:flex;gap:16px;padding:11px 0;border-top:1px solid var(--ln)}
+.plano .k{width:170px;flex:none;color:var(--mu);font-size:12.5px}
+.plano .x{flex:1;line-height:1.6}
+.ex{font-size:12px;color:var(--mu);border-left:2px solid var(--ln);padding-left:10px;margin-top:24px;line-height:1.6}
+@media (max-width:860px){.tres{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top"><b>Mapa M&amp;P</b><span class="mu">· Decisão 1 · Régua de cobrança</span><span style="flex:1"></span><button class="btn" id="modo">Escuro</button></div>
+<div class="wrap">
+<div class="mu" style="font-size:12.5px">Para o Gabriel decidir · 28/11/2026</div>
+<h1>Qual régua de cobrança vale?</h1>
+<div class="sub">Hoje existem duas. A do Mapa (e da skill de cobrança, de 18/11) e a do Painel de Cobrança do Cowork (de 04/08). A terceira coluna é uma proposta de fusão, para você aprovar ou ajustar.</div>
+
+<div class="tres">
+<div class="op"><h3>A · Mapa e skill</h3><div class="de">5 contatos depois do vencimento · mensagens prontas no Mapa</div>
+<div class="st"><b>D0</b><span>Primeiro contato: identifica o credor, informa valor e vencimento, oferece Pix ou boleto</span></div>
+<div class="st"><b>D+3</b><span>Lembrete e pergunta se prefere parcelar</span></div>
+<div class="st"><b>D+7</b><span>Proposta dentro dos limites, com prazo de resposta</span></div>
+<div class="st"><b>D+15</b><span>Último contato amigável e aviso das medidas legais</span></div>
+<div class="st"><b>D+30</b><span>Notificação extrajudicial formal: e-mail, WhatsApp e AR, 5 dias úteis</span></div>
+<div class="pc">A favor: já existe no Mapa, com as 5 mensagens escritas e registro de cada envio. Contra: começa só depois de vencer e fala em "débito" desde a primeira mensagem.</div></div>
+
+<div class="op"><h3>B · Painel do Cowork</h3><div class="de">6 estágios, do preventivo ao jurídico · pensado para envio automático</div>
+<div class="st"><b>E0</b><span>Lembrete preventivo, antes de vencer</span></div>
+<div class="st"><b>E1</b><span>Lembrete cordial, sem falar em "dívida"</span></div>
+<div class="st"><b>E2</b><span>Propõe renegociação</span></div>
+<div class="st"><b>E3</b><span>Formal, última facilitação</span></div>
+<div class="st"><b>E4</b><span>Aviso pré-jurídico</span></div>
+<div class="st"><b>E5</b><span>D+45: sai do agente e vira processo com o Alan</span></div>
+<div class="pc">A favor: tom mais humano no começo, lembrete antes do vencimento e um fim claro em D+45. Traz também a alçada por credor, o opt-in da WhatsApp Cloud API e o escalonamento para advogado quando o devedor contesta. Contra: depende de envio automático (templates aprovados pela Meta), que o Mapa não tem; os dias de E1 a E4 não estão fixados.</div></div>
+
+<div class="op rec"><h3>C · Fusão (proposta)</h3><div class="de">7 passos · o tom de B no caminho de A · funciona manual hoje e automático depois</div>
+<div class="st n"><b>D-5</b><span>Lembrete preventivo, só para parcelas e acordos com vencimento conhecido</span></div>
+<div class="st"><b>D0</b><span>Primeiro contato cordial, sem a palavra "dívida": "consta em aberto o valor de…"</span></div>
+<div class="st"><b>D+3</b><span>Lembrete e pergunta se prefere parcelar</span></div>
+<div class="st"><b>D+7</b><span>Proposta dentro da alçada do credor, com prazo</span></div>
+<div class="st"><b>D+15</b><span>Último contato amigável, já como aviso pré-jurídico</span></div>
+<div class="st"><b>D+30</b><span>Notificação extrajudicial: e-mail, WhatsApp e AR, 5 dias úteis</span></div>
+<div class="st n"><b>D+45</b><span>Sem acordo: sai da régua e vira processo com quem conduz (Alan ou Evaldo)</span></div>
+<div class="pc">Regras que valem em qualquer opção: dias úteis das 8h às 20h; só com o devedor; sem constrangimento; só o dado necessário; todo contato registrado; devedor que contesta a dívida escala para advogado.</div></div>
+</div>
+
+<h2>O que muda no Mapa se você escolher a fusão</h2>
+<ul class="plano">
+<li><span class="k">Régua</span><span class="x">Ganha o D-5 e o D+45. As 5 mensagens atuais continuam; só a do D0 troca "débito" por "valor em aberto". Entra uma mensagem nova, a do D-5.</span></li>
+<li><span class="k">Alçada por credor</span><span class="x">A ficha do credor ganha desconto à vista, parcelas, entrada mínima, piso e valor acima do qual escala. As 80 fichas paradas herdam a alçada do credor e podem começar a régua.</span></li>
+<li><span class="k">Opt-in</span><span class="x">Um campo "aceite do devedor" na cobrança. Hoje o envio é manual pelo WhatsApp do escritório e não precisa; quando o envio for automático pela Cloud API, passa a ser obrigatório.</span></li>
+<li><span class="k">Escalonamentos</span><span class="x">Uma lista "precisam de gente": contestação, pedido fora da alçada, sem telefone, D+45 atingido. É a fila do Evaldo.</span></li>
+<li><span class="k">Dados</span><span class="x">Nenhuma seção nova: alçada e aceite entram como campos dentro de cada cobrança e credor, como os campos que já existem.</span></li>
+</ul>
+
+<h2>Duas perguntas que vêm junto</h2>
+<ul class="plano">
+<li><span class="k">Envio</span><span class="x">Hoje as mensagens são copiadas e enviadas à mão. Continua assim por enquanto, ou já planejamos o envio automático (que exige templates aprovados e opt-in)?</span></li>
+<li><span class="k">Quem envia</span><span class="x">O Evaldo, como dono da operação, ou a Ellen, que hoje está no nome das cobranças?</span></li>
+</ul>
+<div class="ex">Fontes: tela Cobranças do Mapa, skill cobranca-mp v1.1 e Painel de Cobrança do Cowork (04/08/2026). Sem nomes de credores ou devedores. Nada foi mudado no Mapa.</div>
+</div>
+<script>document.getElementById('modo').onclick=()=>{const e=document.body.classList.toggle('escuro');document.getElementById('modo').textContent=e?'Claro':'Escuro'};</script>
+</body>
+</html>
