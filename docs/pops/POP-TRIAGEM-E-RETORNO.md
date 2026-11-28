@@ -34,4 +34,4 @@ Fontes: skills `pop-mp` (manual v0.1), `analise-caso-mp` (modos Triagem e Repass
 - **Breve relatório do estudo:** a estrutura proposta (5 itens) coincide com a saída da Triagem; manter "sem entregar o ouro".
 - **Passagem ao Jurídico:** o "kit" é a Ficha de Repasse do manual (ver POP-REPASSE-AO-JURIDICO.md).
 - **Prompts:** o manual cita prompts por função (acolhimento, qualificação, triagem, roteiro de reunião, dossiê, proposta, fechamento, boas-vindas). O Mapa pode oferecer cada um na etapa certa. [PREENCHER: textos no Kit de Gestão]
-- **Divergência a validar:** o manual v0.1 põe o primeiro contato e a triagem com o Gabriel; no Mapa de hoje o primeiro contato é da Ellen e a triagem do Gabriel. O POP segue o Mapa. [VALIDAR]
+- **Decidido em 28/11:** o primeiro contato é da **Ellen** (roteiros de Fluxos); a triagem é do Gabriel. O manual v0.1 do Cowork (que põe o primeiro contato com o Gabriel) fica para atualizar na v0.2, apontando para os Fluxos do Mapa.

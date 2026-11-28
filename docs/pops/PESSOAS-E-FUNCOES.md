@@ -10,7 +10,7 @@ Responsável pela triagem dos casos novos, pelo retorno aos clientes e pela gest
 
 ## Ellen · atendimento, documentos e agenda
 Responsável pelo atendimento, do primeiro contato ao fechamento, pelos documentos dos clientes e pela agenda do Gabriel. Apoia o escritório na organização do dia a dia.
-- Esteira: Atendimento (Contato, Agendamento e consulta, Viabilidade, Fechamento).
+- Esteira: Atendimento (Contato, Agendamento e consulta, Viabilidade, Fechamento). Primeiro contato é dela (decidido em 28/11).
 - POPs: Entrada pelo WhatsApp, Cliente chega no escritório, Contato, Cliente que já está na base (prontos em Fluxos) · Cliente que procura e não dá retorno (a escrever) · Agenda e documentos do Gabriel (a escrever) · Documentos por área, cobrança da consulta, kit para o jurídico, pastas no Drive (em construção, a partir da Trilha).
 
 ## Alan · peças e processos
