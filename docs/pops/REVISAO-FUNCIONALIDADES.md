@@ -18,7 +18,7 @@ Cruzamento das 33 telas do Mapa com os projetos e manuais do Cowork (skills `pop
 | Painel de gestão | vira Gestão, no padrão Retrato do dia | depois |
 | Agenda | filtro "só o Gabriel" para a Ellen; "mandar para a varredura" | melhorar |
 | Semana, Anotar, Tarefas/Caixa rápida | manter; dono em toda tarefa de agente | manter |
-| WhatsApp 9955 | fila preparada pela Vera; CRM segue no Jurichat | juntar |
+| WhatsApp 9955 | continua CRM de contatos; a fila da Vera pode entrar como bloco | manter |
 | Atendimentos e casos | cada etapa abre o POP e a ação rápida; passagem pede "quem conduz" e leva a Ficha de Repasse | melhorar |
 | Pessoas | campos da Ficha de entrada; "conflito verificado" | melhorar |
 | Prazos | Sala do Alan; prescrição/decadência no caso | melhorar |
@@ -38,7 +38,7 @@ Cruzamento das 33 telas do Mapa com os projetos e manuais do Cowork (skills `pop
 1. Régua de cobrança: **decidido em 28/11, fusão C** (D-5, D0, D+3, D+7, D+15, D+30, D+45), com alçada por credor, aceite do devedor e escalonamentos. Ver POP-COBRANCA-EXTRAJUDICIAL.md.
 2. Primeiro contato: **decidido em 28/11, Ellen**. O manual v0.1 do Cowork passa a apontar para os Fluxos do Mapa (v0.2 a escrever).
 3. Fonte da verdade dos POPs: **decidido em 28/11, os Fluxos do Mapa**. A skill pop-mp vira índice que aponta para eles (v0.2 a escrever).
-4. CRM: Jurichat continua; WhatsApp 9955 vira só a fila da Vera.
+4. CRM: **decidido em 28/11, o WhatsApp 9955 continua como CRM de contatos no Mapa**. A fila da Vera, se entrar, entra como um bloco dentro dele ou na Hoje, sem tirar o cadastro.
 5. Documentos e Biblioteca como Central de Documentos + prompts.
 6. Manual e Trilha saem de Painel e dados para Manuais e método.
 7. Publicar o Pacote 31 agora (após cópia no Dropbox) ou depois desta revisão.
