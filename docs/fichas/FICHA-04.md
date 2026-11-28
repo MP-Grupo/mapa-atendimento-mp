@@ -35,3 +35,6 @@ Usa os botões que já existem (Caixa rápida, post-its, protocolo, avisos, agen
 
 ## 6. Quem é afetado
 Ninguém, até o Gabriel aplicar para todos. Depois disso: aviso de 1 linha para a equipe (Ctrl+F5).
+
+## 7. Registro da execução (28/11/2026)
+Além do previsto, o pacote incluiu, sempre só com a Folha ligada ou na tela Hoje: barra de cima fina (Menu, Voltar, ⋯, Recados, Escuro/Claro), Recados no lugar dos post-its (grava igual), agenda da semana na Hoje, e afinamento visual de Agenda, Atendimento e casos, Prazos e Cobranças (só estilos). Do código antigo, 1 linha mudou (tecla N também abre a Caixa rápida na Hoje). Testes na cópia de estudo, sem banco. Contagem antes e depois em `docs/CONTAGEM-BASE.md`. Desfazer: reverter os commits do pacote no `main`.
