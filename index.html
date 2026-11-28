@@ -13577,6 +13577,24 @@ function hjRecHtml(){
   const rec=novos+peds;
   return `<button class="hj-b hj-lnk" data-hj="rec">Recados${rec?" "+rec:""}</button>${ui.hj.rec?`<span class="hj-pop"><button data-act="pnNovo">+ Post-it</button><button data-act="chatToggle">Chat da equipe</button><button data-act="pdToggle">Pedidos${peds?" ("+peds+")":""}</button><button data-go="postits">Ver post-its</button><button data-act="ideaQuick">Nova ideia</button></span>`:""}`;
 }
+const HJ_MAIS_SEL = ["#undoBtn", "#iaBtn", "header.top .iconbtn[data-act='help']", "header.top .mpf-btn", "#mppMais", "header.top .btn[data-act='salvarAgora']", "#vcSel", "header.top .me"];
+function hjMaisArrumar(top, shell){
+  if(!top) return;
+  let W=$("#hjMaisW");
+  if(shell){
+    if(!W){ top.insertAdjacentHTML("beforeend", `<button class="hj-b" data-act="temaTroca" data-hj-tema="1" id="hjTemaB"></button><span class="hj-maisw" id="hjMaisW"><button class="hj-b hj-lnk" data-hj="mais" title="Mais: desfazer, IA, ajuda, salvar, ver como, trocar usuário">⋯</button><div class="hj-maispop" id="hjMaisPop"></div></span>`); W=$("#hjMaisW"); }
+    const pop=$("#hjMaisPop");
+    HJ_MAIS_SEL.forEach(s=>{ const el=document.querySelector(s); if(el && el.parentElement!==pop){ if(!el.dataset.hjVolta){ el.dataset.hjVolta="1"; } pop.appendChild(el); } });
+    W.classList.toggle("on", !!ui.hj.mais);
+    const tb=$("#hjTemaB"); if(tb) tb.textContent=document.documentElement.getAttribute("data-theme")==="dark"?"Claro":"Escuro";
+    const sc=$("#saveChip"); if(sc && sc.nextElementSibling!==W) W.parentElement.insertBefore(sc, W);
+  } else if(W){
+    const tsp=top.querySelector(".tsp");
+    HJ_MAIS_SEL.forEach(s=>{ const el=document.querySelector(s); if(el && el.closest("#hjMaisPop")) top.appendChild(el); });
+    W.remove(); const tb=$("#hjTemaB"); if(tb) tb.remove();
+    if(tsp){ const sc=$("#saveChip"); if(sc) top.appendChild(sc); }
+  }
+}
 function hjShell(){ try{ return ui.view==="dia" || (typeof apGet==="function" && apGet().ling==="folha"); }catch(e){ return ui.view==="dia"; } }
 function hjMenu(){
   if(!ui.hj.menu) return "";
@@ -13722,11 +13740,13 @@ function hjResumoTexto(){
   return "Resumo do dia · "+hjDataLonga()+"\n\nConcluídas ("+feitas.length+"):\n"+feitas.map(t=>"- "+(t.txt||"")).join("\n")+"\n\nEncaminhadas ("+enc.length+"):\n"+enc.map(t=>"- "+(t.txt||"")+" → "+t.resp).join("\n");
 }
 document.addEventListener("click", e=>{
+  if(ui.hj.mais && !(e.target.closest && e.target.closest("#hjMaisW"))){ ui.hj.mais=false; const W=$("#hjMaisW"); if(W) W.classList.remove("on"); }
   if(ui.hj.rec && !(e.target.closest && e.target.closest(".hj-recw"))){ ui.hj.rec=false; if(ui.view==="dia") setTimeout(()=>{ if(ui.view==="dia") render(); },0); }
   if(ui.hj.menu && e.target.closest && e.target.closest("#hjMenuRoot [data-go],#hjMenuRoot [data-act],#hjMenuRoot [data-gtab],#hjMenuRoot [data-an]")){ ui.hj.menu=false; setTimeout(()=>render(),0); }
   const b=e.target.closest && e.target.closest("[data-hj]"); if(!b) return;
   e.preventDefault();
   const a=b.dataset.hj;
+  if(a==="mais"){ ui.hj.mais=!ui.hj.mais; const W=$("#hjMaisW"); if(W) W.classList.toggle("on", ui.hj.mais); return; }
   if(a==="voltar"){ const h=ui.hj.hist||[]; const v=h.pop(); ui.hj.voltando=true; go(v||"dia"); return; }
   if(a==="aba"){ ui.hj.aba=b.dataset.v; ui.hj.passo=0; render(); window.scrollTo(0,0); }
   else if(a==="prox"){ if((ui.hj.passo||0)<4){ ui.hj.passo=(ui.hj.passo||0)+1; render(); } else { try{ localStorage.setItem("hj-comecou-"+hjEu(), isoDia()); }catch(x){} ui.hj.aba="dia"; ui.hj.passo=0; render(); window.scrollTo(0,0); } }
@@ -13833,6 +13853,22 @@ document.addEventListener("click", e=>{ const b=e.target.closest && e.target.clo
   + ".hj-b.hj-pri{font-size:12.5px;font-weight:500;padding:4px 11px;border-radius:7px;letter-spacing:.01em;line-height:1.35}"
   + ".hj-in{font-size:14px;padding:8px 11px}"
   + ".hj-ex{font-size:12px}"
+  + ".hj-maisw{position:relative;flex-shrink:0}.hj-maispop{display:none;position:absolute;right:0;top:34px;background:var(--hc);border:1px solid var(--hl);border-radius:12px;padding:8px;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.12);min-width:230px;flex-direction:column;gap:6px;align-items:stretch}"
+  + ".hj-maisw.on .hj-maispop{display:flex}.hj-maispop>*{width:100%;justify-content:flex-start}.hj-maispop .iconbtn{width:auto!important;height:auto!important;display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:8px}"
+  + ".hj-maispop .iconbtn[title]::after{content:attr(title);font-size:12.5px;color:var(--ht)}.hj-maispop .vc-sel,.hj-maispop .me{max-width:none!important;width:100%}"
+  + "body.hj-shell .top{padding:10px 22px!important}body.hj-shell .top #saveChip{border:none;background:none;color:var(--hm);font-size:12px;max-width:120px}"
+  + ".hj-wrap{padding:28px 22px 60px}.hj-wrap.hj-estreito{max-width:760px}"
+  + ".hj-sub{margin:6px 0 22px}"
+  + ".hj-cd{padding:18px 20px;border-radius:16px}"
+  + ".hj-passos{margin-bottom:18px}.hj-passos i{height:4px}"
+  + ".hj-big{font-size:22px}.hj-big.hj-m{font-size:18px}"
+  + ".hj-acoes{margin-top:18px}"
+  + ".hj-b{font-size:13px;padding:8px 14px;border-radius:10px;line-height:1.3}"
+  + ".hj-b.hj-pri{font-size:13px;font-weight:500;padding:8px 14px;border-radius:10px}"
+  + "header.top .hj-b{padding:7px 12px;border-radius:10px;font-size:13px}"
+  + "header.top .hj-tabs{padding:4px;border-radius:12px}header.top .hj-tabs button{font-size:13px;padding:7px 14px;border-radius:9px}"
+  + "body.hj-shell .top .search{padding:7px 12px!important;font-size:13px!important;border-radius:10px!important}"
+  + "#hjTopL .hj-marca{font-size:15px}"
   + ".hj-tok{--hb:#f7f7f5;--hc:#ffffff;--ht:#1f2328;--hm:#6b7075;--hl:#ecece8;--hs:#f0f0ec;--ha:#2f5d62;--ho:#ffffff;--hr:#b4553f}"
   + "html[data-theme='dark'] .hj-tok{--hb:#1c1d20;--hc:#232428;--ht:#d9dadc;--hm:#9a9ca1;--hl:#2c2d32;--hs:#2a2b30;--ha:#8db3b0;--ho:#1c1d20;--hr:#d58c78}"
   + "#hjMenuRoot{font-family:'Geist','Segoe UI',system-ui,sans-serif;color:var(--ht);font-size:13px}#hjMenuRoot button{font:inherit;color:inherit;cursor:pointer}"
@@ -13896,6 +13932,7 @@ render = function(){
       if(shell && !R){ const c=$("#criarBtn")||top.querySelector(".search"); if(c){ c.insertAdjacentHTML("afterend", `<span class="hj-recw" id="hjRecW"></span>`); R=$("#hjRecW"); } }
       if(R){ R.style.display=shell?"":"none"; R.innerHTML=shell?hjRecHtml():""; }
     }
+    hjMaisArrumar(top, shell);
     let M=$("#hjMenuRoot");
     if(!M){ document.body.insertAdjacentHTML("beforeend", `<div id="hjMenuRoot" class="hj-tok"></div>`); M=$("#hjMenuRoot"); }
     if(!shell) ui.hj.menu=false;
